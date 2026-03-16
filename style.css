@@ -1,0 +1,474 @@
+/* ================================================================
+   Style: Clean Air Ultra Pro Max
+   版本: v3.0 High Contrast Edition (最终极致版)
+   特性: 高对比度层级 / 胶囊引用 / 视觉隔离 / 强制字体约束
+   ================================================================ */
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   § 1. CSS 变量系统 - 高对比度配置
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+:root {
+    /* ===== 颜色系统 (高对比度) ===== */
+    --text-primary: #000000;        /* 纯黑，极致对比 */
+    --text-secondary: #404040;      /* 深灰，拉开层级 */
+    --text-tertiary: #737373;
+    --text-inverse: #ffffff;
+
+    /* 背景颜色 */
+    --bg-primary: #ffffff;
+    --bg-secondary: #fafafa;
+    --bg-tertiary: #f3f4f6;
+    --bg-capsule: #f8f9fa;          /* 胶囊引用专用背景 */
+    --bg-elevated: #ffffff;         /* 悬浮卡片背景 */
+
+    /* 品牌色 */
+    --brand-primary: #0052cc;       /* 深蓝，更稳重 */
+    --brand-primary-dark: #0747a6;
+    --brand-primary-light: #deebff;
+    --brand-primary-alpha: rgba(0, 82, 204, 0.1);
+
+    /* 语义颜色 */
+    --color-success: #00875a;
+    --color-success-bg: #e3fcef;
+    --color-warning: #ff991f;
+    --color-warning-bg: #fff0b3;
+    --color-danger: #de350b;
+    --color-danger-bg: #ffebe6;
+    --color-info: #00b8d9;
+    --color-info-bg: #e6fcff;
+
+    /* 代码配色 */
+    --code-bg: #f4f5f7;
+    --code-text: #172b4d;
+    --code-border: #dfe1e6;
+
+    /* 边框与线条 */
+    --border-subtle: #ebecf0;
+    --border-light: #dfe1e6;
+    --border-medium: #c1c7d0;
+    --border-strong: #000000;       /* 强边框 */
+
+    /* 阴影系统 (增强深度) */
+    --shadow-sm: 0 1px 2px rgba(9, 30, 66, 0.25);
+    --shadow-md: 0 4px 8px -2px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
+    --shadow-lg: 0 8px 16px -4px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
+    --shadow-float: 0 12px 24px -6px rgba(9, 30, 66, 0.35); /* 悬浮专用 */
+
+    /* 排版参数 */
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", "Consolas", "Roboto Mono", monospace;
+
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;              /* 胶囊圆角 */
+    --radius-full: 9999px;
+
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
+
+    --content-width: 760px;
+}
+
+/* 暗色模式适配 */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --text-primary: #ffffff;
+        --text-secondary: #dcdcdc;
+        --text-tertiary: #a0a0a0;
+
+        --bg-primary: #121212;
+        --bg-secondary: #1e1e1e;
+        --bg-tertiary: #2c2c2c;
+        --bg-capsule: #252525;
+        --bg-elevated: #232323;
+
+        --brand-primary: #4c9aff;
+
+        --border-subtle: #2c2c2c;
+        --border-light: #424242;
+        --border-medium: #6b6b6b;
+        --border-strong: #ffffff;
+
+        --code-bg: #1e1e1e;
+        --code-text: #e0e0e0;
+        --code-border: #333333;
+
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+        --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.6);
+        --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.7);
+        --shadow-float: 0 12px 24px rgba(0, 0, 0, 0.8);
+    }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   § 2. 全局重置与基础样式
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    /* 强制无衬线字体 */
+    font-family: var(--font-sans) !important;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    background-color: var(--bg-primary);
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-4) var(--space-16);
+
+    /* 字体渲染优化 */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   § 3. 标题系统 - 高对比度层级
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary);
+    font-family: var(--font-sans) !important;
+    line-height: 1.25;
+    margin-top: var(--space-10);
+    margin-bottom: var(--space-4);
+}
+
+/* H1: 页面主标题 - 强制粗边框 */
+h1 {
+    font-size: 2.5rem;
+    font-weight: 900 !important;
+    letter-spacing: -0.02em;
+    padding-bottom: var(--space-4);
+    border-bottom: 4px solid var(--border-strong) !important; /* 核心修改 */
+    margin-top: 0;
+    margin-bottom: var(--space-8);
+}
+
+/* H2: 区块标题 - 底部分隔 */
+h2 {
+    font-size: 1.875rem;
+    font-weight: 800 !important;
+    letter-spacing: -0.01em;
+    padding-bottom: var(--space-2);
+    border-bottom: 2px solid var(--border-medium);
+    margin-top: var(--space-12);
+}
+
+/* H3: 小节标题 - 方块装饰 */
+h3 {
+    font-size: 1.5rem;
+    font-weight: 700 !important;
+    display: flex;
+    align-items: center;
+}
+
+h3::before {
+    content: '';
+    display: inline-block;
+    width: 0.6em;
+    height: 0.6em;
+    background-color: var(--brand-primary);
+    margin-right: var(--space-3);
+    border-radius: 2px;
+}
+
+h4 { font-size: 1.25rem; font-weight: 600; color: var(--text-secondary); }
+h5 { font-size: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   § 4. 文本与排版
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+p {
+    margin-bottom: var(--space-5);
+    max-width: 70ch;
+}
+
+strong, b {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+em, i {
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+a {
+    color: var(--brand-primary);
+    text-decoration: none;
+    font-weight: 500;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s ease;
+}
+
+a:hover {
+    border-bottom-color: var(--brand-primary);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   § 5. 引用块 - 胶囊设计 (Capsule Style)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+blockquote {
+    /* 核心修改：胶囊形状 */
+    background-color: var(--bg-capsule) !important;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xl);
+    padding: var(--space-6) var(--space-8) !important;
+    margin: var(--space-8) 0 !important;
+    color: var(--text-secondary);
+    position: relative;
+    box-shadow: var(--shadow-sm);
+}
+
+/* 移除旧版左侧线条 */
+blockquote::before, blockquote::after {
+    border: none;
+}
+
+/* 顶部装饰引号 */
+blockquote::before {
+    content: """;
+    position: absolute;
+    top: -14px;
+    left: 32px; /* 或 left: 50% transform: translateX(-50%) 居中 */
+    background-color: var(--bg-primary);
+    padding: 0 10px;
+    font-size: 2rem;
+    line-height: 1;
+    color: var(--brand-primary);
+    font-family: var(--font-mono); /* 符号强制等宽 */
+}
+
+blockquote p {
+    margin-bottom: 0;
+}
+
+blockquote footer {
+    margin-top: var(--space-3);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: right;
+}
+
+blockquote footer::before {
+    content: "— ";
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   § 6. 代码系统 - 强制等宽
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+code, pre, kbd, samp {
+    /* 核心修改：强制等宽字体栈 */
+    font-family: var(--font-mono) !important;
+    font-variant-ligatures: none;
+    font-variant-numeric: tabular-nums; /* 数字强制等宽 */
+}
+
+/* 行内代码 */
+code {
+    font-size: 0.9em;
+    background-color: var(--code-bg);
+    color: var(--code-text);
+    padding: 0.2em 0.4em;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+}
+
+/* 代码块 */
+pre {
+    background-color: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: var(--radius-lg);
+    padding: 3rem 1.5rem 1.5rem; /* 顶部留空给macOS点 */
+    margin: var(--space-8) 0;
+    overflow-x: auto;
+    position: relative;
+    box-shadow: var(--shadow-sm);
+}
+
+pre code {
+    background: none;
+    padding: 0;
+    border: none;
+    color: inherit;
+    font-size: 0.875rem;
+    line-height: 1.7;
+}
+
+/* macOS 窗口控制点装饰 */
+pre::before {
+    content: "";
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ff5f57;
+    box-shadow: 20px 0 0 #ffbd2e, 40px 0 0 #28c940;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   § 7. 提示信息 - 视觉隔离 (Visual Isolation)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.alert {
+    position: relative;
+    /* 核心修改：悬浮卡片样式 */
+    background-color: var(--bg-elevated);
+    border: none;
+    border-left: 6px solid; /* 仅保留左侧色条 */
+    border-radius: var(--radius-lg);
+    padding: var(--space-5) var(--space-6) var(--space-5) var(--space-16); /* 左侧留宽给图标 */
+    margin: var(--space-8) 0;
+    box-shadow: var(--shadow-float); /* 强阴影 */
+    transform: scale(0.98);
+    transition: transform 0.2s ease;
+}
+
+.alert:hover {
+    transform: scale(1);
+}
+
+/* 图标容器 */
+.alert::before {
+    position: absolute;
+    left: var(--space-4);
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    background-color: rgba(0,0,0,0.04); /* 图标底座 */
+}
+
+/* 类型定义 */
+.alert-info { border-color: var(--color-info); }
+.alert-info::before { content: "ℹ️"; }
+
+.alert-warning { border-color: var(--color-warning); }
+.alert-warning::before { content: "⚠️"; }
+
+.alert-danger { border-color: var(--color-danger); }
+.alert-danger::before { content: "❌"; }
+
+.alert-success { border-color: var(--color-success); }
+.alert-success::before { content: "✅"; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   § 8. 列表、表格与图片
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* 列表 */
+ul, ol {
+    padding-left: var(--space-6);
+    margin-bottom: var(--space-6);
+}
+
+li {
+    margin-bottom: var(--space-2);
+    padding-left: var(--space-1);
+}
+
+li::marker {
+    color: var(--brand-primary);
+    font-weight: 600;
+}
+
+/* 表格 */
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: var(--space-8) 0;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    font-variant-numeric: tabular-nums;
+}
+
+th {
+    background-color: var(--bg-tertiary);
+    text-align: left;
+    padding: var(--space-3) var(--space-4);
+    font-weight: 700;
+    border-bottom: 2px solid var(--border-medium);
+}
+
+td {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) { background-color: var(--bg-secondary); }
+
+/* 图片 */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: var(--space-8) auto;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   § 9. 键盘按键 (KBD)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+kbd {
+    font-family: var(--font-mono);
+    display: inline-block;
+    padding: 0.15em 0.4em;
+    font-size: 0.85em;
+    line-height: 1;
+    color: var(--text-secondary);
+    vertical-align: middle;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-medium);
+    border-bottom-width: 3px;
+    border-radius: var(--radius-sm);
+    box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   § 10. 打印优化
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@media print {
+    body {
+        background: white;
+        color: black;
+        font-size: 12pt;
+        max-width: 100%;
+        padding: 0;
+    }
+
+    h1 { border-bottom: 2px solid black !important; }
+
+    a { text-decoration: underline; color: black; }
+
+    pre, blockquote, .alert {
+        border: 1px solid #ccc;
+        box-shadow: none;
+        page-break-inside: avoid;
+    }
+
+    .alert { transform: none; padding-left: var(--space-4); }
+    .alert::before { display: none; }
+}

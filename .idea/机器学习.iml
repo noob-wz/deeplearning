@@ -7,7 +7,7 @@
       <sourceFolder url="file://$MODULE_DIR$/二、机器学习" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/深度学习" isTestSource="false" />
     </content>
-    <orderEntry type="jdk" jdkName="1.8" jdkType="JavaSDK" />
+    <orderEntry type="jdk" jdkName="d2l" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

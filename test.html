@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>深度学习排雷：打破 2D 鞍点平原的“视觉骗局” (终极修正版)</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <style>
+    body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #f0f2f5; margin: 0; padding: 20px; }
+    h1 { color: #333; margin-bottom: 5px; }
+    #demo-container { display: flex; flex-wrap: wrap; gap: 20px; width: 100%; max-width: 1200px; justify-content: center; }
+    .plot-box { background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 15px; flex: 1; min-width: 500px; }
+    .controls { margin-top: 20px; display: flex; flex-direction: column; gap: 15px; align-items: center; background: white; padding: 20px; border-radius: 12px; }
+    button { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 16px; transition: all 0.2s; color: white; font-weight: bold;}
+    button:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    #btn-ridge { background: #e74c3c; }
+    #btn-valley { background: #3498db; }
+    #btn-reset { background: #7f8c8d; }
+  </style>
+</head>
+<body>
+
+<h1>深度排雷：打破 2D 鞍点平原的“视觉骗局”</h1>
+<p style="color: #e74c3c; font-weight: bold;">(致歉声明：修复了上一个版本中 3D 渲染颜色与 Z 轴反转的严重 Bug！现在红色绝对是高山，蓝色绝对是深渊！)</p>
+
+<div id="demo-container">
+  <div class="plot-box">
+    <h2>3D 立体视角 (Loss 真实的深度)</h2>
+    <div id="plot3d" style="height: 500px;"></div>
+  </div>
+  <div class="plot-box">
+    <h2>2D 骗局视角 (精准复刻李宏毅老师原图)</h2>
+    <div id="plot2d" style="height: 500px;"></div>
+  </div>
+</div>
+
+<div class="controls">
+  <div style="display: flex; gap: 15px;">
+    <button id="btn-ridge">演示路径：左上红山 -> 中心平原 -> 右下红山 (走山脊)</button>
+    <button id="btn-valley">对比路径：左下蓝渊 -> 中心平原 -> 右上蓝渊 (过深渊)</button>
+    <button id="btn-reset">回到中心鞍点</button>
+  </div>
+</div>
+
+<script>
+  // 数学公式：左上/右下是正数(高山)，左下/右上是负数(深渊)
+  function saddlePlateauFunction(x, y) {
+      let plateauFactor = Math.pow(x, 4) + Math.pow(y, 4) + 0.1;
+      let scaledZ = -1.0 * x * y * plateauFactor;
+      return scaledZ;
+  }
+
+  const size = 60;
+  const x_vals = [], y_vals = [], z_vals = [];
+  for (let i = 0; i < size; i++) {
+      let x = (i / (size - 1)) * 4 - 2;
+      x_vals.push(x);
+      z_vals[i] = [];
+      for (let j = 0; j < size; j++) {
+          let y = (j / (size - 1)) * 4 - 2;
+          if (i === 0) y_vals.push(y);
+          z_vals[i].push(saddlePlateauFunction(x, y));
+      }
+  }
+
+  // 核心修复：移除了 reversescale，确保底部的绝对值对应蓝色，顶部的绝对值对应红色！
+  const customColorscale = [
+      [0, '#1e3799'],      // 最深的深蓝 (极小 Loss, 海拔 -15)
+      [0.45, '#4a69bd'],   // 浅蓝
+      [0.48, '#7f8fa6'],   // 开始进入沼泽平原
+      [0.5, '#dcdde1'],    // 绝对 0 点的海拔 (浅灰)
+      [0.52, '#7f8fa6'],   // 离开沼泽平原
+      [0.6, '#f6b93b'],    // 黄色过渡
+      [1, '#e74c3c']       // 最深的红色 (极大 Loss, 海拔 15)
+  ];
+
+  const trace3d = {
+      z: z_vals, x: x_vals, y: y_vals,
+      type: 'surface',
+      colorscale: customColorscale,
+      showscale: true // 开启图例，眼见为实
+  };
+
+  const trace2d = {
+      z: z_vals, x: x_vals, y: y_vals,
+      type: 'contour',
+      colorscale: customColorscale,
+      showscale: false,
+      contours: { coloring: 'heatmap' }
+  };
+
+  const layout3d = {
+      scene: {
+          xaxis: { title: '参数 w1', range: [-2, 2] },
+          yaxis: { title: '参数 w2', range: [-2, 2] },
+          zaxis: { title: 'Loss', nticks: 5, range: [-15, 15] },
+          camera: { eye: { x: 1.5, y: -1.5, z: 1.0 } }
+      },
+      margin: { l: 0, r: 0, b: 0, t: 30 }
+  };
+
+  const layout2d = {
+      xaxis: { title: '参数 w1', range: [-2, 2] },
+      yaxis: { title: '参数 w2', range: [-2, 2] },
+      margin: { l: 50, r: 10, b: 50, t: 30 }
+  };
+
+  let initialMarker = { x: 0, y: 0, z: saddlePlateauFunction(0, 0) };
+
+  Plotly.newPlot('plot3d', [trace3d, {
+      x: [initialMarker.x], y: [initialMarker.y], z: [initialMarker.z],
+      type: 'scatter3d', mode: 'markers',
+      marker: { size: 12, color: '#2ecc71', symbol: 'circle' },
+      showlegend: false
+  }], layout3d);
+
+  Plotly.newPlot('plot2d', [trace2d, {
+      x: [initialMarker.x], y: [initialMarker.y],
+      type: 'scatter', mode: 'markers+lines',
+      marker: { size: 15, color: '#2ecc71', symbol: 'circle', line: { color: 'black', width: 2 } },
+      showlegend: false
+  }], layout2d);
+
+  function updateMarker(x, y) {
+      let z = saddlePlateauFunction(x, y);
+      Plotly.react('plot3d', [trace3d, {
+          x: [x], y: [y], z: [z],
+          type: 'scatter3d', mode: 'markers',
+          marker: { size: 12, color: '#2ecc71', symbol: 'circle' },
+          showlegend: false
+      }], layout3d);
+      Plotly.react('plot2d', [trace2d, {
+          x: [x], y: [y],
+          type: 'scatter', mode: 'markers+lines',
+          marker: { size: 15, color: '#2ecc71', symbol: 'circle', line: { color: 'black', width: 2 } },
+          showlegend: false
+      }], layout2d);
+  }
+
+  let currentAnimFrame;
+  let isAnimating = false;
+
+  function animatePath(points) {
+      if (isAnimating) cancelAnimationFrame(currentAnimFrame);
+      isAnimating = true;
+      let currentPointIndex = 0;
+      function step() {
+          if (currentPointIndex >= points.length) { isAnimating = false; return; }
+          let p = points[currentPointIndex];
+          updateMarker(p.x, p.y);
+          currentPointIndex++;
+          currentAnimFrame = requestAnimationFrame(step);
+      }
+      step();
+  }
+
+  const pathLineTrace2d = {
+      x: [], y: [], type: 'scatter', mode: 'lines',
+      line: { color: 'black', width: 2, dash: 'solid' }, showlegend: false
+  };
+
+  const numPoints = 101;
+  const ridgePoints = [];
+  const valleyPoints = [];
+  for (let i = 0; i < numPoints; i++) {
+      let t = (i / (numPoints - 1)) * 3.6 - 1.8;
+      ridgePoints.push({ x: t, y: -t });
+      valleyPoints.push({ x: t, y: t });
+  }
+
+  function setMarkerToStart(points, lineTrace) {
+      if (isAnimating) cancelAnimationFrame(currentAnimFrame);
+      isAnimating = false;
+      Plotly.react('plot2d', [trace2d, lineTrace, {
+          x: [points[0].x], y: [points[0].y],
+          type: 'scatter', mode: 'markers',
+          marker: { size: 15, color: '#2ecc71', symbol: 'circle', line: { color: 'black', width: 2 } },
+          showlegend: false
+      }], layout2d);
+      updateMarker(points[0].x, points[0].y);
+  }
+
+  document.getElementById('btn-ridge').onclick = function() {
+      setMarkerToStart(ridgePoints, {...pathLineTrace2d, x: [-1.8, 1.8], y: [1.8, -1.8]});
+      animatePath(ridgePoints);
+  };
+
+  document.getElementById('btn-valley').onclick = function() {
+      setMarkerToStart(valleyPoints, {...pathLineTrace2d, x: [-1.8, 1.8], y: [-1.8, 1.8]});
+      animatePath(valleyPoints);
+  };
+
+  document.getElementById('btn-reset').onclick = function() {
+      if (isAnimating) cancelAnimationFrame(currentAnimFrame);
+      isAnimating = false;
+      Plotly.react('plot2d', [trace2d, {
+          x: [0], y: [0],
+          type: 'scatter', mode: 'markers+lines',
+          marker: { size: 15, color: '#2ecc71', symbol: 'circle', line: { color: 'black', width: 2 } },
+          showlegend: false
+      }], layout2d);
+      updateMarker(0, 0);
+  }
+
+  updateMarker(0, 0);
+</script>
+</body>
+</html>

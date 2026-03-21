@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>优化算法演示</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #1c2230;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --c-sgd: #94a3b8;
+      --c-adagrad: #fbbf24;
+      --c-rmsprop: #34d399;
+      --c-adam: #a78bfa;
+      --c-opt: #f87171;
+      --c-start: #60a5fa;
+      --font-body: 'Noto Sans SC', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      padding: 24px 20px 40px;
+    }
+
+    .page { max-width: 980px; margin: 0 auto; }
+
+    /* ── Header ── */
+    .header { margin-bottom: 24px; }
+    .header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      margin-bottom: 6px;
+    }
+    .header p {
+      font-size: 13.5px;
+      color: var(--muted);
+      line-height: 1.65;
+      max-width: 700px;
+    }
+
+    /* ── Algorithm Cards ── */
+    .algo-cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    @media (max-width: 700px) { .algo-cards { grid-template-columns: repeat(2, 1fr); } }
+
+    .algo-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 13px;
+      cursor: pointer;
+      transition: border-color 0.2s, opacity 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .algo-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0.07;
+      transition: opacity 0.2s;
+    }
+    .algo-card.active::before { opacity: 0.12; }
+    .algo-card.inactive { opacity: 0.45; }
+
+    .algo-card[data-algo="sgd"]::before      { background: var(--c-sgd); }
+    .algo-card[data-algo="adagrad"]::before  { background: var(--c-adagrad); }
+    .algo-card[data-algo="rmsprop"]::before  { background: var(--c-rmsprop); }
+    .algo-card[data-algo="adam"]::before     { background: var(--c-adam); }
+
+    .algo-card[data-algo="sgd"].active      { border-color: var(--c-sgd); }
+    .algo-card[data-algo="adagrad"].active  { border-color: var(--c-adagrad); }
+    .algo-card[data-algo="rmsprop"].active  { border-color: var(--c-rmsprop); }
+    .algo-card[data-algo="adam"].active     { border-color: var(--c-adam); }
+
+    .card-name {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .card-dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .card-desc {
+      font-size: 11.5px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .card-badge {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 10.5px;
+      padding: 2px 7px;
+      border-radius: 99px;
+      background: rgba(255,255,255,0.07);
+      color: var(--muted);
+      font-family: var(--font-mono);
+    }
+
+    /* ── Controls ── */
+    .controls {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    }
+    .ctrl-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      min-width: 160px;
+    }
+    .ctrl-group label {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+      min-width: 70px;
+    }
+    .ctrl-group input[type=range] {
+      flex: 1;
+      height: 4px;
+      accent-color: var(--c-adam);
+      cursor: pointer;
+    }
+    .ctrl-val {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      min-width: 38px;
+      text-align: right;
+      color: var(--text);
+    }
+    .divider { width: 1px; height: 28px; background: var(--border); }
+
+    .play-btn {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 18px;
+      background: var(--c-adam);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font-body);
+      transition: opacity 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .play-btn:hover { opacity: 0.88; }
+    .play-btn:active { transform: scale(0.97); }
+    .play-btn svg { width: 14px; height: 14px; fill: currentColor; flex-shrink: 0; }
+
+    .speed-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .speed-group label { font-size: 12px; color: var(--muted); }
+    .speed-btn {
+      padding: 4px 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 11.5px;
+      cursor: pointer;
+      font-family: var(--font-mono);
+      transition: all 0.15s;
+    }
+    .speed-btn.active { background: var(--surface2); border-color: var(--c-adam); color: var(--c-adam); }
+
+    /* ── Step indicator ── */
+    .step-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .step-label {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--muted);
+      min-width: 120px;
+    }
+    .step-track {
+      flex: 1;
+      height: 3px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .step-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--c-adam), var(--c-rmsprop));
+      border-radius: 99px;
+      transition: width 0.05s linear;
+      width: 0%;
+    }
+
+    /* ── Viz panels ── */
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 660px) { .panels { grid-template-columns: 1fr; } }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 10px 14px 8px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .panel-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .panel-hint {
+      font-size: 11px;
+      color: #4b5563;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+    }
+
+    /* ── Stat pills ── */
+    .stats-row {
+      display: flex;
+      gap: 8px;
+      padding: 10px 14px;
+      flex-wrap: wrap;
+      border-top: 1px solid var(--border);
+    }
+    .stat-pill {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 3px 9px;
+      border-radius: 99px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      transition: all 0.2s;
+    }
+    .stat-pill span { font-weight: 600; }
+
+    /* ── Legend for loss panel ── */
+    .loss-legend {
+      display: flex;
+      gap: 12px;
+      padding: 8px 14px;
+      flex-wrap: wrap;
+      border-top: 1px solid var(--border);
+    }
+    .ll-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .ll-line {
+      width: 18px; height: 2.5px;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>四种优化算法对比演示</h1>
+    <p>同一个损失函数，相同起点，看四种算法如何寻找最低点。<br>
+      点击「▶ 播放」观看动画，调节学习率和步数感受参数的影响。</p>
+  </div>
+
+  <!-- Algorithm Cards -->
+  <div class="algo-cards" id="algoCards">
+    <div class="algo-card active" data-algo="sgd" onclick="toggleAlgo('sgd', this)">
+      <div class="card-name"><span class="card-dot" style="background:var(--c-sgd)"></span>普通梯度下降</div>
+      <div class="card-desc">每步沿梯度方向走固定大小，简单直接，但遇到"窄谷"容易来回震荡。</div>
+      <div class="card-badge">SGD</div>
+    </div>
+    <div class="algo-card active" data-algo="adagrad" onclick="toggleAlgo('adagrad', this)">
+      <div class="card-name"><span class="card-dot" style="background:var(--c-adagrad)"></span>Adagrad</div>
+      <div class="card-desc">对更新频繁的方向自动缩小步长，后期会越走越慢，甚至停滞。</div>
+      <div class="card-badge">Adaptive Gradient</div>
+    </div>
+    <div class="algo-card active" data-algo="rmsprop" onclick="toggleAlgo('rmsprop', this)">
+      <div class="card-name"><span class="card-dot" style="background:var(--c-rmsprop)"></span>RMSprop</div>
+      <div class="card-desc">解决了 Adagrad 停滞问题，用"近期梯度"代替"全部历史"，更持续。</div>
+      <div class="card-badge">Root Mean Square Prop</div>
+    </div>
+    <div class="algo-card active" data-algo="adam" onclick="toggleAlgo('adam', this)">
+      <div class="card-name"><span class="card-dot" style="background:var(--c-adam)"></span>Adam</div>
+      <div class="card-desc">综合动量 + 自适应步长，大多数情况下收敛又快又稳，工业界首选。</div>
+      <div class="card-badge">Adaptive Moment</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="ctrl-group">
+      <label for="lr">学习率 η</label>
+      <input type="range" id="lr" min="0.01" max="0.5" step="0.01" value="0.12">
+      <span class="ctrl-val" id="lr-v">0.12</span>
+    </div>
+    <div class="divider"></div>
+    <div class="ctrl-group">
+      <label for="steps">步数</label>
+      <input type="range" id="steps" min="20" max="200" step="5" value="100">
+      <span class="ctrl-val" id="steps-v">100</span>
+    </div>
+    <div class="divider"></div>
+    <div class="speed-group">
+      <label>速度</label>
+      <button class="speed-btn" data-spd="2" onclick="setSpeed(2)">慢</button>
+      <button class="speed-btn active" data-spd="4" onclick="setSpeed(4)">中</button>
+      <button class="speed-btn" data-spd="8" onclick="setSpeed(8)">快</button>
+    </div>
+    <button class="play-btn" id="playBtn" onclick="togglePlay()">
+      <svg id="playIcon" viewBox="0 0 16 16"><polygon points="3,1 15,8 3,15"/></svg>
+      <span id="playLabel">播放</span>
+    </button>
+  </div>
+
+  <!-- Step Progress Bar -->
+  <div class="step-bar">
+    <span class="step-label" id="stepLabel">第 0 / 100 步</span>
+    <div class="step-track"><div class="step-fill" id="stepFill"></div></div>
+  </div>
+
+  <!-- Main Panels -->
+  <div class="panels">
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">轨迹图（损失函数等高线）</span>
+        <span class="panel-hint">⭐ = 全局最优点</span>
+      </div>
+      <canvas id="contourCanvas" height="340"></canvas>
+      <div class="stats-row" id="distStats">
+        <span style="font-size:11px;color:var(--muted)">播放后显示各算法距最优点距离</span>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Loss 曲线（每步损失值）</span>
+        <span class="panel-hint">越低越好</span>
+      </div>
+      <canvas id="lossCanvas" height="340"></canvas>
+      <div class="loss-legend" id="lossLegend">
+        <div class="ll-item"><div class="ll-line" style="background:var(--c-sgd)"></div>SGD</div>
+        <div class="ll-item"><div class="ll-line" style="background:var(--c-adagrad)"></div>Adagrad</div>
+        <div class="ll-item"><div class="ll-line" style="background:var(--c-rmsprop)"></div>RMSprop</div>
+        <div class="ll-item"><div class="ll-line" style="background:var(--c-adam)"></div>Adam</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const COLORS = { sgd: '#94a3b8', adagrad: '#fbbf24', rmsprop: '#34d399', adam: '#a78bfa' };
+  const TARGET = [0.62, 0.48];
+  const active = { sgd: true, adagrad: true, rmsprop: true, adam: true };
+  let allPaths = {};
+  let animStep = 0;
+  let totalSteps = 100;
+  let animRunning = false;
+  let animTimer = null;
+  let stepsPerTick = 4;
+  let precomputedContour = null;
+  let contourW = 0, contourH = 0;
+
+  // ── Loss function ──
+  function loss(x, y) {
+    const dx = x - TARGET[0], dy = y - TARGET[1];
+    return 4*dx*dx + 1.5*dy*dy + 0.35*Math.sin(7*dx)*Math.cos(4*dy)*Math.exp(-(dx*dx+dy*dy)*4);
+  }
+  function grad(x, y) {
+    const h = 1e-4;
+    return [
+      (loss(x+h,y)-loss(x-h,y))/(2*h),
+      (loss(x,y+h)-loss(x,y-h))/(2*h)
+    ];
+  }
+  function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+
+  // ── Optimizers ──
+  function runSGD(lr, steps) {
+    let [x,y]=[0.1,0.82]; const path=[[x,y,loss(x,y)]];
+    for(let i=0;i<steps;i++){
+      const [gx,gy]=grad(x,y);
+      x=clamp(x-lr*gx,0.01,0.99); y=clamp(y-lr*gy,0.01,0.99);
+      path.push([x,y,loss(x,y)]);
+    }
+    return path;
+  }
+  function runAdagrad(lr, steps) {
+    let [x,y]=[0.1,0.82],Gx=0,Gy=0; const eps=1e-8,path=[[x,y,loss(x,y)]];
+    for(let i=0;i<steps;i++){
+      const [gx,gy]=grad(x,y);
+      Gx+=gx*gx; Gy+=gy*gy;
+      x=clamp(x-lr/Math.sqrt(Gx+eps)*gx,0.01,0.99);
+      y=clamp(y-lr/Math.sqrt(Gy+eps)*gy,0.01,0.99);
+      path.push([x,y,loss(x,y)]);
+    }
+    return path;
+  }
+  function runRMSprop(lr, steps) {
+    let [x,y]=[0.1,0.82],Gx=0,Gy=0; const rho=0.9,eps=1e-8,path=[[x,y,loss(x,y)]];
+    for(let i=0;i<steps;i++){
+      const [gx,gy]=grad(x,y);
+      Gx=rho*Gx+(1-rho)*gx*gx; Gy=rho*Gy+(1-rho)*gy*gy;
+      x=clamp(x-lr/Math.sqrt(Gx+eps)*gx,0.01,0.99);
+      y=clamp(y-lr/Math.sqrt(Gy+eps)*gy,0.01,0.99);
+      path.push([x,y,loss(x,y)]);
+    }
+    return path;
+  }
+  function runAdam(lr, steps) {
+    let [x,y]=[0.1,0.82],mx=0,my=0,vx=0,vy=0;
+    const b1=0.9,b2=0.999,eps=1e-8,path=[[x,y,loss(x,y)]];
+    for(let i=1;i<=steps;i++){
+      const [gx,gy]=grad(x,y);
+      mx=b1*mx+(1-b1)*gx; my=b1*my+(1-b1)*gy;
+      vx=b2*vx+(1-b2)*gx*gx; vy=b2*vy+(1-b2)*gy*gy;
+      const mhx=mx/(1-Math.pow(b1,i)), mhy=my/(1-Math.pow(b1,i));
+      const vhx=vx/(1-Math.pow(b2,i)), vhy=vy/(1-Math.pow(b2,i));
+      x=clamp(x-lr/(Math.sqrt(vhx)+eps)*mhx,0.01,0.99);
+      y=clamp(y-lr/(Math.sqrt(vhy)+eps)*mhy,0.01,0.99);
+      path.push([x,y,loss(x,y)]);
+    }
+    return path;
+  }
+
+  // ── Precompute contour ──
+  function buildContour(W, H) {
+    const res=100, cw=W/res, ch=H/res;
+    const vals=[], buf=[];
+    let mn=Infinity, mx=-Infinity;
+    for(let j=0;j<res;j++) for(let i=0;i<res;i++){
+      const v=loss(i/res,j/res); vals.push(v);
+      mn=Math.min(mn,v); mx=Math.max(mx,v);
+    }
+    for(let j=0;j<res;j++) for(let i=0;i<res;i++){
+      const t=(vals[j*res+i]-mn)/(mx-mn||1);
+      // Dark cool → light warm: navy → teal → yellow → red
+      let r,g,b;
+      if(t<0.33){ const s=t/0.33; r=Math.round(15+s*40); g=Math.round(30+s*120); b=Math.round(80+s*80); }
+      else if(t<0.66){ const s=(t-0.33)/0.33; r=Math.round(55+s*160); g=Math.round(150+s*60); b=Math.round(160-s*130); }
+      else { const s=(t-0.66)/0.34; r=Math.round(215+s*40); g=Math.round(210-s*160); b=Math.round(30-s*20); }
+      buf.push({r,g,b,x:i*cw,y:j*ch,cw,ch});
+    }
+    return {buf, mn, mx};
+  }
+
+  function drawContourBg(ctx, W, H) {
+    if(!precomputedContour || contourW!==W || contourH!==H){
+      precomputedContour=buildContour(W,H);
+      contourW=W; contourH=H;
+    }
+    const {buf}=precomputedContour;
+    buf.forEach(({r,g,b,x,y,cw,ch})=>{
+      ctx.fillStyle=`rgba(${r},${g},${b},0.28)`;
+      ctx.fillRect(x,y,cw+1,ch+1);
+    });
+  }
+
+  // ── Draw contour panel ──
+  function drawContour(step) {
+    const canvas=document.getElementById('contourCanvas');
+    const ctx=canvas.getContext('2d');
+    const W=canvas.clientWidth||480, H=340;
+    if(canvas.width!==W){canvas.width=W;} canvas.height=H;
+
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#0d1117';
+    ctx.fillRect(0,0,W,H);
+    drawContourBg(ctx,W,H);
+
+    // Grid lines (subtle)
+    ctx.strokeStyle='rgba(255,255,255,0.04)';
+    ctx.lineWidth=1;
+    for(let i=1;i<5;i++){
+      ctx.beginPath(); ctx.moveTo(W*i/5,0); ctx.lineTo(W*i/5,H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,H*i/5); ctx.lineTo(W,H*i/5); ctx.stroke();
+    }
+
+    // Draw paths up to `step`
+    const algos=['sgd','adagrad','rmsprop','adam'];
+    algos.forEach(k=>{
+      if(!active[k]||!allPaths[k]) return;
+      const path=allPaths[k];
+      const end=Math.min(step+1,path.length);
+      if(end<2) return;
+
+      // Shadow glow
+      ctx.shadowColor=COLORS[k];
+      ctx.shadowBlur=6;
+      ctx.strokeStyle=COLORS[k];
+      ctx.lineWidth=2.5;
+      ctx.globalAlpha=0.85;
+      ctx.beginPath();
+      ctx.moveTo(path[0][0]*W, path[0][1]*H);
+      for(let i=1;i<end;i++) ctx.lineTo(path[i][0]*W, path[i][1]*H);
+      ctx.stroke();
+      ctx.shadowBlur=0;
+      ctx.globalAlpha=1;
+
+      // Arrow on recent segment
+      if(end>=3){
+        const i=end-1;
+        const ax=path[i-1][0]*W, ay=path[i-1][1]*H;
+        const bx=path[i][0]*W, by=path[i][1]*H;
+        const angle=Math.atan2(by-ay,bx-ax);
+        const len=10;
+        ctx.fillStyle=COLORS[k];
+        ctx.beginPath();
+        ctx.moveTo(bx,by);
+        ctx.lineTo(bx-len*Math.cos(angle-0.4),by-len*Math.sin(angle-0.4));
+        ctx.lineTo(bx-len*Math.cos(angle+0.4),by-len*Math.sin(angle+0.4));
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Current position dot
+      const cur=path[end-1];
+      ctx.beginPath(); ctx.arc(cur[0]*W,cur[1]*H,5.5,0,Math.PI*2);
+      ctx.fillStyle=COLORS[k]; ctx.fill();
+      ctx.beginPath(); ctx.arc(cur[0]*W,cur[1]*H,2.5,0,Math.PI*2);
+      ctx.fillStyle='#fff'; ctx.fill();
+    });
+
+    // Start point
+    const sx=0.1*W, sy=0.82*H;
+    ctx.beginPath(); ctx.arc(sx,sy,6,0,Math.PI*2);
+    ctx.fillStyle='#60a5fa'; ctx.fill();
+    ctx.fillStyle='rgba(96,165,250,0.2)';
+    ctx.beginPath(); ctx.arc(sx,sy,12,0,Math.PI*2); ctx.fill();
+
+    // Label "起点"
+    ctx.fillStyle='rgba(0,0,0,0.6)';
+    ctx.fillRect(sx+14,sy-11,36,16);
+    ctx.fillStyle='#60a5fa';
+    ctx.font='10px "Noto Sans SC", sans-serif';
+    ctx.textAlign='left'; ctx.fillText('起 点',sx+16,sy+1);
+
+    // Optimal point
+    const ox=TARGET[0]*W, oy=TARGET[1]*H;
+    // Pulsing ring
+    ctx.strokeStyle='rgba(248,113,113,0.35)';
+    ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(ox,oy,16,0,Math.PI*2); ctx.stroke();
+    ctx.fillStyle='#f87171';
+    ctx.beginPath(); ctx.arc(ox,oy,8,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.font='bold 10px sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText('★',ox,oy+3.5);
+
+    // Label "最优点"
+    ctx.fillStyle='rgba(0,0,0,0.6)';
+    ctx.fillRect(ox+12,oy-11,44,16);
+    ctx.fillStyle='#f87171';
+    ctx.font='10px "Noto Sans SC", sans-serif';
+    ctx.textAlign='left'; ctx.fillText('最优点',ox+14,oy+1);
+
+    // Color scale bar (bottom-right)
+    const bx=W-80, by2=H-22, bw=70, bh=8;
+    const grad2=ctx.createLinearGradient(bx,0,bx+bw,0);
+    grad2.addColorStop(0,'rgba(15,30,80,0.9)');
+    grad2.addColorStop(0.5,'rgba(55,150,160,0.9)');
+    grad2.addColorStop(1,'rgba(255,50,10,0.9)');
+    ctx.fillStyle=grad2; ctx.fillRect(bx,by2,bw,bh);
+    ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1;
+    ctx.strokeRect(bx,by2,bw,bh);
+    ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='9px sans-serif'; ctx.textAlign='left';
+    ctx.fillText('低损失',bx,by2-2);
+    ctx.textAlign='right'; ctx.fillText('高损失',bx+bw,by2-2);
+
+    // Update dist stats
+    updateDistStats(step);
+  }
+
+  function updateDistStats(step) {
+    const row=document.getElementById('distStats');
+    const algos=['sgd','adagrad','rmsprop','adam'];
+    const labels={sgd:'SGD',adagrad:'Adagrad',rmsprop:'RMSprop',adam:'Adam'};
+    const html=algos.filter(k=>active[k]&&allPaths[k]).map(k=>{
+      const p=allPaths[k];
+      const idx=Math.min(step,p.length-1);
+      const [x,y]=p[idx];
+      const d=Math.sqrt((x-TARGET[0])**2+(y-TARGET[1])**2).toFixed(3);
+      return `<span class="stat-pill" style="border-color:${COLORS[k]}20;color:${COLORS[k]}"><span>${labels[k]}</span> ${d}</span>`;
+    }).join('');
+    row.innerHTML=html||`<span style="font-size:11px;color:var(--muted)">播放后显示各算法距最优点距离</span>`;
+  }
+
+  // ── Draw Loss Curve ──
+  function drawLoss(step) {
+    const canvas=document.getElementById('lossCanvas');
+    const ctx=canvas.getContext('2d');
+    const W=canvas.clientWidth||480, H=340;
+    if(canvas.width!==W){canvas.width=W;} canvas.height=H;
+
+    const pad={l:44,r:16,t:18,b:36};
+    const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
+
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#0d1117'; ctx.fillRect(0,0,W,H);
+
+    // Collect all loss values for scale
+    const algos=['sgd','adagrad','rmsprop','adam'];
+    let maxL=0, minL=Infinity;
+    algos.forEach(k=>{
+      if(!active[k]||!allPaths[k]) return;
+      allPaths[k].forEach(p=>{ maxL=Math.max(maxL,p[2]); minL=Math.min(minL,p[2]); });
+    });
+    if(!isFinite(minL)){minL=0;maxL=1;}
+    const range=maxL-minL||1;
+
+    function toX(i){ return pad.l + (i/totalSteps)*cw; }
+    function toY(v){ return pad.t + (1-(v-minL)/range)*ch; }
+
+    // Grid
+    ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
+    for(let i=0;i<=4;i++){
+      const yy=pad.t+ch*i/4;
+      ctx.beginPath(); ctx.moveTo(pad.l,yy); ctx.lineTo(pad.l+cw,yy); ctx.stroke();
+      const lv=(maxL-range*i/4).toFixed(2);
+      ctx.fillStyle='rgba(255,255,255,0.25)'; ctx.font='9px '+var_mono();
+      ctx.textAlign='right'; ctx.fillText(lv,pad.l-4,yy+3.5);
+    }
+    for(let i=0;i<=4;i++){
+      const xx=pad.l+cw*i/4;
+      ctx.beginPath(); ctx.moveTo(xx,pad.t); ctx.lineTo(xx,pad.t+ch); ctx.stroke();
+      ctx.fillStyle='rgba(255,255,255,0.25)'; ctx.font='9px '+var_mono();
+      ctx.textAlign='center'; ctx.fillText(Math.round(totalSteps*i/4),xx,pad.t+ch+12);
+    }
+    // Axis labels
+    ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='10px "Noto Sans SC",sans-serif';
+    ctx.textAlign='center'; ctx.fillText('训练步数',pad.l+cw/2,H-4);
+    ctx.save(); ctx.translate(11,pad.t+ch/2); ctx.rotate(-Math.PI/2);
+    ctx.textAlign='center'; ctx.fillText('损失值',0,0); ctx.restore();
+
+    // Draw lines
+    const end=step+1;
+    algos.forEach(k=>{
+      if(!active[k]||!allPaths[k]) return;
+      const path=allPaths[k];
+      const pts=Math.min(end,path.length);
+      if(pts<2) return;
+
+      // Gradient area fill
+      const grd=ctx.createLinearGradient(0,pad.t,0,pad.t+ch);
+      grd.addColorStop(0,COLORS[k]+'30');
+      grd.addColorStop(1,COLORS[k]+'00');
+      ctx.beginPath();
+      ctx.moveTo(toX(0),toY(path[0][2]));
+      for(let i=1;i<pts;i++) ctx.lineTo(toX(i),toY(path[i][2]));
+      ctx.lineTo(toX(pts-1),pad.t+ch);
+      ctx.lineTo(toX(0),pad.t+ch);
+      ctx.closePath();
+      ctx.fillStyle=grd; ctx.fill();
+
+      // Line
+      ctx.beginPath();
+      ctx.moveTo(toX(0),toY(path[0][2]));
+      for(let i=1;i<pts;i++) ctx.lineTo(toX(i),toY(path[i][2]));
+      ctx.strokeStyle=COLORS[k]; ctx.lineWidth=2;
+      ctx.shadowColor=COLORS[k]; ctx.shadowBlur=4;
+      ctx.stroke();
+      ctx.shadowBlur=0;
+
+      // Current value dot
+      if(pts>0){
+        const lv=path[pts-1][2];
+        ctx.beginPath(); ctx.arc(toX(pts-1),toY(lv),4,0,Math.PI*2);
+        ctx.fillStyle=COLORS[k]; ctx.fill();
+      }
+    });
+
+    // Axes border
+    ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=1;
+    ctx.strokeRect(pad.l,pad.t,cw,ch);
+  }
+
+  function var_mono(){ return '"JetBrains Mono",monospace'; }
+
+  // ── Animation ──
+  function togglePlay() {
+    if(animRunning){ stopAnim(); } else { startAnim(); }
+  }
+  function startAnim() {
+    recompute();
+    if(animStep>=totalSteps) animStep=0;
+    animRunning=true;
+    document.getElementById('playLabel').textContent='暂停';
+    document.getElementById('playIcon').innerHTML='<rect x="2" y="1" width="5" height="14"/><rect x="9" y="1" width="5" height="14"/>';
+    tick();
+  }
+  function stopAnim() {
+    animRunning=false;
+    if(animTimer) clearTimeout(animTimer);
+    document.getElementById('playLabel').textContent='播放';
+    document.getElementById('playIcon').innerHTML='<polygon points="3,1 15,8 3,15"/>';
+  }
+  function tick() {
+    if(!animRunning) return;
+    animStep=Math.min(animStep+stepsPerTick, totalSteps);
+    render(animStep);
+    if(animStep>=totalSteps){ stopAnim(); return; }
+    animTimer=setTimeout(tick, 40);
+  }
+  function render(step) {
+    document.getElementById('stepLabel').textContent=`第 ${step} / ${totalSteps} 步`;
+    document.getElementById('stepFill').style.width=(step/totalSteps*100)+'%';
+    drawContour(step);
+    drawLoss(step);
+  }
+
+  // ── Toggle algo ──
+  function toggleAlgo(name, el) {
+    active[name]=!active[name];
+    el.classList.toggle('active',active[name]);
+    el.classList.toggle('inactive',!active[name]);
+    recompute();
+    render(animStep);
+  }
+
+  // ── Recompute paths ──
+  function recompute() {
+    const lr=parseFloat(document.getElementById('lr').value);
+    totalSteps=parseInt(document.getElementById('steps').value,10);
+    document.getElementById('lr-v').textContent=lr.toFixed(2);
+    document.getElementById('steps-v').textContent=totalSteps;
+    allPaths.sgd=runSGD(lr,totalSteps);
+    allPaths.adagrad=runAdagrad(lr,totalSteps);
+    allPaths.rmsprop=runRMSprop(lr,totalSteps);
+    allPaths.adam=runAdam(lr,totalSteps);
+  }
+
+  // ── Speed ──
+  function setSpeed(s) {
+    stepsPerTick=s;
+    document.querySelectorAll('.speed-btn').forEach(b=>{
+      b.classList.toggle('active',parseInt(b.dataset.spd)===s);
+    });
+  }
+
+  // ── Init ──
+  document.getElementById('lr').addEventListener('input',()=>{ recompute(); render(animStep); });
+  document.getElementById('steps').addEventListener('input',()=>{ recompute(); if(animStep>totalSteps)animStep=totalSteps; render(animStep); });
+  window.addEventListener('resize',()=>{ precomputedContour=null; render(animStep); });
+
+  recompute();
+  animStep=0;
+  render(0);
+</script>
+</body>
+</html>

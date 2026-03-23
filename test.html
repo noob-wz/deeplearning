@@ -1,120 +1,62 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>动量(Momentum)下降动态演示</title>
-  <style>
-    body { text-align: center; font-family: sans-serif; background-color: #f4f4f9; }
-    canvas { background-color: #ffffff; border: 1px solid #ccc; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-top: 20px; }
-    .controls { margin-top: 20px; }
-    button { padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 5px; }
-    button:hover { background-color: #0056b3; }
-    .legend { margin-top: 15px; font-size: 16px; }
-    .red { color: #ff4d4d; font-weight: bold; }
-    .blue { color: #007bff; font-weight: bold; }
-  </style>
+    <meta charset="UTF-8">
+    <title>感知机几何直觉图</title>
 </head>
-<body>
-<h2>"大峡谷"地形中的寻优之旅</h2>
-<div class="legend">
-  <span class="red">🔴 红球：普通梯度下降 (无惯性)</span> |
-  <span class="blue">🔵 蓝球：带动量的梯度下降 (保留 90% 惯性)</span>
-</div>
+<body style="display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f2f5; font-family: sans-serif;">
 
-<canvas id="myCanvas" width="600" height="600"></canvas>
+    <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+        <h2 style="text-align: center; color: #333;">感知机的“切蛋糕”物理模型</h2>
+        <svg width="500" height="500" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+            <!-- 背景网格 -->
+            <rect width="500" height="500" fill="#fafafa"/>
+            <line x1="0" y1="250" x2="500" y2="250" stroke="#ddd" stroke-width="1" />
+            <line x1="250" y1="0" x2="250" y2="500" stroke="#ddd" stroke-width="1" />
+            
+            <!-- 箭头定义 -->
+            <defs>
+                <marker id="arrowBlue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#1890ff" />
+                </marker>
+                <marker id="arrowPurple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#722ed1" />
+                </marker>
+            </defs>
 
-<div class="controls">
-  <button onclick="startAnimation()">开始 / 重置比赛</button>
-</div>
+            <!-- 1. 分割线 (超平面) -->
+            <line x1="50" y1="450" x2="450" y2="50" stroke="#333" stroke-width="3" />
+            <text x="370" y="40" font-weight="bold" font-size="16" fill="#333">分割线 (纸板)</text>
+            <text x="370" y="60" font-size="14" fill="#666">⟨W, X⟩ + b = 0</text>
 
-<script>
-  const canvas = document.getElementById('myCanvas');
-  const ctx = canvas.getContext('2d');
-  let animationId;
+            <!-- 2. 权重向量 W (法向量/棍子) -->
+            <!-- 分割线从左下到右上，W 垂直于分割线，指向左上 -->
+            <line x1="250" y1="250" x2="170" y2="170" stroke="#1890ff" stroke-width="4" marker-end="url(#arrowBlue)" />
+            <text x="70" y="160" font-weight="bold" font-size="18" fill="#1890ff">权重 W (棍子)</text>
+            <text x="70" y="180" font-size="14" fill="#1890ff">指向“正类”的方向</text>
 
-  // 视图映射：把数学坐标(-10到10)映射到屏幕(0到600)
-  function toScreen(x, y) {
-      return { cx: x * 30 + 300, cy: y * 30 + 300 };
-  }
+            <!-- 3. 数据点 (苹果：正类，橘子：负类) -->
+            <!-- 苹果在 W 指向的一侧 -->
+            <circle cx="150" cy="100" r="8" fill="#52c41a" />
+            <circle cx="250" cy="120" r="8" fill="#52c41a" />
+            <text x="165" y="105" font-size="14" fill="#52c41a">苹果 (+1)</text>
+            
+            <!-- 橘子在 W 的反侧 -->
+            <circle cx="350" cy="400" r="8" fill="#f5222d" />
+            <circle cx="280" cy="320" r="8" fill="#f5222d" />
+            <text x="365" y="405" font-size="14" fill="#f5222d">橘子 (-1)</text>
 
-  // 画背景等高线（模拟一个东西向平缓，南北向陡峭的峡谷）
-  function drawContour() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.strokeStyle = '#e0e0e0';
-      for(let r = 1; r < 15; r++) {
-          ctx.beginPath();
-          ctx.ellipse(300, 300, r * 40, r * 15, 0, 0, 2 * Math.PI);
-          ctx.stroke();
-      }
-      // 画个终点星号
-      ctx.fillStyle = 'green';
-      ctx.fillText("⭐ 终点 (最优解)", 280, 305);
-  }
+            <!-- 4. 新样本 X 及其投影 -->
+            <line x1="250" y1="250" x2="120" y2="210" stroke="#722ed1" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrowPurple)"/>
+            <circle cx="120" cy="210" r="6" fill="#722ed1" />
+            <text x="80" y="235" font-weight="bold" font-size="16" fill="#722ed1">新样本 X</text>
+            
+            <!-- 投影辅助线 -->
+            <line x1="120" y1="210" x2="165" y2="165" stroke="#999" stroke-dasharray="3,3" stroke-width="2" />
+            <text x="180" y="200" font-size="14" fill="#666">X 在 W 上的投影 ＞ 0</text>
+            <text x="180" y="220" font-size="14" fill="#666">所以它是苹果！</text>
 
-  // 物理参数设置
-  const eta = 0.06;     // 学习率 (蹬踏板的力气)
-  const gamma = 0.9;    // 动量参数 (保留90%的历史速度)
-
-  // 初始状态
-  let state = {};
-
-  function init() {
-      state = {
-          // 红球 (普通GD)
-          x_std: -8, y_std: 8,
-
-          // 蓝球 (Momentum)
-          x_mom: -8, y_mom: 8,
-          vx_mom: 0, vy_mom: 0  // 初始速度为0
-      };
-      drawContour();
-  }
-
-  function step() {
-      // 目标函数 J = 0.1*x^2 + 2*y^2 (东西平缓，南北极其陡峭)
-      // 偏导数 (真实坡度)：dx = 0.2*x, dy = 4*y
-
-      // --- 🔴 红球的更新逻辑 (没有速度，直接拿坡度更新) ---
-      let dx_std = 0.2 * state.x_std;
-      let dy_std = 4 * state.y_std;
-      state.x_std = state.x_std - eta * dx_std;
-      state.y_std = state.y_std - eta * dy_std;
-
-      // --- 🔵 蓝球的更新逻辑 (就是你问的那两个公式！) ---
-      let dx_mom = 0.2 * state.x_mom;
-      let dy_mom = 4 * state.y_mom;
-
-      // 公式 1: 计算现在的速度 vt = gamma * v_{t-1} + eta * 坡度
-      state.vx_mom = gamma * state.vx_mom + eta * dx_mom;
-      state.vy_mom = gamma * state.vy_mom + eta * dy_mom;
-
-      // 公式 2: 更新位置 theta_t = theta_{t-1} - vt
-      state.x_mom = state.x_mom - state.vx_mom;
-      state.y_mom = state.y_mom - state.vy_mom;
-
-      // 画轨迹
-      let pos_std = toScreen(state.x_std, state.y_std);
-      ctx.fillStyle = 'rgba(255, 77, 77, 0.8)';
-      ctx.beginPath(); ctx.arc(pos_std.cx, pos_std.cy, 4, 0, Math.PI*2); ctx.fill();
-
-      let pos_mom = toScreen(state.x_mom, state.y_mom);
-      ctx.fillStyle = 'rgba(0, 123, 255, 0.8)';
-      ctx.beginPath(); ctx.arc(pos_mom.cx, pos_mom.cy, 4, 0, Math.PI*2); ctx.fill();
-
-      // 如果没到终点，继续动画
-      if (Math.abs(state.x_std) > 0.1 || Math.abs(state.x_mom) > 0.1) {
-          animationId = requestAnimationFrame(step);
-      }
-  }
-
-  function startAnimation() {
-      cancelAnimationFrame(animationId);
-      init();
-      step();
-  }
-
-  // 页面加载画个初始状态
-  init();
-</script>
+        </svg>
+    </div>
 </body>
 </html>

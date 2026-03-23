@@ -1,7 +1,14 @@
-import torch
+import numpy as np
+from sklearn.linear_model import LinearRegression
+import matplotlib.pyplot as plt
 
-print(1)
+X = np.array([[50], [80], [100], [120], [150]])
+y = np.array([160, 240, 310, 350, 460])
 
-dafads
+model = LinearRegression()
+model.fit(X, y)
 
-dfadfsa
+new_house = np.array([[100]])
+predicted_price = model.predict(new_house)
+
+print(predicted_price)

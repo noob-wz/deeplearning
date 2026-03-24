@@ -1,62 +1,291 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <title>感知机几何直觉图</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>损失曲面与泛化：几何图直观理解</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: rgba(255,255,255,0.05);
+      --line: rgba(255,255,255,0.08);
+      --text: #eaf2ff;
+      --muted: #9fb2cc;
+      --blue: #38bdf8;
+      --purple: #a78bfa;
+      --red: #f43f5e;
+      --green: #34d399;
+      --good: #34d399;
+      --warn: #f59e0b;
+      --shadow: 0 18px 50px rgba(0,0,0,0.28);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(180deg, #07101d 0%, #0b1220 100%);
+      color: var(--text);
+      line-height: 1.65;
+    }
+
+    .wrap {
+      width: min(1200px, 94vw);
+      margin: 0 auto;
+      padding: 26px 0 44px;
+    }
+
+    .hero {
+      padding: 24px 26px;
+      border-radius: 24px;
+      border: 1px solid var(--line);
+      background:
+        radial-gradient(circle at top right, rgba(56,189,248,0.16), transparent 32%),
+        radial-gradient(circle at top left, rgba(167,139,250,0.15), transparent 36%),
+        rgba(255,255,255,0.03);
+      box-shadow: var(--shadow);
+    }
+
+    h1, h2, h3 { margin: 0 0 12px; }
+    h1 { font-size: clamp(30px, 4vw, 44px); line-height: 1.15; }
+    h2 { font-size: clamp(22px, 2.6vw, 30px); }
+    h3 { font-size: 20px; }
+    p { margin: 0 0 10px; color: #dce8f8; }
+    .muted { color: var(--muted); }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .pill {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--line);
+      color: #d8ecff;
+      font-size: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .svg-box {
+      margin-top: 10px;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.02);
+    }
+
+    svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--line);
+      font-size: 14px;
+      color: #d8e7f9;
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .note {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+    }
+
+    .note.good { border-left: 4px solid var(--good); }
+    .note.warn { border-left: 4px solid var(--warn); }
+
+    .steps {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .step {
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .equation {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--line);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: #dff3ff;
+      font-size: 15px;
+      overflow: auto;
+    }
+
+    .footer {
+      margin-top: 18px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
-<body style="display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f2f5; font-family: sans-serif;">
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>损失曲面与泛化：一个更直观的几何图 📐</h1>
+      <p>这里只回答你现在这一个问题：<strong>为什么“训练集上找到的权重”，有时换到测试集上仍然表现不错？</strong></p>
+      <div class="pill-row">
+        <div class="pill">蓝色圈 = 训练集损失曲面</div>
+        <div class="pill">紫色圈 = 测试集损失曲面</div>
+        <div class="pill">红点 = 训练得到的权重 θ_train*</div>
+        <div class="pill">绿点 = 测试集最优权重 θ_test*</div>
+      </div>
+    </section>
 
-    <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-        <h2 style="text-align: center; color: #333;">感知机的“切蛋糕”物理模型</h2>
-        <svg width="500" height="500" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
-            <!-- 背景网格 -->
-            <rect width="500" height="500" fill="#fafafa"/>
-            <line x1="0" y1="250" x2="500" y2="250" stroke="#ddd" stroke-width="1" />
-            <line x1="250" y1="0" x2="250" y2="500" stroke="#ddd" stroke-width="1" />
-            
-            <!-- 箭头定义 -->
-            <defs>
-                <marker id="arrowBlue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                    <polygon points="0 0, 10 3.5, 0 7" fill="#1890ff" />
-                </marker>
-                <marker id="arrowPurple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                    <polygon points="0 0, 10 3.5, 0 7" fill="#722ed1" />
-                </marker>
-            </defs>
-
-            <!-- 1. 分割线 (超平面) -->
-            <line x1="50" y1="450" x2="450" y2="50" stroke="#333" stroke-width="3" />
-            <text x="370" y="40" font-weight="bold" font-size="16" fill="#333">分割线 (纸板)</text>
-            <text x="370" y="60" font-size="14" fill="#666">⟨W, X⟩ + b = 0</text>
-
-            <!-- 2. 权重向量 W (法向量/棍子) -->
-            <!-- 分割线从左下到右上，W 垂直于分割线，指向左上 -->
-            <line x1="250" y1="250" x2="170" y2="170" stroke="#1890ff" stroke-width="4" marker-end="url(#arrowBlue)" />
-            <text x="70" y="160" font-weight="bold" font-size="18" fill="#1890ff">权重 W (棍子)</text>
-            <text x="70" y="180" font-size="14" fill="#1890ff">指向“正类”的方向</text>
-
-            <!-- 3. 数据点 (苹果：正类，橘子：负类) -->
-            <!-- 苹果在 W 指向的一侧 -->
-            <circle cx="150" cy="100" r="8" fill="#52c41a" />
-            <circle cx="250" cy="120" r="8" fill="#52c41a" />
-            <text x="165" y="105" font-size="14" fill="#52c41a">苹果 (+1)</text>
-            
-            <!-- 橘子在 W 的反侧 -->
-            <circle cx="350" cy="400" r="8" fill="#f5222d" />
-            <circle cx="280" cy="320" r="8" fill="#f5222d" />
-            <text x="365" y="405" font-size="14" fill="#f5222d">橘子 (-1)</text>
-
-            <!-- 4. 新样本 X 及其投影 -->
-            <line x1="250" y1="250" x2="120" y2="210" stroke="#722ed1" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrowPurple)"/>
-            <circle cx="120" cy="210" r="6" fill="#722ed1" />
-            <text x="80" y="235" font-weight="bold" font-size="16" fill="#722ed1">新样本 X</text>
-            
-            <!-- 投影辅助线 -->
-            <line x1="120" y1="210" x2="165" y2="165" stroke="#999" stroke-dasharray="3,3" stroke-width="2" />
-            <text x="180" y="200" font-size="14" fill="#666">X 在 W 上的投影 ＞ 0</text>
-            <text x="180" y="220" font-size="14" fill="#666">所以它是苹果！</text>
-
-        </svg>
+    <div class="legend">
+      <div class="legend-item"><span class="dot" style="background:var(--blue)"></span>训练集损失等高线</div>
+      <div class="legend-item"><span class="dot" style="background:var(--purple)"></span>测试集损失等高线</div>
+      <div class="legend-item"><span class="dot" style="background:var(--red)"></span>训练得到的权重</div>
+      <div class="legend-item"><span class="dot" style="background:var(--green)"></span>测试集最优权重</div>
     </div>
+
+    <section class="grid">
+      <div class="card">
+        <h2>情况 A：泛化好 ✅</h2>
+        <p class="muted">训练集和测试集的损失曲面有变化，但变化不大。于是训练得到的权重，换到测试集上后，仍然落在低损失区域附近。</p>
+        <div class="svg-box">
+          <svg viewBox="0 0 620 390" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="泛化好几何图">
+            <defs>
+              <marker id="arrowGood" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L9,3 z" fill="#dbeafe" />
+              </marker>
+            </defs>
+            <rect x="0" y="0" width="620" height="390" fill="rgba(255,255,255,0.02)"/>
+
+            <text x="94" y="36" fill="#dbeafe" font-size="18" font-weight="700">训练集曲面（俯视）</text>
+            <text x="390" y="36" fill="#dbeafe" font-size="18" font-weight="700">测试集曲面（俯视）</text>
+
+            <line x1="286" y1="188" x2="338" y2="188" stroke="#dbeafe" stroke-width="2.5" marker-end="url(#arrowGood)" opacity="0.85"/>
+            <text x="276" y="166" fill="#cbd5e1" font-size="14">数据变化 → 曲面轻微偏移</text>
+
+            <ellipse cx="150" cy="200" rx="88" ry="60" fill="none" stroke="#38bdf8" stroke-width="3"/>
+            <ellipse cx="150" cy="200" rx="58" ry="38" fill="none" stroke="#38bdf8" stroke-width="3" opacity="0.9"/>
+            <ellipse cx="150" cy="200" rx="30" ry="18" fill="none" stroke="#38bdf8" stroke-width="3" opacity="0.9"/>
+            <circle cx="150" cy="200" r="8" fill="#f43f5e" stroke="#fff" stroke-width="2"/>
+            <text x="88" y="250" fill="#fda4af" font-size="15">θ_train*</text>
+            <text x="66" y="284" fill="#cbd5e1" font-size="14">训练时，模型在这里找到低谷</text>
+
+            <ellipse cx="468" cy="190" rx="90" ry="62" fill="none" stroke="#a78bfa" stroke-width="3"/>
+            <ellipse cx="468" cy="190" rx="60" ry="40" fill="none" stroke="#a78bfa" stroke-width="3" opacity="0.9"/>
+            <ellipse cx="468" cy="190" rx="30" ry="20" fill="none" stroke="#a78bfa" stroke-width="3" opacity="0.9"/>
+            <circle cx="462" cy="188" r="8" fill="#34d399" stroke="#fff" stroke-width="2"/>
+            <text x="488" y="186" fill="#86efac" font-size="15">θ_test*</text>
+            <circle cx="448" cy="198" r="8" fill="#f43f5e" stroke="#fff" stroke-width="2"/>
+            <text x="406" y="248" fill="#fda4af" font-size="15">θ_train*</text>
+            <text x="378" y="284" fill="#cbd5e1" font-size="14">红点虽然不完全重合，但仍靠近测试低谷</text>
+
+            <rect x="24" y="322" width="572" height="44" rx="12" fill="rgba(52,211,153,0.10)" stroke="rgba(52,211,153,0.24)"/>
+            <text x="52" y="350" fill="#bbf7d0" font-size="16" font-weight="700">结论：训练找到的低损失解，在测试曲面上仍然是低损失解，所以泛化较好。</text>
+          </svg>
+        </div>
+        <div class="note good"><strong>几何直觉：</strong>训练曲面和测试曲面不是完全一样，但它们的低谷位置比较接近，所以训练得到的权重没有“掉出低谷”。</div>
+      </div>
+
+      <div class="card">
+        <h2>情况 B：泛化差 ⚠️</h2>
+        <p class="muted">训练集和测试集的损失曲面变化很大。于是训练得到的权重，换到测试集上后，已经不在低损失区域附近了。</p>
+        <div class="svg-box">
+          <svg viewBox="0 0 620 390" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="泛化差几何图">
+            <defs>
+              <marker id="arrowBad" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L9,3 z" fill="#dbeafe" />
+              </marker>
+            </defs>
+            <rect x="0" y="0" width="620" height="390" fill="rgba(255,255,255,0.02)"/>
+
+            <text x="94" y="36" fill="#dbeafe" font-size="18" font-weight="700">训练集曲面（俯视）</text>
+            <text x="390" y="36" fill="#dbeafe" font-size="18" font-weight="700">测试集曲面（俯视）</text>
+
+            <line x1="286" y1="188" x2="338" y2="188" stroke="#dbeafe" stroke-width="2.5" marker-end="url(#arrowBad)" opacity="0.85"/>
+            <text x="274" y="166" fill="#cbd5e1" font-size="14">数据变化 → 曲面明显偏移</text>
+
+            <ellipse cx="150" cy="200" rx="88" ry="60" fill="none" stroke="#38bdf8" stroke-width="3"/>
+            <ellipse cx="150" cy="200" rx="58" ry="38" fill="none" stroke="#38bdf8" stroke-width="3" opacity="0.9"/>
+            <ellipse cx="150" cy="200" rx="30" ry="18" fill="none" stroke="#38bdf8" stroke-width="3" opacity="0.9"/>
+            <circle cx="150" cy="200" r="8" fill="#f43f5e" stroke="#fff" stroke-width="2"/>
+            <text x="88" y="250" fill="#fda4af" font-size="15">θ_train*</text>
+
+            <ellipse cx="504" cy="120" rx="82" ry="54" fill="none" stroke="#a78bfa" stroke-width="3"/>
+            <ellipse cx="504" cy="120" rx="52" ry="32" fill="none" stroke="#a78bfa" stroke-width="3" opacity="0.9"/>
+            <ellipse cx="504" cy="120" rx="26" ry="16" fill="none" stroke="#a78bfa" stroke-width="3" opacity="0.9"/>
+            <circle cx="504" cy="120" r="8" fill="#34d399" stroke="#fff" stroke-width="2"/>
+            <text x="530" y="118" fill="#86efac" font-size="15">θ_test*</text>
+            <circle cx="430" cy="246" r="8" fill="#f43f5e" stroke="#fff" stroke-width="2"/>
+            <text x="386" y="276" fill="#fda4af" font-size="15">θ_train*</text>
+            <text x="360" y="306" fill="#cbd5e1" font-size="14">红点已经离开测试低谷，跑到较高损失区域</text>
+
+            <rect x="24" y="322" width="572" height="44" rx="12" fill="rgba(245,158,11,0.10)" stroke="rgba(245,158,11,0.24)"/>
+            <text x="48" y="350" fill="#fde68a" font-size="16" font-weight="700">结论：训练集的好解，换到测试曲面后不再是好解，所以泛化较差。</text>
+          </svg>
+        </div>
+        <div class="note warn"><strong>几何直觉：</strong>训练曲面和测试曲面偏得太多，导致同一组权重在训练集上很好，但在测试集上已经不再接近低谷。</div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:18px;">
+      <h2>你刚才那段话，可以精炼成这样</h2>
+      <div class="equation">从几何上看，泛化好的模型意味着：当数据从训练集变成测试集时，损失曲面虽然会发生一定偏移或形变，但训练阶段找到的权重 θ_train* 仍然落在测试损失曲面的低损失区域附近。因此，这组权重在未见数据上依然能保持较小误差。反过来，如果曲面变化过大，使得 θ_train* 在测试曲面上远离低谷，那么模型的泛化能力就较差。</div>
+      <div class="steps">
+        <div class="step"><strong>不是要求：</strong>训练最优点和测试最优点完全重合。</div>
+        <div class="step"><strong>更准确的要求：</strong>训练得到的权重，换到测试曲面后仍然要靠近低损失区域。</div>
+        <div class="step"><strong>进一步的直觉：</strong>如果低谷比较宽、比较平坦，那么即使曲面有一点偏移，红点也不容易“掉出去”，这通常更有利于泛化。</div>
+      </div>
+    </section>
+
+    <div class="footer">这个页面只保留了“损失曲面与泛化关系”的几何图，不再混入前面的等高线入门内容。</div>
+  </div>
 </body>
 </html>

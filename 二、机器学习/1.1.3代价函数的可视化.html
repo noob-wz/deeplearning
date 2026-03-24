@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>代价函数等高线与 3D 曲面直觉课</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #121a2a;
+      --panel2: #182235;
+      --text: #e5eef9;
+      --muted: #9fb2cc;
+      --line: rgba(255,255,255,0.08);
+      --accent: #38bdf8;
+      --accent2: #a78bfa;
+      --good: #34d399;
+      --warn: #f59e0b;
+      --bad: #fb7185;
+      --shadow: 0 18px 50px rgba(0,0,0,0.28);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(180deg, #07101d 0%, #0b1220 100%);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .container {
+      width: min(1380px, 94vw);
+      margin: 0 auto;
+      padding: 24px 0 48px;
+    }
+
+    .hero {
+      padding: 24px 26px;
+      border-radius: 26px;
+      border: 1px solid var(--line);
+      background:
+        radial-gradient(circle at top right, rgba(56,189,248,0.18), transparent 30%),
+        radial-gradient(circle at top left, rgba(167,139,250,0.16), transparent 35%),
+        rgba(255,255,255,0.03);
+      box-shadow: var(--shadow);
+    }
+
+    h1, h2, h3 { margin: 0 0 12px; }
+    h1 { font-size: clamp(30px, 4vw, 46px); line-height: 1.15; }
+    h2 { font-size: clamp(22px, 2.6vw, 30px); }
+    h3 { font-size: 18px; }
+    p { margin: 0 0 10px; color: #dbe7f5; }
+    .muted { color: var(--muted); }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .pill {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--line);
+      color: #d9ecff;
+      font-size: 14px;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.65fr) 360px;
+      gap: 18px;
+      margin-top: 18px;
+      align-items: start;
+    }
+
+    .left-col, .right-col {
+      display: grid;
+      gap: 18px;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .btn {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: .2s ease;
+      font-weight: 700;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(56,189,248,0.35);
+      background: rgba(56,189,248,0.12);
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, rgba(56,189,248,0.23), rgba(167,139,250,0.18));
+      border-color: rgba(56,189,248,0.38);
+    }
+
+    .slider-group {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(240px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 72px 1fr 74px;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.03);
+    }
+
+    label { font-weight: 700; color: #d8e8fb; }
+    input[type="range"] { width: 100%; }
+    .value {
+      text-align: right;
+      color: var(--accent);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .speed-box {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 240px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .speed-box label { white-space: nowrap; font-size: 14px; }
+    .speed-box input { flex: 1; }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .kpi {
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--line);
+    }
+
+    .kpi-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .kpi-value { font-size: 18px; font-weight: 800; color: #e0f2fe; font-variant-numeric: tabular-nums; }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 16px;
+    }
+
+    .chart-shell {
+      position: relative;
+      border-radius: 18px;
+      overflow: hidden;
+      min-height: 460px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .chart { width: 100%; height: 460px; }
+
+    .chart-status {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      background: rgba(4, 10, 20, 0.72);
+      z-index: 10;
+    }
+
+    .chart-status.hidden { opacity: 0; pointer-events: none; }
+
+    .status-box {
+      max-width: 480px;
+      padding: 18px 20px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.05);
+    }
+
+    .status-box strong { display: block; margin-bottom: 8px; font-size: 18px; }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .chip {
+      padding: 7px 11px;
+      border-radius: 999px;
+      font-size: 13px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+      color: #cfe2f7;
+      cursor: pointer;
+      transition: .2s ease;
+    }
+
+    .chip.active {
+      background: rgba(56,189,248,0.18);
+      border-color: rgba(56,189,248,0.34);
+      color: #e0f2fe;
+    }
+
+    .note {
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+    }
+    .good { border-left: 4px solid var(--good); }
+    .warn { border-left: 4px solid var(--warn); }
+    .bad { border-left: 4px solid var(--bad); }
+
+    .list {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .list-item {
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .list-item strong { color: #f3f8ff; }
+
+    .example-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) 340px;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .example-charts {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .mini-chart-shell {
+      position: relative;
+      min-height: 360px;
+      border-radius: 18px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .mini-chart { width: 100%; height: 360px; }
+
+    .footer {
+      margin-top: 18px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 1160px) {
+      .workspace, .example-grid { grid-template-columns: 1fr; }
+      .right-col { order: -1; }
+    }
+
+    @media (max-width: 860px) {
+      .chart-grid, .example-charts, .slider-group, .kpi-grid { grid-template-columns: 1fr; }
+      .speed-box { margin-left: 0; width: 100%; }
+      .chart-shell, .chart { min-height: 420px; height: 420px; }
+      .mini-chart-shell, .mini-chart { min-height: 320px; height: 320px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="hero">
+      <h1>代价函数的等高线图，到底怎么看？🗺️</h1>
+      <p>把 <strong>3D 曲面</strong> 想成一座山，把 <strong>等高线图</strong> 想成从上往下看的地图。每一条等高线都表示：<strong>这一圈位置的代价 J 完全相同</strong>。</p>
+      <div class="pill-row">
+        <div class="pill">等高线 = 同样高</div>
+        <div class="pill">参数点 ≠ 样本点</div>
+        <div class="pill">线密 = 坡陡</div>
+        <div class="pill">2D 地图 和 3D 山面 是同一个函数</div>
+        <div class="pill">椭圆只是最常见的一类，不是唯一形状</div>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <div class="left-col">
+        <div class="card">
+          <h2>① 主工作区：2D 等高线 和 3D 曲面同步看</h2>
+          <p class="muted">这里仍然用最容易入门的“碗形”代价函数做直觉练习。红点表示当前参数，蓝线表示梯度下降路径。</p>
+
+          <div class="slider-group">
+            <div class="row">
+              <label for="wSlider">参数 w</label>
+              <input id="wSlider" type="range" min="-4" max="4" step="0.05" value="2.8" />
+              <div id="wVal" class="value">2.80</div>
+            </div>
+            <div class="row">
+              <label for="bSlider">参数 b</label>
+              <input id="bSlider" type="range" min="-4" max="4" step="0.05" value="3.2" />
+              <div id="bVal" class="value">3.20</div>
+            </div>
+          </div>
+
+          <div class="toolbar">
+            <button id="playBtn" class="btn primary">▶ 播放动画</button>
+            <button id="pauseBtn" class="btn">⏸ 暂停</button>
+            <button id="resetBtn" class="btn">↺ 回到起点</button>
+            <div class="speed-box">
+              <label for="speedSlider">动画速度</label>
+              <input id="speedSlider" type="range" min="80" max="500" step="20" value="220" />
+              <span id="speedVal" class="value" style="min-width:54px;">220ms</span>
+            </div>
+          </div>
+
+          <div class="kpi-grid">
+            <div class="kpi"><div class="kpi-label">当前代价 J</div><div id="costVal" class="kpi-value">--</div></div>
+            <div class="kpi"><div class="kpi-label">离最低点距离</div><div id="distVal" class="kpi-value">--</div></div>
+            <div class="kpi"><div class="kpi-label">当前位置坡度</div><div id="gradVal" class="kpi-value">--</div></div>
+            <div class="kpi"><div class="kpi-label">已经走了几步</div><div id="stepVal" class="kpi-value">0</div></div>
+          </div>
+        </div>
+
+        <div class="chart-grid">
+          <div class="card">
+            <h3>等高线视角</h3>
+            <div class="chart-shell">
+              <div id="contourChart" class="chart"></div>
+              <div id="contourStatus" class="chart-status">
+                <div class="status-box">
+                  <strong>图表加载中…</strong>
+                  正在等待 Plotly 图形库。若长时间不消失，通常是外部脚本被拦截了。
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>3D 山面视角</h3>
+            <div class="chip-row" id="surfaceTabs"></div>
+            <div class="chart-shell">
+              <div id="surfaceChart" class="chart"></div>
+              <div id="surfaceStatus" class="chart-status">
+                <div class="status-box">
+                  <strong>3D 图表加载中…</strong>
+                  Plotly 成功加载后，这里会自动显示 3D 曲面。
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="right-col">
+        <div class="card">
+          <h2>② 紧凑读图指南</h2>
+          <div class="chip-row" id="guideChips"></div>
+          <div id="guideBox" class="note good" style="margin-top:12px;"></div>
+          <div id="readout" class="note" style="margin-top:12px;"></div>
+        </div>
+
+        <div class="card">
+          <h2>③ 先别急着问“是不是椭圆”</h2>
+          <div class="list">
+            <div class="list-item"><strong>先问 1：</strong>这条线是闭合的，还是向外延伸的？闭合常表示围住了盆地/山顶；开口常表示斜坡、山谷延伸、鞍点区域，或者只是当前视野没把整条线拍全。</div>
+            <div class="list-item"><strong>先问 2：</strong>这条线会不会交叉？对于正常的单值函数 <code>z=f(x,y)</code>，<strong>同一级别的等高线不会自己乱交，不同级别的等高线也不应该在同一点交叉</strong>，因为一个点不可能同时有两个不同高度。</div>
+            <div class="list-item"><strong>先问 3：</strong>有没有被拉得很长？如果有，说明某个方向很平、某个方向很陡，梯度下降容易“之字形”。</div>
+            <div class="list-item"><strong>先问 4：</strong>是不是只有一个中心？如果有多个闭合区，往往说明有多个局部低点/高点，而不是一个简单凸碗。</div>
+            <div class="list-item"><strong>先问 5：</strong>这里描述的是谷底、山脊，还是鞍点？不是所有等高线都在包围最低点；有些是在描述“一个方向上升、一个方向下降”的地形。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:18px;">
+      <h2>④ 不规则等高线怎么读：单独练这件事</h2>
+      <p class="muted">下面这块专门回答你提的问题：<strong>等高线当然不只有椭圆</strong>。椭圆只是“单个凸碗”最典型的样子。只要函数开始变形，等高线就会变成长谷、波浪、多盆地、鞍点等更复杂的图案。</p>
+
+      <div class="chip-row" id="exampleTabs"></div>
+
+      <div class="example-grid">
+        <div class="example-charts">
+          <div class="mini-chart-shell">
+            <div id="exampleContour" class="mini-chart"></div>
+          </div>
+          <div class="mini-chart-shell">
+            <div id="exampleSurface" class="mini-chart"></div>
+          </div>
+        </div>
+
+        <div>
+          <div id="exampleBox" class="note warn"></div>
+          <div class="note good" style="margin-top:12px;">
+            <strong>读不规则等高线的统一方法：</strong><br>
+            不要先猜名字，也不要先死记图形。先做四件事：<br>
+            ① 看它是闭合还是开口延伸；<br>
+            ② 看它会不会围住一个中心，还是只是成片平行/弯曲地延伸；<br>
+            ③ 看是不是存在多个闭合区域；<br>
+            ④ 看不同方向的疏密差别大不大。<br><br>
+            这四步比“它像不像椭圆”更重要。
+          </div>
+          <div class="note bad" style="margin-top:12px;">
+            <strong>一句话记忆：</strong><br>
+            <strong>闭合等高线</strong>常在告诉你“这里像盆地或山顶”；<br>
+            <strong>开口等高线</strong>常在告诉你“地形还在向某个方向延伸，或者你看到的只是局部视野”。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer">这个版本把布局改成“左边大图、右边紧凑说明”，并新增“不规则等高线怎么读”的专门示例区。</div>
+  </div>
+
+  <script>
+    function setStatus(id, html, isError = false) {
+      const el = document.getElementById(id);
+      el.classList.remove('hidden');
+      el.innerHTML = `<div class="status-box" style="border-color:${isError ? 'rgba(251,113,133,0.35)' : 'rgba(255,255,255,0.1)'}; background:${isError ? 'rgba(251,113,133,0.08)' : 'rgba(255,255,255,0.05)'}">${html}</div>`;
+    }
+    function hideStatus(id) { document.getElementById(id).classList.add('hidden'); }
+
+    function linearCost(w, b) {
+      return 1.4 * (w - 1.1) ** 2 + 0.7 * (b + 0.9) ** 2 + 0.25 * (w - 1.1) * (b + 0.9) + 0.8;
+    }
+    function linearGrad(w, b) {
+      return {
+        dw: 2 * 1.4 * (w - 1.1) + 0.25 * (b + 0.9),
+        db: 2 * 0.7 * (b + 0.9) + 0.25 * (w - 1.1)
+      };
+    }
+    function sigmoid(z) { return 1 / (1 + Math.exp(-z)); }
+    function logLossCost(w, b) {
+      const x = 1.3, y = 1;
+      const p = Math.min(0.999999, Math.max(0.000001, sigmoid(w * x + b)));
+      return -(y * Math.log(p) + (1 - y) * Math.log(1 - p));
+    }
+    function badMSECost(w, b) {
+      const x1 = 1.2, y1 = 1;
+      const x2 = -1.0, y2 = 0;
+      const p1 = sigmoid(w * x1 + b);
+      const p2 = sigmoid(w * x2 + b);
+      return 0.5 * ((p1 - y1) ** 2 + (p2 - y2) ** 2) + 0.08 * Math.sin(1.8 * w) * Math.cos(1.4 * b) + 0.2;
+    }
+
+    const surfaceModes = {
+      linear: {
+        label: '线性回归 MSE',
+        fn: linearCost,
+        explainClass: 'good',
+        explain: '这是一只标准的凸碗 🥣，红点在 2D 里的位置和 3D 里的高度是一一对应的。'
+      },
+      logloss: {
+        label: '逻辑回归交叉熵',
+        fn: logLossCost,
+        explainClass: 'good',
+        explain: '分类里更合适的目标函数 ✅，整体几何性质比“sigmoid 后再套 MSE”更友好。'
+      },
+      badmse: {
+        label: '分类里错误使用 MSE',
+        fn: badMSECost,
+        explainClass: 'bad',
+        explain: '这里更容易出现扭曲和起伏 ⚠️，这就是为什么分类任务里硬套 MSE 不理想。'
+      }
+    };
+
+    const guideSteps = [
+      { label: '坐标轴', className: 'good', text: '<strong>先看坐标轴：</strong>横轴和纵轴是参数，不是训练样本。图上的一个点代表一组参数 (w,b)。' },
+      { label: '同一条线', className: 'good', text: '<strong>同一条等高线：</strong>表示代价 J 完全相同。沿着这条线移动，J 不变。' },
+      { label: '会不会闭合', className: 'warn', text: '<strong>闭合不是必须的：</strong>闭合等高线常表示围住一个盆地或山顶；不闭合等高线常表示斜坡、延伸山谷、鞍点区域，或者只是当前绘图区把它截断了。' },
+      { label: '会不会交叉', className: 'warn', text: '<strong>正常情况下不交叉：</strong>对于单值函数 z=f(x,y)，一个平面位置只能对应一个高度，所以不同高度的等高线不应在同一点交叉。若你看见“交叉”，常见原因是投影视觉、图层叠加、或那不是普通单值曲面的等高线。 ' },
+      { label: '线的疏密', className: 'warn', text: '<strong>线越密，坡越陡：</strong>在同样距离内跨过更多等高线，表示高度变化更快。' },
+      { label: '不规则形状', className: 'warn', text: '<strong>不规则 ≠ 不能读：</strong>不要死记椭圆，要看闭合区数量、延伸方向、疏密变化和是否存在多个盆地。' },
+      { label: '梯度下降', className: 'good', text: '<strong>蓝线轨迹：</strong>它总在找当前最陡的下坡方向，所以路径会随着地形变化而转向。' }
+    ];
+
+    const examples = {
+      ellipse: {
+        label: '规整椭圆谷底',
+        fn: (x, y) => 0.45 * (x + 0.5) ** 2 + 1.4 * (y - 0.2) ** 2,
+        boxClass: 'good',
+        html: '<strong>怎么看：</strong>这就是最典型的“一个凸碗”。<br><br><strong>你该抓住的特征：</strong><br>• 一圈一圈闭合，且只有一个中心<br>• 越往中心越低<br>• 长轴方向更平，短轴方向更陡<br><br><strong>结论：</strong>椭圆只是“单一谷底”的经典样子。'
+      },
+      plane: {
+        label: '开口平行线（斜坡）',
+        fn: (x, y) => 0.8 * x + 0.35 * y,
+        boxClass: 'warn',
+        html: '<strong>怎么看：</strong>这些等高线不会闭合，而是一组大致平行的开口线。<br><br><strong>你该抓住的特征：</strong><br>• 线条整体朝同一方向延伸<br>• 没有被围住的“中心”<br>• 表示这是持续上升/下降的斜坡，而不是一个盆地<br><br><strong>结论：</strong>不开口并不奇怪，它常常只是在告诉你：这个区域没有局部最低点。'
+      },
+      valley: {
+        label: '狭长山谷',
+        fn: (x, y) => 0.12 * (x + y) ** 2 + 2.3 * (x - y) ** 2,
+        boxClass: 'warn',
+        html: '<strong>怎么看：</strong>这不是圆形谷底，而是一条被拉得很长的谷。<br><br><strong>你该抓住的特征：</strong><br>• 一样是闭合区，但很瘦很长<br>• 某个方向特别平，另一个方向特别陡<br>• 梯度下降常出现“之字形”摆动<br><br><strong>结论：</strong>只要看出“长谷”，就知道不同方向的学习难度差很多。'
+      },
+      wavy: {
+        label: '起伏扭曲地形',
+        fn: (x, y) => 0.22 * (x ** 2 + y ** 2) + 0.55 * Math.sin(1.4 * x) * Math.cos(1.2 * y),
+        boxClass: 'bad',
+        html: '<strong>怎么看：</strong>这里的等高线开始扭曲、鼓包、起伏。<br><br><strong>你该抓住的特征：</strong><br>• 闭合区域可能不止一个<br>• 线条不再规则，局部会有小坑小包<br>• 有些地方像谷底，有些地方只是局部凹陷<br><br><strong>结论：</strong>看到这种图，先怀疑“是不是出现了多个局部低点”。'
+      },
+      saddle: {
+        label: '鞍点 / 山脊区域',
+        fn: (x, y) => 0.35 * x ** 2 - 0.35 * y ** 2 + 0.04 * (x ** 4 + y ** 4),
+        boxClass: 'warn',
+        html: '<strong>怎么看：</strong>这里不是单纯“往中心越来越低”，而是一个方向往上、另一个方向往下。<br><br><strong>你该抓住的特征：</strong><br>• 等高线可能开口延伸，也可能呈弯曲的双支结构<br>• 某些区域不像盆地，而像山脊或鞍面<br>• 不能只问“中心在哪里”，要问“每个方向怎么变”<br><br><strong>结论：</strong>这类图提醒你：不是所有等高线都在包围一个最低点。'
+      }
+    };
+
+    function makeGrid(fn, xMin, xMax, yMin, yMax, n) {
+      const xs = [], ys = [], z = [];
+      for (let i = 0; i < n; i++) {
+        xs.push(xMin + (xMax - xMin) * i / (n - 1));
+        ys.push(yMin + (yMax - yMin) * i / (n - 1));
+      }
+      for (let j = 0; j < n; j++) {
+        const row = [];
+        for (let i = 0; i < n; i++) row.push(fn(xs[i], ys[j]));
+        z.push(row);
+      }
+      return { xs, ys, z };
+    }
+
+    const contourGrid = makeGrid(linearCost, -4, 4, -4, 4, 120);
+    const contourLayout = {
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: 'rgba(0,0,0,0)',
+      margin: { l: 50, r: 20, t: 10, b: 50 },
+      xaxis: { title: '参数 w', color: '#dbeafe', gridcolor: 'rgba(255,255,255,0.08)', zerolinecolor: 'rgba(255,255,255,0.15)' },
+      yaxis: { title: '参数 b', color: '#dbeafe', gridcolor: 'rgba(255,255,255,0.08)', zerolinecolor: 'rgba(255,255,255,0.15)', scaleanchor: 'x', scaleratio: 1 },
+      showlegend: true,
+      legend: { orientation: 'h', x: 0, y: 1.08, font: { color: '#dbeafe' }, bgcolor: 'rgba(0,0,0,0)' }
+    };
+
+    const exampleContourLayout = {
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: 'rgba(0,0,0,0)',
+      margin: { l: 40, r: 10, t: 10, b: 40 },
+      xaxis: { title: 'x', color: '#dbeafe', gridcolor: 'rgba(255,255,255,0.08)' },
+      yaxis: { title: 'y', color: '#dbeafe', gridcolor: 'rgba(255,255,255,0.08)', scaleanchor: 'x', scaleratio: 1 },
+      showlegend: false
+    };
+
+    let currentW = 2.8;
+    let currentB = 3.2;
+    let currentMode = 'linear';
+    let currentGuide = 0;
+    let currentExample = 'ellipse';
+    let descentPath = [];
+    let animTimer = null;
+    let animationDelay = 220;
+    let currentStepShown = 0;
+
+    function buildDescentPath(w0, b0, steps = 26, lr = 0.22) {
+      const path = [];
+      let w = w0, b = b0;
+      path.push([w, b]);
+      for (let i = 0; i < steps; i++) {
+        const g = linearGrad(w, b);
+        w -= lr * g.dw;
+        b -= lr * g.db;
+        path.push([w, b]);
+      }
+      return path;
+    }
+
+    function contourInterpretation(j) {
+      if (j > 12) return '这个点离谷底比较远，所以代价较大。';
+      if (j > 6) return '这个点已经在往低谷靠近，但还没到最优区域。';
+      if (j > 2) return '这个点已经比较接近谷底，代价明显下降了。';
+      return '这个点已经非常接近最低谷，说明参数已经接近最优。';
+    }
+
+    function inferStepIndex(w, b) {
+      if (!descentPath.length) return 0;
+      let bestIdx = 0, best = Infinity;
+      descentPath.forEach((p, idx) => {
+        const d = (p[0] - w) ** 2 + (p[1] - b) ** 2;
+        if (d < best) { best = d; bestIdx = idx; }
+      });
+      return bestIdx;
+    }
+
+    function updateReadout(w, b) {
+      const j = linearCost(w, b);
+      const dist = Math.hypot(w - 1.1, b + 0.9);
+      const g = linearGrad(w, b);
+      const gradMag = Math.hypot(g.dw, g.db);
+      const stepCount = inferStepIndex(w, b);
+
+      document.getElementById('wVal').textContent = w.toFixed(2);
+      document.getElementById('bVal').textContent = b.toFixed(2);
+      document.getElementById('costVal').textContent = j.toFixed(2);
+      document.getElementById('distVal').textContent = dist.toFixed(2);
+      document.getElementById('gradVal').textContent = gradMag.toFixed(2);
+      document.getElementById('stepVal').textContent = String(stepCount);
+      document.getElementById('readout').innerHTML = `当前参数：<strong>w = ${w.toFixed(2)}</strong>，<strong>b = ${b.toFixed(2)}</strong><br>当前代价：<strong>J(w,b) = ${j.toFixed(2)}</strong><br>解读：${contourInterpretation(j)}`;
+    }
+
+    function renderGuideChips() {
+      const el = document.getElementById('guideChips');
+      el.innerHTML = guideSteps.map((g, idx) => `<button class="chip ${idx === currentGuide ? 'active' : ''}" data-guide="${idx}">${g.label}</button>`).join('');
+      document.getElementById('guideBox').className = `note ${guideSteps[currentGuide].className}`;
+      document.getElementById('guideBox').innerHTML = guideSteps[currentGuide].text;
+      el.querySelectorAll('[data-guide]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentGuide = Number(btn.dataset.guide);
+          renderGuideChips();
+        });
+      });
+    }
+
+    function renderSurfaceTabs() {
+      const el = document.getElementById('surfaceTabs');
+      el.innerHTML = Object.entries(surfaceModes).map(([key, mode]) => `<button class="chip ${key === currentMode ? 'active' : ''}" data-mode="${key}">${mode.label}</button>`).join('');
+      el.querySelectorAll('[data-mode]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentMode = btn.dataset.mode;
+          renderSurfaceTabs();
+          renderSurface(currentMode, currentW, currentB);
+        });
+      });
+    }
+
+    function renderContour(selectedW, selectedB, pathPts) {
+      const data = [
+        { type: 'contour', x: contourGrid.xs, y: contourGrid.ys, z: contourGrid.z, colorscale: 'Viridis', contours: { coloring: 'lines', showlabels: false }, line: { width: 1.3 }, showscale: false, name: '等高线' },
+        { type: 'scatter', mode: 'lines+markers', x: pathPts.map(p => p[0]), y: pathPts.map(p => p[1]), line: { color: '#38bdf8', width: 3 }, marker: { size: 5, color: '#38bdf8' }, name: '梯度下降轨迹' },
+        { type: 'scatter', mode: 'markers', x: [1.1], y: [-0.9], marker: { size: 12, color: '#34d399', line: { width: 1, color: '#fff' } }, name: '最低点附近' },
+        { type: 'scatter', mode: 'markers', x: [selectedW], y: [selectedB], marker: { size: 15, color: '#f43f5e', line: { width: 2, color: '#fff' } }, name: '当前参数点' }
+      ];
+      Plotly.react('contourChart', data, contourLayout, { responsive: true, displayModeBar: false });
+      hideStatus('contourStatus');
+    }
+
+    function renderSurface(modeKey, markerW = currentW, markerB = currentB) {
+      const cfg = surfaceModes[modeKey];
+      const grid = makeGrid(cfg.fn, -4, 4, -4, 4, 90);
+      const markerZ = cfg.fn(markerW, markerB);
+      const data = [
+        { type: 'surface', x: grid.xs, y: grid.ys, z: grid.z, colorscale: 'Viridis', opacity: 0.95, showscale: false, contours: { z: { show: true, usecolormap: true, highlightcolor: '#ffffff', project: { z: true } } } },
+        { type: 'scatter3d', mode: 'markers', x: [markerW], y: [markerB], z: [markerZ], marker: { size: 6, color: '#f43f5e', line: { color: '#fff', width: 3 } }, name: '当前参数点' }
+      ];
+      const layout = {
+        title: { text: cfg.label, font: { color: '#e5e7eb', size: 19 } },
+        paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { l: 0, r: 0, t: 42, b: 0 },
+        scene: {
+          bgcolor: 'rgba(0,0,0,0)',
+          xaxis: { title: '参数 w', color: '#dbeafe', gridcolor: 'rgba(255,255,255,0.08)', backgroundcolor: 'rgba(255,255,255,0.02)' },
+          yaxis: { title: '参数 b', color: '#dbeafe', gridcolor: 'rgba(255,255,255,0.08)', backgroundcolor: 'rgba(255,255,255,0.02)' },
+          zaxis: { title: '代价 J', color: '#dbeafe', gridcolor: 'rgba(255,255,255,0.08)', backgroundcolor: 'rgba(255,255,255,0.02)' },
+          camera: { eye: { x: 1.55, y: 1.48, z: 0.95 } }
+        },
+        annotations: [{ x: 0, y: 1.08, xref: 'paper', yref: 'paper', showarrow: false, font: { color: '#cde7ff', size: 13 }, text: cfg.explain }]
+      };
+      Plotly.react('surfaceChart', data, layout, { responsive: true, displayModeBar: false });
+      hideStatus('surfaceStatus');
+    }
+
+    function startAnimationFrom(w, b) {
+      if (animTimer) clearInterval(animTimer);
+      descentPath = buildDescentPath(w, b);
+      let idx = 0;
+      renderContour(w, b, descentPath.slice(0, 1));
+      updateReadout(w, b);
+      renderSurface(currentMode, w, b);
+      animTimer = setInterval(() => {
+        idx += 1;
+        if (idx >= descentPath.length) { clearInterval(animTimer); return; }
+        const [cw, cb] = descentPath[idx];
+        currentW = cw;
+        currentB = cb;
+        document.getElementById('wSlider').value = cw;
+        document.getElementById('bSlider').value = cb;
+        renderContour(cw, cb, descentPath.slice(0, idx + 1));
+        updateReadout(cw, cb);
+        renderSurface(currentMode, cw, cb);
+      }, animationDelay);
+    }
+
+    function renderExampleTabs() {
+      const el = document.getElementById('exampleTabs');
+      el.innerHTML = Object.entries(examples).map(([key, ex]) => `<button class="chip ${key === currentExample ? 'active' : ''}" data-example="${key}">${ex.label}</button>`).join('');
+      el.querySelectorAll('[data-example]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentExample = btn.dataset.example;
+          renderExampleTabs();
+          renderExample();
+        });
+      });
+    }
+
+    function renderExample() {
+      const ex = examples[currentExample];
+      const grid = makeGrid(ex.fn, -4, 4, -4, 4, 100);
+      const contourData = [{ type: 'contour', x: grid.xs, y: grid.ys, z: grid.z, colorscale: 'Viridis', contours: { coloring: 'lines', showlabels: false }, line: { width: 1.4 }, showscale: false }];
+      const surfaceData = [{ type: 'surface', x: grid.xs, y: grid.ys, z: grid.z, colorscale: 'Viridis', showscale: false, opacity: 0.95, contours: { z: { show: true, usecolormap: true, highlightcolor: '#ffffff', project: { z: true } } } }];
+      const surfaceLayout = {
+        title: { text: ex.label, font: { color: '#e5e7eb', size: 18 } },
+        paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { l: 0, r: 0, t: 40, b: 0 },
+        scene: {
+          bgcolor: 'rgba(0,0,0,0)',
+          xaxis: { title: 'x', color: '#dbeafe', gridcolor: 'rgba(255,255,255,0.08)', backgroundcolor: 'rgba(255,255,255,0.02)' },
+          yaxis: { title: 'y', color: '#dbeafe', gridcolor: 'rgba(255,255,255,0.08)', backgroundcolor: 'rgba(255,255,255,0.02)' },
+          zaxis: { title: '高度', color: '#dbeafe', gridcolor: 'rgba(255,255,255,0.08)', backgroundcolor: 'rgba(255,255,255,0.02)' },
+          camera: { eye: { x: 1.5, y: 1.45, z: 0.9 } }
+        }
+      };
+      Plotly.react('exampleContour', contourData, exampleContourLayout, { responsive: true, displayModeBar: false });
+      Plotly.react('exampleSurface', surfaceData, surfaceLayout, { responsive: true, displayModeBar: false });
+      document.getElementById('exampleBox').className = `note ${ex.boxClass}`;
+      document.getElementById('exampleBox').innerHTML = ex.html;
+    }
+
+    function boot() {
+      if (typeof Plotly === 'undefined') {
+        setStatus('contourStatus', '<strong>Plotly 没有加载成功</strong>当前环境可能拦截了外部 CDN 脚本，所以图表无法显示。', true);
+        setStatus('surfaceStatus', '<strong>3D 图表无法初始化</strong>原因同上：Plotly 外部脚本未成功加载。', true);
+        return;
+      }
+
+      renderGuideChips();
+      renderSurfaceTabs();
+      renderExampleTabs();
+
+      currentW = 2.8;
+      currentB = 3.2;
+      currentMode = 'linear';
+      descentPath = [[currentW, currentB]];
+
+      renderContour(currentW, currentB, [[currentW, currentB]]);
+      renderSurface(currentMode, currentW, currentB);
+      renderExample();
+      updateReadout(currentW, currentB);
+
+      document.getElementById('wSlider').addEventListener('input', (e) => {
+        if (animTimer) clearInterval(animTimer);
+        currentW = parseFloat(e.target.value);
+        renderContour(currentW, currentB, [[currentW, currentB]]);
+        renderSurface(currentMode, currentW, currentB);
+        updateReadout(currentW, currentB);
+      });
+      document.getElementById('bSlider').addEventListener('input', (e) => {
+        if (animTimer) clearInterval(animTimer);
+        currentB = parseFloat(e.target.value);
+        renderContour(currentW, currentB, [[currentW, currentB]]);
+        renderSurface(currentMode, currentW, currentB);
+        updateReadout(currentW, currentB);
+      });
+      document.getElementById('wSlider').addEventListener('change', () => startAnimationFrom(currentW, currentB));
+      document.getElementById('bSlider').addEventListener('change', () => startAnimationFrom(currentW, currentB));
+
+      document.getElementById('playBtn').addEventListener('click', () => startAnimationFrom(currentW, currentB));
+      document.getElementById('pauseBtn').addEventListener('click', () => { if (animTimer) clearInterval(animTimer); });
+      document.getElementById('resetBtn').addEventListener('click', () => {
+        if (animTimer) clearInterval(animTimer);
+        currentW = 2.8;
+        currentB = 3.2;
+        document.getElementById('wSlider').value = currentW;
+        document.getElementById('bSlider').value = currentB;
+        renderContour(currentW, currentB, [[currentW, currentB]]);
+        renderSurface(currentMode, currentW, currentB);
+        updateReadout(currentW, currentB);
+      });
+      document.getElementById('speedSlider').addEventListener('input', (e) => {
+        animationDelay = parseInt(e.target.value, 10);
+        document.getElementById('speedVal').textContent = `${animationDelay}ms`;
+      });
+    }
+
+    window.addEventListener('load', () => {
+      setTimeout(boot, 160);
+      setTimeout(() => {
+        if (typeof Plotly === 'undefined') {
+          setStatus('contourStatus', '<strong>加载超时：Plotly 仍未就绪</strong>这通常说明外部脚本被拦截了。建议把文件保存到本地后，用正常联网的浏览器直接打开。', true);
+          setStatus('surfaceStatus', '<strong>加载超时</strong>请检查网络，或者换到能访问 CDN 的浏览器环境。', true);
+        }
+      }, 3500);
+    });
+  </script>
+</body>
+</html>

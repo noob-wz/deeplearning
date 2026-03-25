@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>学习率探测器 · 深度解析</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#1a1208;--paper:#fdf8f0;--paper2:#f5ede0;--paper3:#ede0cc;
+  --amber:#c8820a;--amber2:#e8a020;--amber3:#f5c050;
+  --red:#c03020;--red2:#e04030;
+  --teal:#0a7060;--teal2:#10a080;--teal3:#40c0a0;
+  --blue:#1840a0;--blue2:#2060d0;
+  --gray:#8a7a60;--gray2:#b8a888;--gray3:#d8c8b0;
+  --serif:'Noto Serif SC',serif;
+  --mono:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:var(--serif);line-height:1.8;font-size:15px;overflow-x:hidden}
+
+/* NOISE TEXTURE OVERLAY */
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:1000;opacity:.5}
+
+.wrap{max-width:900px;margin:0 auto;padding:0 1.5rem}
+
+/* HEADER */
+.hdr{padding:4rem 1.5rem 3rem;border-bottom:2px solid var(--ink);position:relative;overflow:hidden}
+.hdr::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:1px;background:var(--amber)}
+.hdr-inner{max-width:900px;margin:0 auto}
+.hdr-eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--amber);margin-bottom:.8rem}
+.hdr h1{font-size:clamp(1.9rem,5vw,3rem);font-weight:700;line-height:1.15;margin-bottom:1rem;color:var(--ink)}
+.hdr h1 em{font-style:normal;color:var(--red);text-decoration:underline;text-decoration-color:var(--amber3);text-underline-offset:4px}
+.hdr-sub{color:var(--gray);max-width:600px;font-size:.92rem}
+
+/* NAV PILLS */
+.nav-pills{display:flex;gap:8px;padding:1.2rem 1.5rem;border-bottom:1px solid var(--paper3);flex-wrap:wrap;position:sticky;top:0;background:var(--paper);z-index:100}
+.npill{font-family:var(--mono);font-size:.74rem;padding:4px 12px;border:1px solid var(--gray3);border-radius:2px;cursor:pointer;color:var(--gray);background:transparent;transition:all .15s;text-transform:uppercase;letter-spacing:.06em}
+.npill:hover,.npill.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+/* SECTIONS */
+.sec{padding:3.5rem 0;border-bottom:1px solid var(--paper3)}
+
+.sec-num{font-family:var(--mono);font-size:.7rem;color:var(--gray2);letter-spacing:.12em;margin-bottom:.4rem}
+.sec h2{font-size:1.5rem;font-weight:700;margin-bottom:.5rem;line-height:1.3}
+.sec h2 .hl{background:var(--amber3);padding:0 3px;border-radius:2px}
+.sec-lead{color:var(--gray);font-size:.9rem;margin-bottom:2rem;max-width:680px;line-height:1.7}
+
+/* CONCEPT BOX */
+.cbox{background:var(--paper2);border:1px solid var(--paper3);border-left:4px solid var(--amber);padding:1.2rem 1.4rem;margin:1.5rem 0;border-radius:0 4px 4px 0}
+.cbox-title{font-family:var(--mono);font-size:.75rem;letter-spacing:.1em;color:var(--amber);text-transform:uppercase;margin-bottom:.5rem}
+.cbox p{font-size:.9rem;color:var(--ink);line-height:1.75}
+.cbox.teal{border-left-color:var(--teal)}
+.cbox.teal .cbox-title{color:var(--teal)}
+.cbox.red{border-left-color:var(--red)}
+.cbox.red .cbox-title{color:var(--red)}
+
+/* CANVAS PANELS */
+.canvas-wrap{position:relative;background:var(--paper2);border:1px solid var(--paper3);border-radius:4px;overflow:hidden;margin:1.5rem 0}
+canvas{display:block;width:100%}
+.cv-label{position:absolute;top:10px;left:12px;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gray2);background:rgba(253,248,240,.85);padding:2px 8px;border-radius:2px;pointer-events:none}
+
+/* STEP PLAYER */
+.player{display:flex;align-items:center;gap:10px;padding:.8rem 0;flex-wrap:wrap}
+.play-btn{padding:6px 20px;background:var(--ink);color:var(--paper);border:none;border-radius:2px;font-family:var(--mono);font-size:.78rem;cursor:pointer;letter-spacing:.06em;transition:opacity .15s}
+.play-btn:hover{opacity:.8}
+.play-btn.sec{background:transparent;border:1px solid var(--ink);color:var(--ink)}
+.step-info{font-family:var(--mono);font-size:.78rem;color:var(--gray);margin-left:auto}
+
+/* EQUATION */
+.eq{display:block;text-align:center;font-family:var(--mono);font-size:1rem;padding:1rem;background:var(--paper3);border-radius:3px;margin:1rem 0;color:var(--ink);letter-spacing:.03em;line-height:2}
+.eq .hi{color:var(--red);font-weight:600}
+.eq .lo{color:var(--teal);font-weight:600}
+.eq .mid{color:var(--amber);font-weight:600}
+
+/* SPLIT LAYOUT */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin:1.5rem 0}
+@media(max-width:640px){.split{grid-template-columns:1fr}}
+
+/* INLINE TAG */
+.tag{display:inline-block;font-family:var(--mono);font-size:.72rem;padding:1px 7px;border-radius:2px;margin:0 2px;vertical-align:middle}
+.tag-a{background:var(--amber3);color:var(--ink)}
+.tag-r{background:#ffd0cc;color:var(--red)}
+.tag-t{background:#c0f0e8;color:var(--teal)}
+.tag-g{background:var(--paper3);color:var(--gray)}
+
+/* ANNOTATION */
+.ann{font-size:.82rem;color:var(--gray);font-style:italic;margin-top:.5rem}
+
+/* SLIDER GROUP */
+.sl-group{display:flex;align-items:center;gap:10px;margin:.7rem 0;flex-wrap:wrap}
+.sl-group label{font-family:var(--mono);font-size:.78rem;color:var(--gray);min-width:120px}
+.sl-group input[type=range]{flex:1;min-width:100px;accent-color:var(--amber);cursor:pointer}
+.sl-group .sv{font-family:var(--mono);font-size:.82rem;font-weight:600;color:var(--amber);min-width:60px}
+
+/* FOOTER */
+footer{padding:2rem;text-align:center;font-family:var(--mono);font-size:.75rem;color:var(--gray2);border-top:1px solid var(--paper3)}
+
+/* KEYLINE DECORATION */
+.kl{height:1px;background:linear-gradient(to right,transparent,var(--amber3),transparent);margin:2rem 0;border:none}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-inner">
+    <div class="hdr-eyebrow">Learning Rate Finder · 深度解析</div>
+    <h1>为什么<em>不能选最低点</em>，<br>而要选最陡那段？</h1>
+    <p class="hdr-sub">从"学习率 × 梯度 = 更新量"出发，用动画彻底讲清楚 LR Finder 背后的逻辑</p>
+  </div>
+</div>
+
+<nav class="nav-pills wrap">
+  <button class="npill on" onclick="scrollTo_('#s1')">① 学习率到底做什么</button>
+  <button class="npill" onclick="scrollTo_('#s2')">② LR Finder 曲线动画</button>
+  <button class="npill" onclick="scrollTo_('#s3')">③ 最低点为何危险</button>
+  <button class="npill" onclick="scrollTo_('#s4')">④ 为何选最陡区间</button>
+  <button class="npill" onclick="scrollTo_('#s5')">⑤ 交互实验</button>
+</nav>
+
+<!-- ═══════ S1 ═══════ -->
+<section class="sec" id="s1">
+<div class="wrap">
+  <div class="sec-num">Section 01</div>
+  <h2>学习率 × 梯度 = <span class="hl">实际移动距离</span></h2>
+  <p class="sec-lead">你说得完全正确——学习率本质上就是在"缩放梯度"。但这个缩放比例，有一个非常微妙的最优区间。</p>
+
+  <div class="cbox">
+    <div class="cbox-title">参数更新公式</div>
+    <p>每一步训练，权重的更新量是：</p>
+  </div>
+
+  <code class="eq">
+    新权重 = 旧权重 − <span class="hi">学习率</span> × <span class="lo">梯度</span><br>
+    Δw &nbsp;&nbsp;&nbsp;= &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−<span class="hi">&nbsp;lr&nbsp;&nbsp;</span> × <span class="lo">&nbsp;∂Loss/∂w</span>
+  </code>
+
+  <p class="ann">学习率 lr 和梯度 ∂Loss/∂w，共同决定了"这一步走多大"。你说可以把 lr 当梯度来理解——这个直觉是对的，它们在公式里是对称的乘积关系。</p>
+
+  <hr class="kl">
+
+  <p style="margin-bottom:1rem;font-size:.9rem;color:var(--gray)">下面这个动画展示：同样的梯度方向，<strong style="color:var(--ink)">不同学习率</strong>会产生完全不同的落点——</p>
+
+  <div class="canvas-wrap">
+    <div class="cv-label">学习率对更新步长的影响</div>
+    <canvas id="cv-step" height="200"></canvas>
+  </div>
+
+  <div class="sl-group">
+    <label>学习率 lr</label>
+    <input type="range" id="sl-lr-demo" min="1" max="100" value="30">
+    <span class="sv" id="sv-lr-demo">0.30</span>
+    <span style="font-size:.78rem;color:var(--gray);font-family:var(--mono)">← 拖动观察步长变化</span>
+  </div>
+  <div id="step-verdict" style="font-family:var(--mono);font-size:.82rem;margin-top:.4rem;height:1.4rem"></div>
+
+  <div class="split" style="margin-top:1.5rem">
+    <div class="cbox teal" style="margin:0">
+      <div class="cbox-title">学习率太小时</div>
+      <p>lr × 梯度 ≈ 0。每步移动距离极短。需要几千步才能移动到正确位置。训练极慢，但不会出错。</p>
+    </div>
+    <div class="cbox red" style="margin:0">
+      <div class="cbox-title">学习率太大时</div>
+      <p>lr × 梯度 很大。一步直接"跳过"最优点，落到对面更高的山坡。下一步又跳回来，来回震荡，Loss 不降反升。</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══════ S2 ═══════ -->
+<section class="sec" id="s2">
+<div class="wrap">
+  <div class="sec-num">Section 02</div>
+  <h2>LR Finder 曲线<span class="hl">是怎么画出来的</span></h2>
+  <p class="sec-lead">每一步用一个更大的学习率跑一个 Batch，记录 Loss，连成曲线。点击播放，看曲线如何一步步生长。</p>
+
+  <div class="canvas-wrap">
+    <div class="cv-label">LR Finder 曲线（逐步生长）</div>
+    <canvas id="cv-finder" height="320"></canvas>
+  </div>
+
+  <div class="player">
+    <button class="play-btn" id="btn-finder-play">▶ 开始探测</button>
+    <button class="play-btn sec" id="btn-finder-reset">↺ 重置</button>
+    <span class="step-info" id="finder-info">准备就绪</span>
+  </div>
+
+  <div class="cbox" style="margin-top:1rem">
+    <div class="cbox-title">图中三个颜色区域的含义</div>
+    <p>
+      <span class="tag tag-g">灰色区域</span> 爬行期：lr 太小，Loss 几乎不动，网络学不到东西<br>
+      <span class="tag tag-t">绿色区域</span> 俯冲期：Loss 急速下降，每一步都在高效学习 ← <strong>选这里</strong><br>
+      <span class="tag tag-r">红色区域</span> 爆炸期：Loss 触底后反弹，学习率已经超过安全边界
+    </p>
+  </div>
+</div>
+</section>
+
+<!-- ═══════ S3 ═══════ -->
+<section class="sec" id="s3">
+<div class="wrap">
+  <div class="sec-num">Section 03</div>
+  <h2>为什么<span class="hl">最低点反而是陷阱</span></h2>
+  <p class="sec-lead">这是最违反直觉的地方。让我们用损失曲面来解释，为什么 Loss 最低的那个 lr，是一个随时会翻车的临界状态。</p>
+
+  <div class="canvas-wrap">
+    <div class="cv-label">损失曲面 · 不同学习率的落点</div>
+    <canvas id="cv-bowl" height="300"></canvas>
+  </div>
+
+  <div class="player">
+    <button class="play-btn" id="btn-bowl-play">▶ 播放对比动画</button>
+    <button class="play-btn sec" id="btn-bowl-reset">↺ 重置</button>
+    <span class="step-info" id="bowl-info">点击播放</span>
+  </div>
+
+  <div class="cbox red">
+    <div class="cbox-title">最低点的本质：Loss 最低只是"巧合"</div>
+    <p>LR Finder 每一步只跑一个 Batch（一小撮样本）。Loss 到达最低点，是因为这一步的 lr × 梯度 恰好把权重推到了这批样本的"最优位置"。<br><br>
+    但这只是对这一个 Batch 成立！换下一个 Batch，梯度方向不同，同样的学习率会把权重推出去太远，Loss 就炸了。<br><br>
+    <strong>最低点 = 刚好在悬崖边缘站稳了一次。</strong>真实训练要走几千步，每步都这样，早晚会掉下去。</p>
+  </div>
+
+  <div class="cbox teal">
+    <div class="cbox-title">用数学理解：Loss 最低点在参数空间的意义</div>
+    <p>Loss 最低的 lr，意味着 <code style="background:var(--paper3);padding:1px 6px;font-family:var(--mono)">lr × ‖梯度‖ ≈ 当前到碗底的距离</code>。<br><br>
+    一步刚好跳到碗底——听起来完美？但碗底是弧形的，你跳过去还是会滑到另一侧。而且真实的损失曲面不是标准的圆碗，它有无数个方向，每个方向的"碗宽度"不同。当你的步长 = 最窄方向的宽度时，在那个方向你已经越界了。</p>
+  </div>
+</div>
+</section>
+
+<!-- ═══════ S4 ═══════ -->
+<section class="sec" id="s4">
+<div class="wrap">
+  <div class="sec-num">Section 04</div>
+  <h2>为什么要选<span class="hl">最陡下降区间</span></h2>
+  <p class="sec-lead">最陡的区间，代表"每增加一点学习率，Loss 就下降最多"——这就是学习效率最高、又还在安全范围内的黄金地带。</p>
+
+  <div class="canvas-wrap">
+    <div class="cv-label">LR Finder 斜率分析</div>
+    <canvas id="cv-slope" height="340"></canvas>
+  </div>
+
+  <div class="player">
+    <button class="play-btn" id="btn-slope-play">▶ 显示斜率分析</button>
+    <button class="play-btn sec" id="btn-slope-reset">↺ 重置</button>
+  </div>
+
+  <hr class="kl">
+
+  <div class="cbox">
+    <div class="cbox-title">核心逻辑：梯度下降希望 Loss 下降最快</div>
+    <p>LR Finder 曲线上，斜率（dLoss/d(lr)）最负的地方，代表学习率每提高一点，训练效果提升最多。<br><br>
+    用汽车类比：最陡的区间 = 你踩油门，车速增加最快的那段 RPM 区间。这是发动机效率最高的转速范围——太低效率差，太高会过热。<br><br>
+    LR Finder 的结论：<strong>取最陡区间的中点，往往是最低点对应 lr 的 1/3 到 1/10。</strong></p>
+  </div>
+
+  <div class="split">
+    <div class="cbox teal" style="margin:0">
+      <div class="cbox-title">选最陡处的好处</div>
+      <p>• 学习效率高，收敛快<br>• 还有充足的"安全边距"<br>• 即使某个 Batch 梯度稍大，也不会越界<br>• 整个训练过程稳定</p>
+    </div>
+    <div class="cbox red" style="margin:0">
+      <div class="cbox-title">选最低点的风险</div>
+      <p>• 处于临界状态<br>• 对 Batch 内容极度敏感<br>• 训练中期 Loss 会突然爆炸<br>• 需要重新训练，浪费时间</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══════ S5 ═══════ -->
+<section class="sec" id="s5">
+<div class="wrap">
+  <div class="sec-num">Section 05</div>
+  <h2>交互实验：<span class="hl">亲手感受三个区间的差别</span></h2>
+  <p class="sec-lead">选择一个学习率，观察它在损失曲面上的移动轨迹。三种情况亲自对比。</p>
+
+  <div class="canvas-wrap">
+    <div class="cv-label">参数空间 · 梯度下降轨迹模拟</div>
+    <canvas id="cv-traj" height="320"></canvas>
+  </div>
+
+  <div class="sl-group">
+    <label>选择学习率区间</label>
+    <span></span>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1rem">
+    <button class="play-btn" id="btn-z1" onclick="runZone(1)">太小（爬行期）</button>
+    <button class="play-btn" id="btn-z2" onclick="runZone(2)" style="background:var(--teal)">最陡区间（推荐）</button>
+    <button class="play-btn" id="btn-z3" onclick="runZone(3)" style="background:var(--red)">最低点（危险）</button>
+    <button class="play-btn sec" onclick="resetTraj()">↺ 重置</button>
+  </div>
+  <div id="traj-verdict" style="font-family:var(--mono);font-size:.82rem;color:var(--gray);min-height:2.5rem;padding:.5rem .8rem;background:var(--paper2);border-radius:3px;border:1px solid var(--paper3)">选择一个区间开始实验</div>
+</div>
+</section>
+
+<footer>学习率探测器深度解析 · 动画演示</footer>
+
+<script>
+'use strict';
+
+/* ─── UTILS ─── */
+function scrollTo_(id){document.querySelector(id).scrollIntoView({behavior:'smooth'})}
+document.querySelectorAll('.npill').forEach(b=>b.addEventListener('click',function(){document.querySelectorAll('.npill').forEach(x=>x.classList.remove('on'));this.classList.add('on')}))
+
+function W(cv){return cv.parentElement.clientWidth||800}
+function resizeAll(){[...document.querySelectorAll('canvas')].forEach(cv=>{cv.width=W(cv);});drawAll()}
+window.addEventListener('resize',resizeAll);
+
+/* ─── COLORS ─── */
+const C={ink:'#1a1208',paper:'#fdf8f0',paper2:'#f5ede0',paper3:'#ede0cc',
+  amber:'#c8820a',amber2:'#e8a020',amber3:'#f5c050',
+  red:'#c03020',red2:'#e04030',red3:'#ffccc8',
+  teal:'#0a7060',teal2:'#10a080',teal3:'#b0f0e0',
+  gray:'#8a7a60',gray2:'#b8a888',gray3:'#d8c8b0',
+  blue:'#1840a0',blue2:'#2060d0'
+}
+
+/* ════════════════════════════════════════
+   SECTION 1: STEP DEMO
+════════════════════════════════════════ */
+function drawStepDemo(){
+  const cv=document.getElementById('cv-step');
+  cv.width=W(cv); const w=cv.width, h=200;
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,w,h);
+
+  const lr=parseInt(document.getElementById('sl-lr-demo').value)/100;
+  document.getElementById('sv-lr-demo').textContent=lr.toFixed(2);
+
+  // Draw a simple parabola loss surface
+  const cx=w/2, cy=h-30, rx=w*0.38;
+  // Bowl
+  ctx.beginPath();
+  for(let i=0;i<=200;i++){
+    const t=i/200, x=cx-rx+2*rx*t;
+    const dx=(x-cx)/rx; const y=cy-h*0.5*dx*dx*0.7;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.strokeStyle=C.gray3; ctx.lineWidth=2; ctx.stroke();
+
+  // Fill bowl lightly
+  ctx.beginPath();
+  for(let i=0;i<=200;i++){
+    const t=i/200, x=cx-rx+2*rx*t;
+    const dx=(x-cx)/rx; const y=cy-h*0.5*dx*dx*0.7;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.lineTo(cx+rx,cy); ctx.lineTo(cx-rx,cy); ctx.closePath();
+  ctx.fillStyle='rgba(200,180,150,.08)'; ctx.fill();
+
+  // Current position: always start at x = -0.6 (on slope)
+  const startDx=-0.6;
+  const startX=cx+startDx*rx;
+  const startY=cy-h*0.5*startDx*startDx*0.7;
+
+  // Gradient at that point (derivative of x^2 = 2x, scaled)
+  const grad=2*startDx; // negative means slope goes up to right, update should push right
+  const stepDx=startDx-lr*grad;
+  const clampedDx=Math.max(-1,Math.min(1,stepDx));
+  const endX=cx+clampedDx*rx;
+  const endY=cy-h*0.5*clampedDx*clampedDx*0.7;
+
+  // Draw ground
+  ctx.beginPath(); ctx.moveTo(cx-rx-20,cy); ctx.lineTo(cx+rx+20,cy);
+  ctx.strokeStyle=C.gray3; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle=C.gray2; ctx.font='11px '+C.mono||'monospace'; ctx.textAlign='center';
+  ctx.fillText('参数 w 的值 →',cx,cy+18);
+
+  // Minimum marker
+  ctx.beginPath(); ctx.moveTo(cx,cy-4); ctx.lineTo(cx,cy+4);
+  ctx.strokeStyle=C.gray2; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.fillStyle=C.gray2; ctx.font='10px monospace'; ctx.textAlign='center';
+  ctx.fillText('最优值',cx,cy+16);
+
+  // Gradient arrow (showing slope direction)
+  ctx.beginPath(); ctx.moveTo(startX,startY); ctx.lineTo(startX+80,startY);
+  ctx.strokeStyle=C.gray3; ctx.lineWidth=1; ctx.setLineDash([3,3]); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle=C.gray2; ctx.font='10px monospace'; ctx.textAlign='left';
+  ctx.fillText('梯度方向',startX+6,startY-8);
+
+  // Step arrow
+  ctx.beginPath(); ctx.moveTo(startX,startY-10); ctx.lineTo(endX,endX<startX?startY-10:endY-10);
+  const arrowColor=lr<0.15?C.teal2:lr<0.75?C.amber2:C.red2;
+  ctx.strokeStyle=arrowColor; ctx.lineWidth=2.5; ctx.stroke();
+  // Arrowhead
+  const dir=endX>startX?1:-1;
+  ctx.beginPath(); ctx.moveTo(endX,endX<startX?startY-10:endY-10);
+  ctx.lineTo(endX-dir*10,endX<startX?startY-16:endY-16);
+  ctx.lineTo(endX-dir*10,endX<startX?startY-4:endY-4);
+  ctx.closePath(); ctx.fillStyle=arrowColor; ctx.fill();
+
+  // Start dot
+  ctx.beginPath(); ctx.arc(startX,startY,7,0,Math.PI*2);
+  ctx.fillStyle=C.blue2; ctx.fill();
+  ctx.fillStyle='#fff'; ctx.font='bold 9px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('W',startX,startY); ctx.textBaseline='alphabetic';
+
+  // End dot
+  if(Math.abs(endX-startX)>3){
+    ctx.beginPath(); ctx.arc(endX,endY,7,0,Math.PI*2);
+    ctx.fillStyle=arrowColor; ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font='bold 9px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('W\'',endX,endY); ctx.textBaseline='alphabetic';
+  }
+
+  // Step length label
+  const midX=(startX+endX)/2, midY=startY-26;
+  const dist=Math.abs(endX-startX);
+  ctx.fillStyle=arrowColor; ctx.font='bold 11px monospace'; ctx.textAlign='center';
+  ctx.fillText(`步长 = lr(${lr.toFixed(2)}) × 梯度 = ${(dist/rx*2).toFixed(2)}`,midX,midY-2);
+
+  // Verdict
+  const v=document.getElementById('step-verdict');
+  if(lr<0.15){v.textContent='← 步长过小：需要非常多步才能到达最优点';v.style.color=C.teal}
+  else if(lr<0.72){v.textContent='← 步长合适：高效移向最优点';v.style.color=C.amber}
+  else{v.textContent='← 步长过大：直接跳过最优点，落到对面！';v.style.color=C.red}
+}
+
+document.getElementById('sl-lr-demo').addEventListener('input',drawStepDemo);
+
+/* ════════════════════════════════════════
+   SECTION 2: LR FINDER CURVE
+════════════════════════════════════════ */
+let finderAnim=null, finderStep=0;
+
+// Generate a realistic LR finder curve
+function lrFinderCurve(t){
+  // t in [0,1] = log10(lr) from -5 to 0
+  if(t<0.25) return 2.2-t*0.8+Math.sin(t*30)*0.04; // flat crawl
+  if(t<0.6)  return 2.2-0.2-(t-0.25)/(0.35)*1.6+Math.sin(t*25)*0.06; // steep descent
+  if(t<0.72) return 0.58+(t-0.6)/(0.12)*0.3+Math.sin(t*20)*0.08; // bottom + uptick
+  return 0.88+(t-0.72)*3.5+Math.random()*0.15; // explosion
+}
+
+function drawFinder(progress){
+  const cv=document.getElementById('cv-finder');
+  cv.width=W(cv); const w=cv.width, h=320;
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,w,h);
+
+  const pad={l:55,r:30,t:30,b:50};
+  const pw=w-pad.l-pad.r, ph=h-pad.t-pad.b;
+
+  // Generate points
+  const N=180;
+  const pts=[];
+  for(let i=0;i<N;i++){
+    const t=i/(N-1);
+    const loss=lrFinderCurve(t);
+    pts.push({t,loss,lr:Math.pow(10,-5+5*t)});
+  }
+  const lossMin=Math.min(...pts.map(p=>p.loss));
+  const lossMax=Math.max(...pts.map(p=>p.loss));
+  function px(i){return pad.l+pts[i].t*pw}
+  function py(loss){return pad.t+(lossMax-loss)/(lossMax-lossMin)*ph}
+
+  // Background zone fills
+  // Zone 1: crawl (t=0..0.25)
+  ctx.fillStyle='rgba(180,170,150,.09)';
+  ctx.fillRect(pad.l,pad.t,pw*0.25,ph);
+  // Zone 2: descent (t=0.25..0.62)
+  ctx.fillStyle='rgba(10,112,96,.07)';
+  ctx.fillRect(pad.l+pw*0.25,pad.t,pw*0.37,ph);
+  // Zone 3: danger (t=0.62..1)
+  ctx.fillStyle='rgba(192,48,32,.06)';
+  ctx.fillRect(pad.l+pw*0.62,pad.t,pw*0.38,ph);
+
+  // Zone labels (only shown when progress > zone)
+  ctx.font='11px monospace'; ctx.textAlign='center';
+  if(progress>0.12){ctx.fillStyle='rgba(138,122,96,.5)'; ctx.fillText('爬行期',pad.l+pw*0.125,pad.t+16)}
+  if(progress>0.45){ctx.fillStyle='rgba(10,112,96,.6)'; ctx.fillText('俯冲期 ★',pad.l+pw*0.435,pad.t+16)}
+  if(progress>0.72){ctx.fillStyle='rgba(192,48,32,.6)'; ctx.fillText('爆炸期',pad.l+pw*0.81,pad.t+16)}
+
+  // Grid lines
+  ctx.strokeStyle='rgba(216,200,176,.4)'; ctx.lineWidth=0.5; ctx.setLineDash([3,4]);
+  for(let i=1;i<=4;i++){
+    const y=pad.t+ph*i/4;
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+pw,y); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // Axes
+  ctx.strokeStyle=C.gray3; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(pad.l,pad.t); ctx.lineTo(pad.l,pad.t+ph); ctx.lineTo(pad.l+pw,pad.t+ph); ctx.stroke();
+
+  // Axis labels
+  ctx.fillStyle=C.gray; ctx.font='11px monospace';
+  ctx.textAlign='center'; ctx.fillText('学习率 lr（对数刻度）→',pad.l+pw/2,h-8);
+  ctx.save(); ctx.translate(14,pad.t+ph/2); ctx.rotate(-Math.PI/2);
+  ctx.textAlign='center'; ctx.fillText('Loss（损失值）',0,0); ctx.restore();
+
+  // X axis ticks
+  const lrLabels=['1e-5','1e-4','1e-3','1e-2','1e-1','1e0'];
+  ctx.fillStyle=C.gray2; ctx.font='10px monospace'; ctx.textAlign='center';
+  for(let i=0;i<6;i++){
+    const x=pad.l+pw*i/5;
+    ctx.fillText(lrLabels[i],x,pad.t+ph+14);
+    ctx.beginPath(); ctx.moveTo(x,pad.t+ph); ctx.lineTo(x,pad.t+ph+4);
+    ctx.strokeStyle=C.gray3; ctx.lineWidth=1; ctx.stroke();
+  }
+
+  // Draw curve up to progress
+  const showN=Math.floor(progress*N);
+  if(showN<2) return;
+
+  // Color segments
+  for(let i=1;i<showN;i++){
+    const t=pts[i].t;
+    let color;
+    if(t<0.25) color=C.gray2;
+    else if(t<0.62) color=C.teal2;
+    else color=C.red2;
+    ctx.beginPath(); ctx.moveTo(px(i-1),py(pts[i-1].loss)); ctx.lineTo(px(i),py(pts[i].loss));
+    ctx.strokeStyle=color; ctx.lineWidth=2.5; ctx.stroke();
+  }
+
+  // Current point dot
+  const ci=showN-1;
+  ctx.beginPath(); ctx.arc(px(ci),py(pts[ci].loss),4,0,Math.PI*2);
+  ctx.fillStyle=C.amber2; ctx.fill();
+
+  // Find minimum if visible
+  if(progress>0.65){
+    let minIdx=0;
+    for(let i=0;i<showN;i++) if(pts[i].loss<pts[minIdx].loss) minIdx=i;
+    ctx.beginPath(); ctx.arc(px(minIdx),py(pts[minIdx].loss),7,0,Math.PI*2);
+    ctx.strokeStyle=C.red; ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle=C.red2; ctx.fill();
+    ctx.fillStyle=C.red; ctx.font='bold 10px monospace'; ctx.textAlign='left';
+    ctx.fillText('⚠ 最低点（危险）',px(minIdx)+10,py(pts[minIdx].loss)-6);
+
+    // Steepest zone marker
+    ctx.fillStyle=C.teal; ctx.font='bold 11px monospace'; ctx.textAlign='center';
+    ctx.fillText('★ 选这里',pad.l+pw*0.43,py(0.8)+6);
+    ctx.beginPath(); ctx.moveTo(pad.l+pw*0.3,pad.t+30); ctx.lineTo(pad.l+pw*0.3,pad.t+ph*0.9);
+    ctx.moveTo(pad.l+pw*0.56,pad.t+30); ctx.lineTo(pad.l+pw*0.56,pad.t+ph*0.9);
+    ctx.strokeStyle=C.teal; ctx.lineWidth=1.5; ctx.setLineDash([4,3]); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  document.getElementById('finder-info').textContent=
+    `探测进度 ${Math.round(progress*100)}%  当前 lr ≈ ${pts[showN-1].lr.toExponential(1)}`;
+}
+
+document.getElementById('btn-finder-play').addEventListener('click',function(){
+  if(finderAnim) return;
+  this.textContent='探测中...'; this.disabled=true;
+  finderStep=0;
+  finderAnim=setInterval(()=>{
+    finderStep=Math.min(finderStep+0.008,1);
+    drawFinder(finderStep);
+    if(finderStep>=1){clearInterval(finderAnim);finderAnim=null;
+      document.getElementById('btn-finder-play').textContent='▶ 开始探测';
+      document.getElementById('btn-finder-play').disabled=false;}
+  },24);
+});
+document.getElementById('btn-finder-reset').addEventListener('click',function(){
+  if(finderAnim){clearInterval(finderAnim);finderAnim=null;}
+  finderStep=0; drawFinder(0);
+  document.getElementById('btn-finder-play').textContent='▶ 开始探测';
+  document.getElementById('btn-finder-play').disabled=false;
+  document.getElementById('finder-info').textContent='准备就绪';
+});
+
+/* ════════════════════════════════════════
+   SECTION 3: BOWL DEMO
+════════════════════════════════════════ */
+let bowlAnim=null, bowlPhase=0;
+
+function drawBowl(phase){
+  const cv=document.getElementById('cv-bowl');
+  cv.width=W(cv); const w=cv.width, h=300;
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,w,h);
+
+  // Three sub-panels side by side
+  const panel=Math.floor(w/3), labels=['学习率太小','学习率合适（最陡区间）','学习率 = 最低点'];
+  const colors=[C.gray2,C.teal2,C.red2];
+  const lrs=[0.06, 0.38, 0.95]; // relative step sizes
+
+  for(let p=0;p<3;p++){
+    const ox=p*panel, ow=panel;
+    const cx=ox+ow/2, cy=h-40, bh=h*0.55, bw=ow*0.38;
+
+    // Panel divider
+    if(p>0){ctx.beginPath();ctx.moveTo(ox,20);ctx.lineTo(ox,h-20);ctx.strokeStyle=C.paper3;ctx.lineWidth=1;ctx.stroke();}
+
+    // Panel label
+    ctx.fillStyle=colors[p]; ctx.font=`bold 10px monospace`; ctx.textAlign='center';
+    ctx.fillText(labels[p],cx,h-18);
+
+    // Bowl shape
+    ctx.beginPath();
+    for(let i=0;i<=100;i++){
+      const dx=(i/50-1)*bw, x=cx+dx;
+      const y=cy-bh*(dx/bw)*(dx/bw)*0.85;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle=C.gray3; ctx.lineWidth=1.5; ctx.stroke();
+
+    // Bowl minimum marker
+    ctx.beginPath();ctx.moveTo(cx-4,cy);ctx.lineTo(cx+4,cy);ctx.strokeStyle=C.gray2;ctx.lineWidth=1;ctx.stroke();
+    ctx.fillStyle=C.gray2;ctx.font='9px monospace';ctx.textAlign='center';ctx.fillText('最优点',cx,cy+14);
+
+    // Gradient descent balls animation
+    const nSteps=6;
+    const startDx=-0.75;
+    const lr=lrs[p];
+    let dx=startDx;
+    const trail=[{dx}];
+    for(let s=0;s<nSteps;s++){
+      const grad=2*dx;
+      dx=dx-lr*grad;
+      if(Math.abs(dx)>2){dx=dx>0?1.8:-1.8;}
+      trail.push({dx});
+    }
+
+    const showSteps=Math.floor(phase*nSteps)+1;
+    for(let s=0;s<Math.min(showSteps+1,trail.length);s++){
+      const tdx=trail[s].dx;
+      const bx=cx+tdx*bw, by=cy-bh*(tdx/1)*(tdx/1)*0.85;
+
+      // Fade older dots
+      const alpha=s===0?1:s/showSteps;
+      const col=s===0?C.blue2:colors[p];
+
+      // Draw path line
+      if(s>0){
+        const pdx=trail[s-1].dx;
+        const px2=cx+pdx*bw, py2=cy-bh*(pdx)*(pdx)*0.85;
+        ctx.beginPath();ctx.moveTo(px2,py2);ctx.lineTo(bx,by);
+        ctx.strokeStyle=colors[p]+(Math.round(alpha*255).toString(16).padStart(2,'0'));
+        ctx.lineWidth=1.5;ctx.stroke();
+      }
+
+      if(s<=showSteps){
+        ctx.beginPath();ctx.arc(bx,by,s===0?7:5,0,Math.PI*2);
+        ctx.fillStyle=col+(s===0?'':Math.round(alpha*220).toString(16).padStart(2,'0'));
+        ctx.fill();
+        if(s===0){ctx.fillStyle='#fff';ctx.font='bold 8px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('W',bx,by);ctx.textBaseline='alphabetic';}
+      }
+    }
+
+    // Show final status
+    if(phase>0.85){
+      const finalDx=trail[Math.min(showSteps,trail.length-1)].dx;
+      let msg='';
+      if(p===0) msg='仍在路上...';
+      else if(p===1) msg='✓ 收敛！';
+      else{
+        msg=Math.abs(finalDx)>0.5?'震荡！':'到底但不稳';
+      }
+      ctx.fillStyle=colors[p];ctx.font='bold 10px monospace';ctx.textAlign='center';
+      ctx.fillText(msg,cx,50);
+    }
+  }
+
+  document.getElementById('bowl-info').textContent=`步骤 ${Math.min(Math.floor(phase*6)+1,6)} / 6`;
+}
+
+document.getElementById('btn-bowl-play').addEventListener('click',function(){
+  if(bowlAnim) return; bowlPhase=0;
+  bowlAnim=setInterval(()=>{
+    bowlPhase=Math.min(bowlPhase+0.018,1);
+    drawBowl(bowlPhase);
+    if(bowlPhase>=1){clearInterval(bowlAnim);bowlAnim=null;}
+  },30);
+});
+document.getElementById('btn-bowl-reset').addEventListener('click',function(){
+  if(bowlAnim){clearInterval(bowlAnim);bowlAnim=null;}
+  bowlPhase=0; drawBowl(0);
+  document.getElementById('bowl-info').textContent='点击播放';
+});
+
+/* ════════════════════════════════════════
+   SECTION 4: SLOPE ANALYSIS
+════════════════════════════════════════ */
+let slopeShown=false;
+
+function drawSlope(showAnalysis){
+  const cv=document.getElementById('cv-slope');
+  cv.width=W(cv); const w=cv.width, h=340;
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,w,h);
+
+  const pad={l:55,r:30,t:30,b:50};
+  const pw=w-pad.l-pad.r, ph=h-pad.t-pad.b;
+
+  // Same curve
+  const N=160;
+  const pts=[];
+  for(let i=0;i<N;i++){
+    const t=i/(N-1);
+    pts.push({t,loss:lrFinderCurve(t)});
+  }
+  const lossMin=Math.min(...pts.map(p=>p.loss));
+  const lossMax=Math.max(...pts.map(p=>p.loss));
+  function px(i){return pad.l+pts[i].t*pw}
+  function py(loss){return pad.t+(lossMax-loss)/(lossMax-lossMin)*ph}
+
+  // Background zones
+  ctx.fillStyle='rgba(180,170,150,.07)'; ctx.fillRect(pad.l,pad.t,pw*0.25,ph);
+  ctx.fillStyle='rgba(10,112,96,.07)'; ctx.fillRect(pad.l+pw*0.25,pad.t,pw*0.37,ph);
+  ctx.fillStyle='rgba(192,48,32,.06)'; ctx.fillRect(pad.l+pw*0.62,pad.t,pw*0.38,ph);
+
+  // Grid
+  ctx.strokeStyle='rgba(216,200,176,.4)'; ctx.lineWidth=0.5; ctx.setLineDash([3,4]);
+  for(let i=1;i<=4;i++){ctx.beginPath();ctx.moveTo(pad.l,pad.t+ph*i/4);ctx.lineTo(pad.l+pw,pad.t+ph*i/4);ctx.stroke();}
+  ctx.setLineDash([]);
+
+  // Axes
+  ctx.strokeStyle=C.gray3; ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(pad.l,pad.t);ctx.lineTo(pad.l,pad.t+ph);ctx.lineTo(pad.l+pw,pad.t+ph);ctx.stroke();
+
+  // Axis labels
+  const lrLabels=['1e-5','1e-4','1e-3','1e-2','1e-1','1e0'];
+  ctx.fillStyle=C.gray2; ctx.font='10px monospace'; ctx.textAlign='center';
+  for(let i=0;i<6;i++){
+    const x=pad.l+pw*i/5;
+    ctx.fillText(lrLabels[i],x,pad.t+ph+14);
+    ctx.beginPath();ctx.moveTo(x,pad.t+ph);ctx.lineTo(x,pad.t+ph+4);ctx.strokeStyle=C.gray3;ctx.lineWidth=1;ctx.stroke();
+  }
+  ctx.fillText('学习率 lr（对数刻度）→',pad.l+pw/2,h-8);
+  ctx.save();ctx.translate(14,pad.t+ph/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';ctx.fillText('Loss',0,0);ctx.restore();
+
+  // Draw full curve
+  for(let i=1;i<N;i++){
+    const t=pts[i].t;
+    let color=t<0.25?C.gray2:t<0.62?C.teal2:C.red2;
+    ctx.beginPath();ctx.moveTo(px(i-1),py(pts[i-1].loss));ctx.lineTo(px(i),py(pts[i].loss));
+    ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.stroke();
+  }
+
+  if(showAnalysis){
+    // Find steepest region (max negative slope)
+    let maxSlope=-Infinity, steepIdx=0;
+    for(let i=2;i<N-2;i++){
+      const slope=(pts[i+2].loss-pts[i-2].loss)/(4/(N-1));
+      if(slope<maxSlope){maxSlope=slope;steepIdx=i;}
+    }
+
+    // Highlight steepest tangent
+    const tangX=px(steepIdx);
+    const tangY=py(pts[steepIdx].loss);
+    const slope=(pts[steepIdx+1].loss-pts[steepIdx-1].loss)/(2/(N-1));
+    const scale=pw*0.15;
+    const dx2=scale, dy2=slope*(ph/(lossMax-lossMin))*dx2/pw;
+
+    ctx.beginPath(); ctx.moveTo(tangX-dx2,tangY+dy2); ctx.lineTo(tangX+dx2,tangY-dy2);
+    ctx.strokeStyle=C.amber2; ctx.lineWidth=2.5; ctx.setLineDash([5,3]); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Steepest zone bracket
+    const z1=pad.l+pw*0.28, z2=pad.l+pw*0.58;
+    const bY=pad.t+ph*0.05;
+    ctx.beginPath();
+    ctx.moveTo(z1,bY+8); ctx.lineTo(z1,bY); ctx.lineTo(z2,bY); ctx.lineTo(z2,bY+8);
+    ctx.strokeStyle=C.teal2; ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle=C.teal; ctx.font='bold 11px monospace'; ctx.textAlign='center';
+    ctx.fillText('★ 推荐区间（斜率最大）',(z1+z2)/2,bY-4);
+
+    // Minimum marker
+    let minIdx=0;
+    for(let i=0;i<N;i++) if(pts[i].loss<pts[minIdx].loss) minIdx=i;
+    ctx.beginPath(); ctx.arc(px(minIdx),py(pts[minIdx].loss),8,0,Math.PI*2);
+    ctx.strokeStyle=C.red; ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle='rgba(192,48,32,.15)'; ctx.fill();
+    ctx.fillStyle=C.red; ctx.font='bold 10px monospace'; ctx.textAlign='center';
+    ctx.fillText('⚠ 最低点（不选）',px(minIdx),py(pts[minIdx].loss)-14);
+
+    // Arrow showing gap
+    ctx.beginPath();
+    ctx.moveTo((z1+z2)/2+8,py(pts[steepIdx].loss)+2);
+    ctx.lineTo(px(minIdx)-8,py(pts[minIdx].loss)+2);
+    ctx.strokeStyle=C.amber3; ctx.lineWidth=1.5; ctx.setLineDash([3,3]); ctx.stroke();
+    ctx.setLineDash([]);
+    const midArrow=((z1+z2)/2+px(minIdx))/2;
+    ctx.fillStyle=C.amber; ctx.font='10px monospace'; ctx.textAlign='center';
+    ctx.fillText('约为最低点 lr 的 1/5 ~ 1/10',midArrow,py(pts[minIdx].loss)-24);
+
+    // Slope annotation
+    ctx.fillStyle=C.amber2; ctx.font='10px monospace'; ctx.textAlign='left';
+    ctx.fillText('最大斜率切线',tangX+8,tangY-6);
+  }
+}
+
+document.getElementById('btn-slope-play').addEventListener('click',function(){
+  slopeShown=true; drawSlope(true);
+  this.textContent='已显示分析结果'; this.disabled=true;
+});
+document.getElementById('btn-slope-reset').addEventListener('click',function(){
+  slopeShown=false; drawSlope(false);
+  document.getElementById('btn-slope-play').textContent='▶ 显示斜率分析';
+  document.getElementById('btn-slope-play').disabled=false;
+});
+
+/* ════════════════════════════════════════
+   SECTION 5: TRAJECTORY
+════════════════════════════════════════ */
+let trajAnim=null, trajPhase=0, currentZone=0;
+
+// Loss landscape: an asymmetric bowl with some noise
+function lossAt(x,y){
+  return 0.4*(x*x+y*y)+0.8*(x-y)*(x-y)*0.3+Math.sin(x*1.5)*Math.cos(y*1.5)*0.06+0.02*(x*x*x*x+y*y*y*y)*0.01;
+}
+
+function gradAt(x,y){
+  const h=1e-4;
+  return[(lossAt(x+h,y)-lossAt(x-h,y))/(2*h),(lossAt(x,y+h)-lossAt(x,y-h))/(2*h)];
+}
+
+function buildTraj(zone){
+  // Zone 1: too small lr=0.01, Zone 2: good lr=0.28, Zone 3: too large lr=1.6
+  const lrs=[0.02, 0.26, 1.4];
+  const lr=lrs[zone-1];
+  let x=-1.4, y=1.2;
+  const path=[{x,y}];
+  for(let i=0;i<120;i++){
+    const[gx,gy]=gradAt(x,y);
+    x-=lr*gx; y-=lr*gy;
+    x=Math.max(-2.5,Math.min(2.5,x));
+    y=Math.max(-2.5,Math.min(2.5,y));
+    path.push({x,y});
+  }
+  return path;
+}
+
+let currentPath=null;
+
+function drawTraj(){
+  const cv=document.getElementById('cv-traj');
+  cv.width=W(cv); const w=cv.width, h=320;
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,w,h);
+
+  const pad={l:20,r:20,t:20,b:20};
+  const pw=w-pad.l-pad.r, ph=h-pad.t-pad.b;
+  const xmin=-2.5,xmax=2.5,ymin=-2.5,ymax=2.5;
+  function tx(x){return pad.l+(x-xmin)/(xmax-xmin)*pw}
+  function ty(y){return pad.t+(ymax-y)/(ymax-ymin)*ph}
+
+  // Draw contour heatmap
+  const res=80;
+  const img=ctx.createImageData(w,h);
+  let vmin=1e9,vmax=-1e9;
+  const vals=new Float32Array(res*res);
+  for(let j=0;j<res;j++) for(let i=0;i<res;i++){
+    const x=xmin+(xmax-xmin)*i/(res-1), y=ymin+(ymax-ymin)*j/(res-1);
+    const v=lossAt(x,y); vals[j*res+i]=v;
+    if(v<vmin)vmin=v; if(v>vmax)vmax=v;
+  }
+  for(let j=0;j<h;j++) for(let i=0;i<w;i++){
+    const gi=Math.round(j/h*(res-1))*res+Math.round(i/w*(res-1));
+    const t=(vals[gi]-vmin)/(vmax-vmin);
+    // warm paper tones
+    const r=Math.round(253-t*80), g2=Math.round(248-t*110), b=Math.round(240-t*140);
+    const idx=(j*w+i)*4;
+    img.data[idx]=r;img.data[idx+1]=g2;img.data[idx+2]=b;img.data[idx+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+
+  // Contour lines
+  for(let c=1;c<10;c++){
+    const thresh=vmin+(vmax-vmin)*c/10;
+    const GW=res,GH=res;
+    const sw=w,sh=h;
+    ctx.beginPath();ctx.strokeStyle='rgba(180,150,110,.22)';ctx.lineWidth=0.6;
+    for(let j=0;j<GH-1;j++) for(let i=0;i<GW-1;i++){
+      const v00=vals[j*GW+i],v10=vals[j*GW+i+1],v01=vals[(j+1)*GW+i],v11=vals[(j+1)*GW+i+1];
+      const a=(v00>=thresh?1:0)|(v10>=thresh?2:0)|(v01>=thresh?4:0)|(v11>=thresh?8:0);
+      if(a===0||a===15) continue;
+      function lerp(p,q,vp,vq){if(Math.abs(vq-vp)<1e-12)return p;return p+(q-p)*Math.max(0,Math.min(1,(thresh-vp)/(vq-vp)));}
+      const T=[lerp(i,i+1,v00,v10)/GW*sw, j/GH*sh];
+      const R=[(i+1)/GW*sw, lerp(j,j+1,v10,v11)/GH*sh];
+      const B=[lerp(i,i+1,v01,v11)/GW*sw,(j+1)/GH*sh];
+      const L=[i/GW*sw, lerp(j,j+1,v00,v01)/GH*sh];
+      const segs=[];
+      switch(a){case 1:case 14:segs.push([T,L]);break;case 2:case 13:segs.push([T,R]);break;case 3:case 12:segs.push([L,R]);break;case 4:case 11:segs.push([L,B]);break;case 5:case 10:segs.push([T,B]);break;case 6:segs.push([T,R],[L,B]);break;case 7:case 8:segs.push([R,B]);break;case 9:segs.push([T,L],[R,B]);break;}
+      for(const[pp,qq]of segs){ctx.moveTo(pp[0],pp[1]);ctx.lineTo(qq[0],qq[1]);}
+    }
+    ctx.stroke();
+  }
+
+  // Minimum dot
+  ctx.beginPath();ctx.arc(tx(0),ty(0),9,0,Math.PI*2);
+  ctx.fillStyle='rgba(255,255,255,.8)';ctx.fill();
+  ctx.strokeStyle=C.teal2;ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle=C.teal;ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('★',tx(0),ty(0));ctx.textBaseline='alphabetic';
+
+  // Draw path if available
+  if(currentPath&&currentPath.length>1){
+    const zone=currentZone;
+    const colors=[C.gray2,C.teal2,C.red2];
+    const col=colors[zone-1];
+    const showN=Math.floor(trajPhase*currentPath.length);
+
+    for(let i=1;i<Math.min(showN,currentPath.length);i++){
+      const f=i/currentPath.length;
+      ctx.beginPath();
+      ctx.moveTo(tx(currentPath[i-1].x),ty(currentPath[i-1].y));
+      ctx.lineTo(tx(currentPath[i].x),ty(currentPath[i].y));
+      ctx.strokeStyle=col; ctx.lineWidth=2; ctx.globalAlpha=0.3+0.7*f; ctx.stroke();
+      ctx.globalAlpha=1;
+    }
+    // Start
+    ctx.beginPath();ctx.arc(tx(currentPath[0].x),ty(currentPath[0].y),6,0,Math.PI*2);
+    ctx.fillStyle=C.amber2;ctx.fill();
+    // End
+    if(showN>1){
+      const ep=currentPath[Math.min(showN-1,currentPath.length-1)];
+      ctx.beginPath();ctx.arc(tx(ep.x),ty(ep.y),6,0,Math.PI*2);
+      ctx.fillStyle=col;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+    }
+  }
+}
+
+function runZone(zone){
+  if(trajAnim){clearInterval(trajAnim);trajAnim=null;}
+  currentZone=zone;
+  currentPath=buildTraj(zone);
+  trajPhase=0;
+  const msgs=['过小：500步还没到，爬行中...','合适：迅速收敛到最优点！','过大（最低点lr）：来回震荡，无法稳定收敛'];
+  const colors=[C.gray,C.teal,C.red];
+  document.getElementById('traj-verdict').textContent='';
+  document.getElementById('traj-verdict').style.color=colors[zone-1];
+  trajAnim=setInterval(()=>{
+    trajPhase=Math.min(trajPhase+0.015,1);
+    drawTraj();
+    if(trajPhase>=1){
+      clearInterval(trajAnim);trajAnim=null;
+      document.getElementById('traj-verdict').textContent=msgs[zone-1];
+    }
+  },25);
+}
+
+function resetTraj(){
+  if(trajAnim){clearInterval(trajAnim);trajAnim=null;}
+  currentPath=null; trajPhase=0; currentZone=0;
+  drawTraj();
+  document.getElementById('traj-verdict').textContent='选择一个区间开始实验';
+  document.getElementById('traj-verdict').style.color=C.gray;
+}
+
+/* ════════════════════════════════════════
+   INIT
+════════════════════════════════════════ */
+function drawAll(){
+  drawStepDemo();
+  drawFinder(finderStep||0);
+  drawBowl(bowlPhase||0);
+  drawSlope(slopeShown||false);
+  drawTraj();
+}
+setTimeout(drawAll,60);
+</script>
+</body>
+</html>

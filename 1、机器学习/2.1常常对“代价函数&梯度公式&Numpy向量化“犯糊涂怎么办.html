@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>两种求和 · 线性模型全景解析</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+SC:wght@300;400;500;600&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c0e14;--bg2:#12151f;--bg3:#181c28;--bg4:#1e2334;
+  --b1:rgba(100,120,200,.12);--b2:rgba(100,120,200,.22);--b3:rgba(100,120,200,.38);
+  --txt:#d0d8f0;--txt2:#7a88b0;--txt3:#3a4460;
+  --blue:#5588ff;--blue2:#88aaff;--blue3:rgba(85,136,255,.14);
+  --teal:#20d4a0;--teal2:#80eece;--teal3:rgba(32,212,160,.13);
+  --gold:#f0b840;--gold2:#f8d480;--gold3:rgba(240,184,64,.14);
+  --red:#f05858;--red2:#ff9090;--red3:rgba(240,88,88,.13);
+  --purple:#a878ff;--purple2:#c8a8ff;--purple3:rgba(168,120,255,.13);
+  --orange:#f88040;--orange2:#ffb080;
+  --sans:'IBM Plex Sans SC',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',monospace;
+  --cell:52px;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--txt);font-family:var(--sans);line-height:1.7;overflow-x:hidden}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--b3);border-radius:3px}
+
+/* ── HEADER ── */
+.hdr{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:3rem 1.5rem;position:relative;overflow:hidden}
+.hdr-grid{position:absolute;inset:0;background-image:linear-gradient(var(--b1) 1px,transparent 1px),linear-gradient(90deg,var(--b1) 1px,transparent 1px);background-size:44px 44px;pointer-events:none}
+.hdr-glow{position:absolute;top:20%;left:50%;transform:translateX(-50%);width:600px;height:300px;background:radial-gradient(ellipse,rgba(85,136,255,.07) 0%,transparent 70%);pointer-events:none}
+.hdr-tag{font-family:var(--mono);font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--blue);border:1px solid rgba(85,136,255,.3);padding:4px 14px;border-radius:2px;margin-bottom:2rem;display:inline-block}
+.hdr h1{font-size:clamp(2rem,6vw,3.6rem);font-weight:600;line-height:1.1;margin-bottom:1.2rem;letter-spacing:-.03em}
+.hdr h1 .a{color:var(--teal)}.hdr h1 .b{color:var(--gold)}
+.hdr-desc{max-width:600px;color:var(--txt2);font-size:1.05rem;line-height:1.8;margin-bottom:2.5rem}
+.hdr-scroll{font-family:var(--mono);font-size:.72rem;color:var(--txt3);letter-spacing:.12em;animation:bob 2s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+
+/* ── LAYOUT ── */
+.wrap{max-width:1050px;margin:0 auto;padding:0 1.5rem}
+.sec{padding:5rem 0;border-top:1px solid var(--b1);position:relative}
+.sec-eyebrow{font-family:var(--mono);font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:var(--txt3);margin-bottom:.6rem}
+.sec h2{font-size:clamp(1.4rem,3vw,2rem);font-weight:600;margin-bottom:.7rem;letter-spacing:-.02em;line-height:1.2}
+.sec-lead{color:var(--txt2);max-width:720px;font-size:.95rem;margin-bottom:2.5rem;line-height:1.8}
+
+/* ── CARDS ── */
+.card{background:var(--bg2);border:1px solid var(--b1);border-radius:10px;padding:1.4rem 1.6rem;margin:.8rem 0}
+.card-title{font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem;font-weight:bold}
+.ct-blue{color:var(--blue)}.ct-teal{color:var(--teal)}.ct-gold{color:var(--gold)}.ct-red{color:var(--red)}.ct-purple{color:var(--purple)}
+.card p{font-size:.9rem;color:var(--txt2);line-height:1.8}
+.card strong{color:var(--txt); font-weight: 500;}
+
+/* ── FORMULA BOX ── */
+.fbox{background:var(--bg3);border:1px solid var(--b2);border-radius:8px;padding:1rem 1.4rem;font-family:var(--mono);font-size:1.05rem;text-align:center;margin:1.5rem 0;letter-spacing:.03em;line-height:2.2}
+.fbox-note{display:block; font-size: 0.8rem; color: var(--txt3); font-family: var(--sans); margin-top: 5px; line-height: 1.4;}
+.fb-j{color:var(--blue2)}.fb-sum{color:var(--gold)}.fb-w{color:var(--teal2)}.fb-x{color:var(--red2)}.fb-i{color:var(--txt2)}.fb-y{color:var(--purple2)}
+
+/* ── BUTTONS ── */
+.btn{padding:8px 22px;border-radius:5px;font-family:var(--sans);font-size:.85rem;letter-spacing:.03em;cursor:pointer;border:1px solid;transition:all .16s;display:inline-flex;align-items:center;gap:6px; font-weight: 500;}
+.btn-pri{background:rgba(85,136,255,.12);border-color:rgba(85,136,255,.4);color:var(--blue2)}
+.btn-pri:hover{background:rgba(85,136,255,.22);border-color:var(--blue)}
+.btn-teal{background:var(--teal3);border-color:rgba(32,212,160,.35);color:var(--teal2)}
+.btn-teal:hover{background:rgba(32,212,160,.22)}
+.btn-ghost{background:transparent;border-color:var(--b2);color:var(--txt2)}
+.btn-ghost:hover{border-color:var(--b3);color:var(--txt)}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin:.8rem 0}
+
+/* ── MATRIX CELLS ── */
+.matrix-wrap{overflow-x:auto;padding:.5rem 0}
+.matrix{display:inline-flex;flex-direction:column;gap:4px;position:relative}
+.mrow{display:flex;gap:4px}
+.mcell{width:var(--cell);height:var(--cell);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.8rem;font-weight:600;border:1.5px solid transparent;transition:all .25s;position:relative;cursor:default;user-select:none}
+.mcell-val{color:var(--txt)}
+.mcell.hi-row{background:rgba(32,212,160,.18)!important;border-color:var(--teal)!important;color:var(--teal2)!important;transform:scale(1.06);z-index:2}
+.mcell.hi-col{background:rgba(240,184,64,.18)!important;border-color:var(--gold)!important;color:var(--gold2)!important;transform:scale(1.06);z-index:2}
+.mcell.hi-active{background:rgba(85,136,255,.3)!important;border-color:var(--blue)!important;color:#fff!important;transform:scale(1.12);z-index:3;box-shadow:0 0 14px rgba(85,136,255,.4)}
+.mcell.hi-result{background:rgba(168,120,255,.3)!important;border-color:var(--purple)!important;color:var(--purple2)!important;transform:scale(1.12);z-index:3;box-shadow:0 0 14px rgba(168,120,255,.4)}
+.mcell.dim{opacity:.2}
+.mcell.normal{background:var(--bg3);border-color:var(--b1)}
+.mcell.header{background:transparent;border-color:transparent;color:var(--txt3);font-size:.7rem;font-weight:400}
+.mcell.w-cell{background:var(--teal3);border-color:rgba(32,212,160,.3);color:var(--teal2)}
+.mcell.y-cell{background:var(--purple3);border-color:rgba(168,120,255,.3);color:var(--purple2)}
+.mcell.yhat-cell{background:rgba(248,128,64,.13);border-color:rgba(248,128,64,.3);color:var(--orange2)}
+.mcell.err-cell{background:rgba(200,200,200,.1);border-color:rgba(200,200,200,.3);color:#ccc}
+.mcell.loss-cell{background:var(--red3);border-color:rgba(240,88,88,.3);color:var(--red2)}
+
+/* ── MATRIX LABEL ── */
+.m-label{font-family:var(--sans);font-size:.75rem;color:var(--txt3);text-align:center;margin-top:.5rem; line-height: 1.4;}
+
+/* ── ANNOTATION ARROW ── */
+.ann-row{display:flex;align-items:center;gap:8px;margin:.4rem 0;font-size:.85rem}
+
+/* ── STEP PANEL ── */
+.step-panel{background:var(--bg2);border:1px solid var(--b1);border-radius:10px;overflow:hidden}
+.step-tabs{display:flex;border-bottom:1px solid var(--b1);overflow-x:auto}
+.stab{padding:12px 20px;font-family:var(--sans);font-weight:500;font-size:.85rem;letter-spacing:.02em;cursor:pointer;border:none;background:transparent;color:var(--txt3);white-space:nowrap;transition:all .16s;border-bottom:2px solid transparent}
+.stab:hover{color:var(--txt2)}
+.stab.on{color:var(--blue2);border-bottom-color:var(--blue);background:rgba(85,136,255,.05)}
+.step-body{padding:1.6rem}
+
+/* ── CODE BLOCK ── */
+.code{background:var(--bg3);border:1px solid var(--b2);border-radius:8px;padding:1rem 1.2rem;font-family:var(--mono);font-size:.85rem;line-height:2;overflow-x:auto}
+.code .kw{color:var(--blue2)}.code .fn{color:var(--teal2)}.code .cm{color:var(--txt3);font-style:italic}
+.code .vr{color:var(--txt)}.code .nu{color:var(--gold2)}.code .op{color:var(--gold)}
+.code .hl-line{background:rgba(85,136,255,.08);display:block;margin:0 -1.2rem;padding:0 1.2rem;border-left:2px solid var(--blue)}
+.code .hl-teal{background:rgba(32,212,160,.08);display:block;margin:0 -1.2rem;padding:0 1.2rem;border-left:2px solid var(--teal)}
+.code .hl-gold{background:rgba(240,184,64,.08);display:block;margin:0 -1.2rem;padding:0 1.2rem;border-left:2px solid var(--gold)}
+
+/* ── TWO-SUM COMPARE ── */
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.5rem 0}
+@media(max-width:768px){.compare{grid-template-columns:1fr}}
+.cmp-card{border-radius:10px;padding:1.4rem;border:1px solid}
+.cmp-left{background:rgba(32,212,160,.05);border-color:rgba(32,212,160,.25)}
+.cmp-right{background:rgba(240,184,64,.05);border-color:rgba(240,184,64,.25)}
+.cmp-h{font-family:var(--sans);font-size:.9rem;font-weight:600;margin-bottom:.8rem;letter-spacing:.02em}
+.cmp-left .cmp-h{color:var(--teal)}.cmp-right .cmp-h{color:var(--gold)}
+.cmp-body{font-size:.9rem;color:var(--txt2);line-height:1.9}
+.cmp-body code{font-family:var(--mono);font-size:.85rem;background:var(--bg3);padding:2px 6px;border-radius:4px; color: var(--txt)}
+
+/* ── INTERACTIVE MATRIX DEMO ── */
+.imatrix-wrap{display:flex;gap:1.5rem;flex-wrap:wrap;align-items:flex-start;margin:1.5rem 0}
+.imatrix-side{flex:1;min-width:280px}
+.side-title{font-family:var(--sans);font-size:.8rem;font-weight:600;letter-spacing:.05em;color:var(--txt);margin-bottom:.8rem}
+
+/* ── PILL ── */
+.pill{display:inline-block;font-family:var(--sans);font-size:.75rem;padding:2px 9px;border-radius:12px;margin:0 4px;font-weight:600}
+.pill-teal{background:var(--teal3);border:1px solid rgba(32,212,160,.3);color:var(--teal2)}
+.pill-gold{background:var(--gold3);border:1px solid rgba(240,184,64,.3);color:var(--gold2)}
+.pill-blue{background:var(--blue3);border:1px solid rgba(85,136,255,.3);color:var(--blue2)}
+.pill-red{background:var(--red3);border:1px solid rgba(240,88,88,.3);color:var(--red2)}
+
+/* ── INFO BAR ── */
+.info-bar{background:var(--bg3);border:1px solid var(--b2);border-radius:7px;padding:1rem 1.2rem;font-size:.9rem;color:var(--txt);min-height:3.2rem;line-height:1.7;transition:all .3s}
+
+/* ── CANVAS ── */
+canvas{display:block;border-radius:8px}
+
+/* ── FOOTER ── */
+footer{padding:3rem 1.5rem;text-align:center;border-top:1px solid var(--b1);font-family:var(--sans);font-size:.8rem;color:var(--txt3)}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ HEADER ══════════════════ -->
+<div class="hdr">
+  <div class="hdr-grid"></div>
+  <div class="hdr-glow"></div>
+  <div class="hdr-tag">写给初学者的机器学习直觉指南</div>
+  <h1>两个求和：<br><span class="a">横着加</span> vs <span class="b">竖着加</span></h1>
+  <p class="hdr-desc">
+    没有数学基础？没关系。线性模型里最吓人的就是公式里那两个完全不同的 <strong>Σ（求和）符号</strong>。<br><br>
+    一个是<strong style="color:var(--teal)">对特征求和</strong>（给一个人算预测分时，横着加）；<br>
+    另一个是<strong style="color:var(--gold)">对样本求和</strong>（算全班总成绩误差时，竖着加）。<br>
+    分清这两个方向，代价函数、梯度公式和看似黑魔法的 NumPy 向量化代码就全看懂了。
+  </p>
+  <div class="hdr-scroll">↓ 向下滚动，我们一步步拆解</div>
+</div>
+
+<div class="wrap">
+
+<!-- ══════════════════ S1: 数据矩阵 ══════════════════ -->
+<section class="sec" id="s1">
+  <div class="sec-eyebrow">第 1 步 · 认识数据结构</div>
+  <h2>先看清数据的长相：表格思维</h2>
+  <p class="sec-lead">所有的数学公式，本质上都在对一张 Excel 表格进行操作。牢记：<strong>每行是包含所有特征的一个样本，每列是所有样本的同一特征。</strong></p>
+
+  <div class="compare">
+    <div class="cmp-card cmp-left">
+      <div class="cmp-h">↔ 横向看：代表“个体的全部”</div>
+      <div class="cmp-body">
+        比如第 <code>i</code> 行是“张三”的数据：<br>
+        特征0=年龄，特征1=身高，特征2=体重…<br><br>
+        做<strong>预测</strong>时，我们要综合张三的所有特征来打分。所以预测是在<strong>一行内部横向求和</strong>。在公式里，由于是遍历特征，小标号通常写成 <code>j</code>。
+      </div>
+    </div>
+    <div class="cmp-card cmp-right">
+      <div class="cmp-h">↕ 纵向看：代表“群体的共性”</div>
+      <div class="cmp-body">
+        比如第 <code>j</code> 列是所有人的“年龄”数据。<br><br>
+        算<strong>总误差</strong>或者<strong>调参（算梯度）</strong>时，我们需要看“模型对所有人预测得准不准”，所以要挨个查收每个人的误差，这是<strong>跨越所有行竖向求和</strong>。标号通常写成 <code>i</code>。
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:2rem">
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;flex-wrap:wrap">
+      <span style="font-size:.9rem;color:var(--txt2)">💡 试着点击下方 X 矩阵中的任意数字，看看它是横着还是竖着：</span>
+      <button class="btn btn-ghost" onclick="resetMatrix()">↺ 重置</button>
+    </div>
+    <div class="imatrix-wrap">
+      <div class="imatrix-side">
+        <div class="side-title">数据矩阵 X &nbsp; (m=4 个样本 × n=3 个特征)</div>
+        <div class="matrix-wrap" id="mat-x"></div>
+        <div class="m-label">X[i][j] 代表第 i 个人身上的第 j 个特征值</div>
+      </div>
+      <div class="imatrix-side">
+        <div class="side-title">权重 w (各个特征的重要程度)</div>
+        <div class="matrix-wrap" id="mat-w"></div>
+        <br>
+        <div class="side-title">真实结果 y (正确答案)</div>
+        <div class="matrix-wrap" id="mat-y"></div>
+      </div>
+    </div>
+    <div class="info-bar" id="info-matrix">👆 请点击 X 矩阵中的任意一格体验一下。</div>
+  </div>
+</section>
+
+<!-- ══════════════════ S2: 预测 ══════════════════ -->
+<section class="sec" id="s2">
+  <div class="sec-eyebrow">第 2 步 · 第一个求和 (Σ)</div>
+  <h2>做预测：<span style="color:var(--teal)">横着加</span>（把人的所有特征加起来）</h2>
+  <p class="sec-lead">怎么预测张三的得分 ŷ（y-hat）？很简单：<strong>特征值 × 该特征的权重（重要性），然后全部加起来。</strong> 这个相加的动作只发生在一行以内，这是<strong style="color:var(--teal)">横向求和</strong>。</p>
+
+  <div class="fbox">
+    ŷ<sup>(i)</sup> = <span class="fb-w">w</span><sub>0</sub>·<span class="fb-x">x</span><sub>0</sub><sup>(i)</sup> + <span class="fb-w">w</span><sub>1</sub>·<span class="fb-x">x</span><sub>1</sub><sup>(i)</sup> + <span class="fb-w">w</span><sub>2</sub>·<span class="fb-x">x</span><sub>2</sub><sup>(i)</sup> &nbsp;=&nbsp; <span class="fb-sum">Σ<sub>j=0</sub><sup>n-1</sup></span> <span class="fb-w">w</span><sub>j</sub> · <span class="fb-x">x</span><sub>j</sub><sup>(i)</sup>
+    <span class="fbox-note">大白话：第 i 个人的预测值 = 他所有的特征(j)跟对应的权重(w)乘完相加。</span>
+  </div>
+
+  <div class="card" style="border-left:3px solid var(--teal)">
+    <div class="card-title ct-teal">防迷路指南：在这个阶段，样本身份是固定的</div>
+    <p>预测时，你眼里只有“当前这个人”。在循环里，下标 <code>i</code> 是死死盯住不动的，只有下标 <code>j</code>（特征）在从 0 跑到 2。</p>
+  </div>
+
+  <div style="margin-top:1.8rem">
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;flex-wrap:wrap">
+      <span style="font-size:.9rem;color:var(--txt2)">给哪位同学算预测分？</span>
+      <div id="sample-btns" class="btn-row" style="margin:0"></div>
+      <button class="btn btn-teal" id="btn-pred-play">▶ 逐步演示相乘相加</button>
+      <button class="btn btn-ghost" onclick="resetPred()">↺ 重置</button>
+    </div>
+
+    <div class="imatrix-wrap" id="pred-demo-wrap">
+      <div class="imatrix-side">
+        <div class="side-title">挑出来的第 i 行 × 权重 w 列</div>
+        <div class="matrix-wrap" id="mat-pred-x"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem">
+        <div style="font-size:1.8rem;color:var(--txt3)">·</div>
+        <canvas id="cv-dot-anim" width="140" height="140"></canvas>
+        <div style="font-size:1.8rem;color:var(--txt3)">=</div>
+      </div>
+      <div class="imatrix-side">
+        <div class="side-title">计算过程 (这就是单行点积)</div>
+        <div id="pred-steps" style="font-family:var(--mono);font-size:.85rem;line-height:2.2;min-height:160px"></div>
+        <div style="margin-top:.8rem;padding:.6rem .9rem;background:var(--bg3);border-radius:6px;border:1px solid var(--b2)">
+          <span style="font-family:var(--sans);font-size:.85rem;color:var(--txt2)">最终预测分 ŷ⁽ⁱ⁾ = </span>
+          <span id="pred-result" style="font-family:var(--mono);font-size:1.1rem;color:var(--orange2);font-weight:600">?</span>
+        </div>
+      </div>
+    </div>
+    <div class="info-bar" id="info-pred">请先选择一个样本，然后点击“逐步演示”观察横向求和。</div>
+  </div>
+</section>
+
+<!-- ══════════════════ S3: 损失 ══════════════════ -->
+<section class="sec" id="s3">
+  <div class="sec-eyebrow">第 3 步 · 第二个求和 (Σ)</div>
+  <h2>算代价(Loss)：<span style="color:var(--gold)">竖着加</span>（汇总所有人的错题本）</h2>
+  <p class="sec-lead">上一步我们给每个人算出了预测分 ŷ。现在要看看模型整体表现如何。方法是：<strong>算出每个人的“预测分”跟“标准答案 y”差了多少，平方一下变成正的（惩罚），然后把全班所有人的惩罚分竖着全加起来。</strong></p>
+
+  <div class="fbox">
+    J(<span class="fb-w">w</span>) = <span class="fb-sum" style="color:var(--gold2)">1/(2m) · Σ<sub>i=1</sub><sup>m</sup></span> ( <span style="color:var(--orange2)">ŷ<sup>(i)</sup></span> − <span class="fb-y">y<sup>(i)</sup></span> )<sup>2</sup>
+    <span class="fbox-note">大白话：总代价 J = 全班 m 个人的（预测分 - 真实答案）的平方，全部加起来，再除以人数求个平均。</span>
+  </div>
+
+  <div class="card" style="border-left:3px solid var(--gold)">
+    <div class="card-title ct-gold">极其重要：这里包含了两层俄罗斯套娃！</div>
+    <p>这个公式里其实藏了两个 Σ。括号里的 ŷ，就是我们在上一步用<strong>横向求和</strong>算出来的值。<br>
+    所以总流程是：先横着算出每一个人的 ŷ，然后再对这 m 个人的误差平方进行<strong>纵向求和</strong>。</p>
+  </div>
+
+  <div style="margin-top:1.8rem">
+    <div class="btn-row">
+      <button class="btn btn-pri" id="btn-loss-play">▶ 挨个算出误差并纵向汇总</button>
+      <button class="btn btn-ghost" onclick="resetLoss()">↺ 重置</button>
+    </div>
+
+    <!-- 这里的 UI 增加了误差列，解决跳跃感 -->
+    <div class="imatrix-wrap" style="align-items:flex-start; gap: 0.8rem; justify-content: space-between;">
+      <div style="text-align:center;">
+        <div class="side-title">ŷ (预测)</div>
+        <div class="matrix-wrap" id="mat-yhat"></div>
+      </div>
+      <div style="padding-top:2.5rem;font-size:1.2rem;color:var(--txt3);">−</div>
+      <div style="text-align:center;">
+        <div class="side-title">y (真实)</div>
+        <div class="matrix-wrap" id="mat-y2"></div>
+      </div>
+      <div style="padding-top:2.5rem;font-size:1.2rem;color:var(--txt3);">→</div>
+      <div style="text-align:center;">
+        <div class="side-title">误差</div>
+        <div class="matrix-wrap" id="mat-err"></div>
+      </div>
+      <div style="padding-top:2.5rem;font-size:1.2rem;color:var(--txt3);">²→</div>
+      <div style="text-align:center;">
+        <div class="side-title">误差平方(单人Loss)</div>
+        <div class="matrix-wrap" id="mat-loss"></div>
+      </div>
+      <div style="padding-top:2.5rem;font-size:1.2rem;color:var(--txt3);">→</div>
+      <div style="align-self:center; text-align:center;">
+        <div class="side-title">总代价 J</div>
+        <div style="margin:0 auto;width:var(--cell);height:var(--cell);background:var(--blue3);border:1.5px solid rgba(85,136,255,.5);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.9rem;color:var(--blue2)" id="cell-J">?</div>
+        <div class="m-label">↑ 纵向全加起来<br>再求平均</div>
+      </div>
+    </div>
+    <div class="info-bar" id="info-loss">点击上方按钮，看看单人误差是如何变成全班总代价的。</div>
+  </div>
+</section>
+
+<!-- ══════════════════ S4: 梯度 ══════════════════ -->
+<section class="sec" id="s4">
+  <div class="sec-eyebrow">第 4 步 · 最难的一关突破</div>
+  <h2>算梯度：<span style="color:var(--red)">两个求和碰面了！</span></h2>
+  <p class="sec-lead">梯度的作用是“告诉权重 w 该往哪个方向调整才能让误差变小”。公式里直接出现了 Σᵢ(误差)·xⱼ。很多新手在这被彻底劝退，其实只要你想通物理意义，它特别简单。</p>
+
+  <div class="fbox">
+    ∂J/∂<span class="fb-w">w</span><sub>j</sub> = <span class="fb-sum" style="color:var(--gold2)">1/m · Σ<sub>i=1</sub><sup>m</sup></span>[ ( <span style="color:var(--orange2)">ŷ<sup>(i)</sup></span> − <span class="fb-y">y<sup>(i)</sup></span> ) · <span class="fb-x">x</span><sub>j</sub><sup>(i)</sup> ]
+    <span class="fbox-note">大白话：第 j 个权重的调整力度 = 全班所有人（误差 × 该人第 j 个特征值）的总和平均。</span>
+  </div>
+
+  <div class="card" style="border-left:3px solid var(--red)">
+    <div class="card-title ct-red">直觉解释：为什么要拿“误差”去乘“特征值 x”？（基于线性模型）</div>
+    <p>想象一下：如果张三的预测得分比真实得分高了特别多（<strong>误差大</strong>），且此时他因为“体重”这个特征很高（<strong>特征值大</strong>），那么导致分打高的 **主要责任** 就该由“体重对应的权重 $w_2$”来背。<br>
+    所以：<strong>对 w 的惩罚（梯度） = 模型对样本的敏感度(模型对预测值的导数/弹簧的拉力) × 该特征的存在感(预测值对特征的导数/杠杆）。</strong> 算完单人的责任，再竖着加起来，就是整个数据集对这个权重的总审判。</p>
+  </div>
+
+  <div class="compare" style="margin-top:1.5rem">
+    <div class="cmp-card cmp-left">
+      <div class="cmp-h">如果要更新 w₀（如“年龄”的权重）</div>
+      <div class="cmp-body">
+        拿出所有人的误差，去乘以所有人的 <code>x₀</code> (第0列，全是年龄)。然后把算出来的锅，<strong>跨越所有样本(行)竖向加起来</strong>。
+      </div>
+    </div>
+    <div class="cmp-card cmp-right">
+      <div class="cmp-h">如果要更新 w₁（如“身高”的权重）</div>
+      <div class="cmp-body">
+        同样拿出所有人的误差，但这次去乘以所有人的 <code>x₁</code> (第1列，全是身高)。同样<strong>竖向加起来</strong>。
+      </div>
+    </div>
+  </div>
+
+  <!-- 梯度动画 -->
+  <div style="margin-top:1.8rem">
+    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1rem">
+      <span style="font-size:.9rem;color:var(--txt2)">你要计算哪个权重 wⱼ 的梯度？</span>
+      <div id="grad-wj-btns" class="btn-row" style="margin:0"></div>
+      <button class="btn btn-pri" id="btn-grad-play">▶ 算算这个权重的总责任(梯度)</button>
+      <button class="btn btn-ghost" onclick="resetGrad()">↺ 重置</button>
+    </div>
+    <canvas id="cv-grad" width="900" height="320" style="width:100%;background:var(--bg2);border:1px solid var(--b1);border-radius:10px"></canvas>
+    <div class="info-bar" id="info-grad" style="margin-top:.8rem">选择一个权重，然后点开始，看看它在每个样本上背了多少锅，最后汇总成它的梯度。</div>
+  </div>
+</section>
+
+<!-- ══════════════════ S5: 向量化 ══════════════════ -->
+<section class="sec" id="s5">
+  <div class="sec-eyebrow">第 5 步 · 告别 for 循环</div>
+  <h2>代码实现：为何变成了一行<span style="color:var(--purple)">矩阵乘法</span>？</h2>
+  <p class="sec-lead">如果你在 Python 里真的写两个 <code>for</code> 循环（横着扫一遍，竖着扫一遍），代码会运行得非常慢。NumPy 的矩阵乘法 <code>@</code> 或 <code>np.dot</code>，底层用 C 语言**同时并行**完成了横向和纵向的求和，这就是“向量化黑魔法”的本质。</p>
+
+  <!-- 标签式对比 -->
+  <div class="step-panel">
+    <div class="step-tabs" id="code-tabs">
+      <button class="stab on" data-tab="loop">双层 for 循环 (人类思维)</button>
+      <button class="stab" data-tab="vec">向量化代码 (机器思维)</button>
+      <button class="stab" data-tab="link">二者的对应关系 (揭秘)</button>
+    </div>
+    <div class="step-body" id="code-body"></div>
+  </div>
+
+  <!-- 矩阵运算对照图 -->
+  <div style="margin-top:2rem">
+    <div class="side-title" style="margin-bottom:1rem;font-size:0.9rem">动画演示：矩阵乘法 X @ w 是怎么同时搞定所有人的横向点积的？</div>
+    <canvas id="cv-matmul" width="900" height="260" style="width:100%;background:var(--bg2);border:1px solid var(--b1);border-radius:10px"></canvas>
+    <div class="btn-row" style="margin-top:.8rem">
+      <button class="btn btn-pri" id="btn-matmul">▶ 播放矩阵乘法动画</button>
+      <button class="btn btn-ghost" onclick="resetMatmul()">↺ 重置</button>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ S6: 总结 ══════════════════ -->
+<section class="sec" id="s6">
+  <div class="sec-eyebrow">最终章</div>
+  <h2>只要记住这四句话</h2>
+  <p class="sec-lead">以后在任何机器学习教程里看到公式，先在脑海里画出那张 Excel 表格：</p>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:15px;margin-top:1.5rem;margin-bottom:2rem;">
+    <div class="card" style="border-left:3px solid var(--teal)">
+      <div class="card-title ct-teal">预测时 (ŷ)：横向加</div>
+      <p>公式含 Σⱼ。<br>代表针对<strong>某一个人</strong>，综合他所有的特征打出一个分。</p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--gold)">
+      <div class="card-title ct-gold">算代价时 (J)：纵向加</div>
+      <p>公式含 Σᵢ。<br>代表针对<strong>整个班级</strong>，把所有人算好的误差平方统统加起来。</p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--red)">
+      <div class="card-title ct-red">算梯度时：纵向收集分配好的锅</div>
+      <p>公式含 Σᵢ(误差)·xⱼ。<br>单人的误差乘上他的特征（分锅），再把所有人的锅<strong>纵向加总</strong>。</p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--purple)">
+      <div class="card-title ct-purple">写代码时：用矩阵乘法代劳</div>
+      <p><code>X @ w</code> 帮你处理横向；<br><code>X.T @ error</code> 帮你处理纵向。一行代码搞定两层循环。</p>
+    </div>
+  </div>
+
+  <canvas id="cv-summary" width="900" height="340" style="width:100%;background:var(--bg2);border:1px solid var(--b1);border-radius:10px"></canvas>
+</section>
+
+</div><!-- end .wrap -->
+<footer>两种求和 · 写给初学者的机器学习直觉指南 &nbsp;·&nbsp; 交互动画学习板</footer>
+
+<!-- ══════════════════ SCRIPTS ══════════════════ -->
+<script>
+'use strict';
+
+/* ─── DATA ─── */
+const M=4, N=3;
+// X matrix: 4 samples × 3 features
+const X=[
+  [1.2, 0.5, 2.1],
+  [0.8, 1.4, 0.3],[2.0, 0.2, 1.5],[0.4, 1.8, 0.9],
+];
+const W=[1.5, -0.8, 0.6]; // weights
+const Y=[3.1, 1.2, 3.8, 1.4]; // true labels
+
+// Compute predictions, errors, and losses
+const YHAT = X.map(row => row.reduce((s,v,j)=>s+v*W[j],0));
+const ERRORS = YHAT.map((yh,i)=>yh-Y[i]);
+const LOSSES = ERRORS.map(e=>e*e);
+const J_TOTAL = LOSSES.reduce((s,v)=>s+v,0)/(2*M);
+
+/* ─── CELL RENDERER ─── */
+function cell(val, cls='normal', id=''){
+  return `<div class="mcell ${cls}" ${id?`id="${id}"`:''}>${val}</div>`;
+}
+
+/* ─── S1: DATA MATRIX ─── */
+function buildMatrixX(){
+  const wrap=document.getElementById('mat-x');
+  let html='<div class="matrix">';
+  // header row
+  html+='<div class="mrow">';
+  html+=cell('','header');
+  for(let j=0;j<N;j++) html+=cell(`特征${j}`,'header');
+  html+='</div>';
+  for(let i=0;i<M;i++){
+    html+=`<div class="mrow">`;
+    html+=cell(`样本${i}`,'header');
+    for(let j=0;j<N;j++){
+      html+=`<div class="mcell normal" id="xc-${i}-${j}" onclick="clickCell(${i},${j})" style="cursor:pointer" title="点击查看说明">${X[i][j].toFixed(1)}</div>`;
+    }
+    html+='</div>';
+  }
+  html+='</div>';
+  wrap.innerHTML=html;
+}
+function buildVecW(){
+  const wrap=document.getElementById('mat-w');
+  let html='<div class="matrix"><div class="mrow">';
+  html+=cell('','header');
+  for(let j=0;j<N;j++) html+=`<div class="mcell w-cell" id="wc-${j}">w${j}=${W[j]}</div>`;
+  html+='</div></div>';
+  wrap.innerHTML=html;
+}
+function buildVecY(){
+  const wrap=document.getElementById('mat-y');
+  let html='<div class="matrix">';
+  html+='<div class="mrow">'+cell('y','header');
+  for(let i=0;i<M;i++) html+=`<div class="mcell y-cell" id="yc-${i}">${Y[i]}</div>`;
+  html+='</div></div>';
+  wrap.innerHTML=html;
+}
+function clickCell(i,j){
+  resetAllHighlights();
+  for(let jj=0;jj<N;jj++) document.getElementById(`xc-${i}-${jj}`)?.classList.add('hi-row');
+  for(let ii=0;ii<M;ii++) document.getElementById(`xc-${ii}-${j}`)?.classList.add('hi-col');
+  document.getElementById(`xc-${i}-${j}`)?.classList.add('hi-active');
+  document.getElementById(`wc-${j}`)?.classList.add('hi-active');
+  document.getElementById(`yc-${i}`)?.classList.add('hi-active');
+  document.getElementById('info-matrix').innerHTML=
+    `<span style="color:var(--teal)">绿色高亮（横向）</span>代表样本 <strong>${i}</strong> 的全部特征。做预测时，我们会把这一行每个数字跟权重相乘然后相加。<br>`+
+    `<span style="color:var(--gold)">黄色高亮（纵向）</span>代表所有人身上的第 <strong>${j}</strong> 个特征。在更新权重 w<sub>${j}</sub> 的时候，会用到这整整一列的数据。`;
+}
+function resetAllHighlights(){
+  document.querySelectorAll('.mcell').forEach(c=>{
+    c.classList.remove('hi-row','hi-col','hi-active','hi-result','dim');
+  });
+}
+function resetMatrix(){
+  resetAllHighlights();
+  document.getElementById('info-matrix').textContent='👆 请点击 X 矩阵中的任意一格体验一下。';
+}
+
+/* ─── S2: PREDICTION ─── */
+let predSel=0, predStep=0, predTimer=null;
+function buildPredUI(){
+  const wrap=document.getElementById('sample-btns');
+  wrap.innerHTML='';
+  for(let i=0;i<M;i++){
+    const b=document.createElement('button');
+    b.className='btn btn-ghost'; b.textContent=`样本 ${i}`;
+    b.onclick=()=>selectSample(i);
+    b.id=`sb-${i}`;
+    wrap.appendChild(b);
+  }
+  buildPredMatrix();
+}
+function buildPredMatrix(){
+  const wrap=document.getElementById('mat-pred-x');
+  let html='<div class="matrix">';
+  html+='<div class="mrow">'+cell('','header');
+  for(let j=0;j<N;j++) html+=cell(`特征${j}`,'header');
+  html+='</div>';
+  html+=`<div class="mrow">`;
+  html+=cell(`样本 ${predSel}`,'header');
+  for(let j=0;j<N;j++) html+=`<div class="mcell normal" id="px-${j}">${X[predSel][j].toFixed(2)}</div>`;
+  html+='</div><div class="mrow">'+cell('w','header');
+  for(let j=0;j<N;j++) html+=`<div class="mcell w-cell" id="pw-${j}">×${W[j]}</div>`;
+  html+='</div></div>';
+  wrap.innerHTML=html;
+  document.getElementById('pred-steps').innerHTML='';
+  document.getElementById('pred-result').textContent='?';
+  drawDotAnim(-1);
+}
+function selectSample(i){
+  predSel=i; predStep=0;
+  if(predTimer){clearInterval(predTimer);predTimer=null;}
+  document.querySelectorAll('[id^="sb-"]').forEach(b=>b.classList.remove('btn-teal'));
+  document.getElementById(`sb-${i}`)?.classList.add('btn-teal');
+  buildPredMatrix();
+  document.getElementById('info-pred').textContent=`你选择了样本 ${i}，请点击“逐步演示相乘相加”。`;
+}
+function drawDotAnim(activeJ){
+  const cv=document.getElementById('cv-dot-anim');
+  const ctx=cv.getContext('2d'); ctx.clearRect(0,0,140,140);
+  const cx=70,cy=70,r=46;
+  for(let j=0;j<N;j++){
+    const angle=-Math.PI/2+j*(2*Math.PI/N);
+    const nx=cx+Math.cos(angle)*r, ny=cy+Math.sin(angle)*r;
+    ctx.beginPath(); ctx.arc(nx,ny,16,0,Math.PI*2);
+    if(j===activeJ){ctx.fillStyle='rgba(85,136,255,.35)'; ctx.strokeStyle='#5588ff'; ctx.lineWidth=2;}
+    else{ctx.fillStyle='rgba(30,35,52,.9)'; ctx.strokeStyle='rgba(100,120,200,.2)'; ctx.lineWidth=1;}
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle=j===activeJ?'#fff':'rgba(150,165,200,.6)';
+    ctx.font='bold 10px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(`特征${j}`,nx,ny);
+  }
+  ctx.beginPath(); ctx.arc(cx,cy,20,0,Math.PI*2);
+  ctx.fillStyle=activeJ>=0?'rgba(248,128,64,.25)':'rgba(30,35,52,.9)';
+  ctx.strokeStyle=activeJ>=0?'rgba(248,128,64,.8)':'rgba(100,120,200,.2)';
+  ctx.lineWidth=activeJ>=0?2:1; ctx.fill(); ctx.stroke();
+  ctx.fillStyle=activeJ>=0?'#f88040':'rgba(150,165,200,.5)';
+  ctx.font='bold 12px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('ŷ',cx,cy);
+  if(activeJ>=0){
+    for(let j2=0;j2<=activeJ;j2++){
+      const angle=-Math.PI/2+j2*(2*Math.PI/N);
+      const nx=cx+Math.cos(angle)*r, ny=cy+Math.sin(angle)*r;
+      ctx.beginPath(); ctx.moveTo(nx,ny); ctx.lineTo(cx,cy);
+      ctx.strokeStyle=j2===activeJ?'rgba(85,136,255,.9)':'rgba(85,136,255,.25)';
+      ctx.lineWidth=j2===activeJ?2:1; ctx.stroke();
+    }
+  }
+}
+document.getElementById('btn-pred-play').onclick=function(){
+  if(predTimer) return;
+  predStep=0;
+  const i=predSel, stepsEl=document.getElementById('pred-steps');
+  stepsEl.innerHTML=''; document.getElementById('pred-result').textContent='?';
+  let accum=0;
+  predTimer=setInterval(()=>{
+    if(predStep>=N){ clearInterval(predTimer); predTimer=null; return; }
+    const j=predStep;
+    for(let jj=0;jj<N;jj++){
+      document.getElementById(`px-${jj}`)?.classList.remove('hi-active');
+      document.getElementById(`pw-${jj}`)?.classList.remove('hi-active');
+    }
+    document.getElementById(`px-${j}`)?.classList.add('hi-active');
+    document.getElementById(`pw-${j}`)?.classList.add('hi-active');
+    const prod=X[i][j]*W[j]; accum+=prod;
+    stepsEl.innerHTML+=`<div style="animation:fadeIn .4s"><span style="color:var(--txt3)">加上特征${j}:</span> <span style="color:var(--red2)">${X[i][j].toFixed(2)}</span> × (权重 <span style="color:var(--teal2)">${W[j]}</span>) <span style="color:var(--txt3)">=</span> <span style="color:var(--blue2)">${prod.toFixed(2)}</span></div>`;
+    drawDotAnim(j);
+    if(predStep===N-1){
+      document.getElementById('pred-result').textContent=accum.toFixed(3);
+      document.getElementById('info-pred').innerHTML=`✅ 完成！我们把样本 ${i} 的 3 个特征横向算完，得出了预测分 ŷ = <strong style="color:var(--orange2)">${accum.toFixed(3)}</strong>。这个数将传递给下一步！`;
+    }
+    predStep++;
+  },800);
+};
+function resetPred(){
+  if(predTimer){clearInterval(predTimer);predTimer=null;}
+  predStep=0; buildPredMatrix(); drawDotAnim(-1);
+  document.getElementById('info-pred').textContent='请先选择一个样本，然后点击“逐步演示相乘相加”。';
+}
+
+/* ─── S3: LOSS ─── */
+let lossStep=0, lossTimer=null, lossPhase=0; // phase 0: error, phase 1: squared error
+function buildLossMatrices(){
+  // ŷ column
+  let html='<div class="matrix">';
+  for(let i=0;i<M;i++) html+=`<div class="mrow"><div class="mcell yhat-cell" id="lc-yhat-${i}">${YHAT[i].toFixed(2)}</div></div>`;
+  html+='</div>';
+  document.getElementById('mat-yhat').innerHTML=html;
+  // y column
+  html='<div class="matrix">';
+  for(let i=0;i<M;i++) html+=`<div class="mrow"><div class="mcell y-cell" id="lc-y-${i}">${Y[i].toFixed(2)}</div></div>`;
+  html+='</div>';
+  document.getElementById('mat-y2').innerHTML=html;
+  // err column
+  html='<div class="matrix">';
+  for(let i=0;i<M;i++) html+=`<div class="mrow"><div class="mcell err-cell" id="lc-err-${i}">?</div></div>`;
+  html+='</div>';
+  document.getElementById('mat-err').innerHTML=html;
+  // loss column
+  html='<div class="matrix">';
+  for(let i=0;i<M;i++) html+=`<div class="mrow"><div class="mcell loss-cell" id="lc-loss-${i}" style="opacity:.2">?</div></div>`;
+  html+='</div>';
+  document.getElementById('mat-loss').innerHTML=html;
+  document.getElementById('cell-J').textContent='?';
+  document.getElementById('info-loss').textContent='点击上方按钮，看看单人误差是如何变成全班总代价的。';
+}
+document.getElementById('btn-loss-play').onclick=function(){
+  if(lossTimer) return;
+  lossStep=0; lossPhase=0;
+  
+  // Clear any existing active classes
+  for(let i=0; i<M; i++){
+      document.getElementById(`lc-yhat-${i}`)?.classList.remove('hi-active');
+      document.getElementById(`lc-y-${i}`)?.classList.remove('hi-active');
+  }
+
+  lossTimer=setInterval(()=>{
+    if(lossStep>=M){
+      clearInterval(lossTimer); lossTimer=null;
+      document.getElementById('cell-J').textContent=J_TOTAL.toFixed(3);
+      document.getElementById('info-loss').innerHTML=
+        `✅ 算完了！总代价 J = (全部误差平方和) ÷ (2×人数${M}) = <strong style="color:var(--blue2)">${J_TOTAL.toFixed(3)}</strong>。<br>注意看：刚刚算出的那一列红色平方数，被<strong>竖着加了起来</strong>。`;
+      
+      for(let i=0; i<M; i++){
+          document.getElementById(`lc-yhat-${i}`)?.classList.remove('hi-active');
+          document.getElementById(`lc-y-${i}`)?.classList.remove('hi-active');
+          document.getElementById(`lc-err-${i}`)?.classList.remove('hi-result');
+          document.getElementById(`lc-loss-${i}`)?.classList.add('hi-result'); // Pulse the final column
+          setTimeout(() => { document.getElementById(`lc-loss-${i}`)?.classList.remove('hi-result'); }, 500);
+      }
+      return;
+    }
+    
+    const i=lossStep;
+    
+    // reset highlights from previous step
+    if(i > 0 && lossPhase === 0) {
+        document.getElementById(`lc-yhat-${i-1}`)?.classList.remove('hi-active');
+        document.getElementById(`lc-y-${i-1}`)?.classList.remove('hi-active');
+        document.getElementById(`lc-err-${i-1}`)?.classList.remove('hi-result');
+        document.getElementById(`lc-loss-${i-1}`)?.classList.remove('hi-result');
+    }
+
+    if(lossPhase === 0) {
+        // Show error
+        document.getElementById(`lc-yhat-${i}`)?.classList.add('hi-active');
+        document.getElementById(`lc-y-${i}`)?.classList.add('hi-active');
+        
+        const errEl = document.getElementById(`lc-err-${i}`);
+        errEl.textContent = ERRORS[i].toFixed(2);
+        errEl.style.color = "var(--txt)";
+        errEl.style.background = "var(--bg3)";
+        errEl.classList.add('hi-result');
+        
+        document.getElementById('info-loss').innerHTML=
+          `正计算样本 ${i}: 预测 ${YHAT[i].toFixed(2)} - 真实 ${Y[i].toFixed(2)} = 差了 <strong style="color:var(--txt)">${ERRORS[i].toFixed(2)}</strong>。这个数可能带负号，所以下一步要平方。`;
+        
+        lossPhase = 1; // next tick will do square
+    } else {
+        // Show squared error
+        const lc=document.getElementById(`lc-loss-${i}`);
+        lc.textContent=LOSSES[i].toFixed(2); 
+        lc.style.opacity='1'; 
+        document.getElementById(`lc-err-${i}`)?.classList.remove('hi-result');
+        lc.classList.add('hi-result');
+        
+        document.getElementById('info-loss').innerHTML=
+          `正计算样本 ${i}: 将误差 ${ERRORS[i].toFixed(2)} 平方得到正的惩罚值：<strong style="color:var(--red2)">${LOSSES[i].toFixed(2)}</strong>。`;
+          
+        lossPhase = 0;
+        lossStep++;
+    }
+  },800);
+};
+function resetLoss(){
+  if(lossTimer){clearInterval(lossTimer);lossTimer=null;}
+  lossStep=0; lossPhase=0; buildLossMatrices();
+}
+
+/* ─── S4: GRADIENT ─── */
+let gradSelJ=0, gradStep=0, gradTimer=null;
+function buildGradButtons(){
+  const wrap=document.getElementById('grad-wj-btns');
+  wrap.innerHTML='';
+  for(let j=0;j<N;j++){
+    const b=document.createElement('button');
+    b.className='btn btn-ghost'; b.textContent=`∂J/∂w${j} (求w${j}的调整量)`;
+    b.onclick=()=>{gradSelJ=j;document.querySelectorAll('[id^="gb-"]').forEach(x=>x.classList.remove('btn-pri'));b.classList.add('btn-pri');resetGradCanvas();};
+    b.id=`gb-${j}`;
+    wrap.appendChild(b);
+  }
+}
+function resetGradCanvas(){
+  if(gradTimer){clearInterval(gradTimer);gradTimer=null;}
+  gradStep=0;
+  drawGradCanvas(-1);
+  document.getElementById('info-grad').innerHTML=`选定了 w<sub>${gradSelJ}</sub>，点击上方“算算总责任”开始！`;
+}
+function drawGradCanvas(activeI){
+  const cv=document.getElementById('cv-grad');
+  const w=cv.offsetWidth||900; cv.width=w;
+  const ctx=cv.getContext('2d'); ctx.clearRect(0,0,w,320);
+  const cs=45, gap=6, pad=20;
+  
+  const colX=[pad, pad+cs+gap*2+40, pad+(cs+gap)*2+40+gap, pad+(cs+gap)*3+60+gap, pad+(cs+gap)*4+60+gap*2, w-pad-cs-15];
+
+  ctx.fillStyle='rgba(150,165,200,.6)'; ctx.font='13px sans-serif'; ctx.textAlign='left';
+  ctx.fillText(`正在给权重 w${gradSelJ} 定责 (遍历所有 ${M} 个样本，最后竖着加总)`,pad,22);
+
+  const contribs=ERRORS.map((e,i)=>e*X[i][gradSelJ]);
+  const gradVal=contribs.reduce((s,v)=>s+v,0)/M;
+
+  for(let i=0;i<M;i++){
+    const rowY=60+i*60;
+    const isActive=activeI===i;
+    const isDone=activeI>i;
+
+    function drawC(x,y,text,color,alpha, subtitle=''){
+      ctx.globalAlpha=alpha;
+      ctx.fillStyle=color+'22';
+      ctx.strokeStyle=color;
+      ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.roundRect(x,y,cs,cs,5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle=color; ctx.font='bold 12px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(text,x+cs/2,y+cs/2);
+      if(subtitle){
+          ctx.font='10px sans-serif'; ctx.fillStyle=color+'cc';
+          ctx.fillText(subtitle,x+cs/2,y+cs+12);
+      }
+      ctx.globalAlpha=1; ctx.textBaseline='alphabetic';
+    }
+
+    const xColor=isActive?'#f05858':isDone?'#f08080':'#3a4460';
+    const eColor=isActive?'#f0b840':isDone?'#f0c870':'#3a4460';
+    const cColor=isActive?'#5588ff':isDone?'#8aabff':'#3a4460';
+    const alpha=isActive?1:isDone?0.8:0.2;
+
+    ctx.globalAlpha=alpha;
+    ctx.fillStyle='rgba(150,165,200,.8)'; ctx.font='12px sans-serif'; ctx.textAlign='right';
+    ctx.fillText(`样本 ${i} 的`,pad-6,rowY+cs/2+4);
+    ctx.globalAlpha=1;
+
+    // error (moved to front conceptually for the explanation)
+    drawC(colX[0],rowY, ERRORS[i].toFixed(2), eColor, alpha, "算出的误差");
+    // ×
+    ctx.globalAlpha=alpha;
+    ctx.fillStyle='rgba(150,165,200,.5)'; ctx.font='18px monospace'; ctx.textAlign='center';
+    ctx.fillText('×', colX[1]+20, rowY+cs/2+6);
+    ctx.globalAlpha=1;
+    // x_j^(i)
+    drawC(colX[2],rowY, X[i][gradSelJ].toFixed(1), xColor, alpha, `第${gradSelJ}个特征值`);
+    // =
+    ctx.globalAlpha=alpha;
+    ctx.fillStyle='rgba(150,165,200,.5)'; ctx.font='18px monospace'; ctx.textAlign='center';
+    ctx.fillText('=', colX[3]+20, rowY+cs/2+6);
+    ctx.globalAlpha=1;
+    // contrib
+    drawC(colX[4],rowY, contribs[i].toFixed(2), cColor, alpha, "分到的锅");
+    
+    // Arrow to sum if done
+    if(isDone||isActive){
+      ctx.globalAlpha=isActive?1:0.5;
+      ctx.strokeStyle='#5588ff'; ctx.lineWidth=1.5; ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(colX[4]+cs+5,rowY+cs/2); ctx.lineTo(colX[5]-5,rowY+cs/2);
+      ctx.stroke(); ctx.setLineDash([]);
+      ctx.globalAlpha=1;
+    }
+  }
+
+  // Running sum box (right side)
+  const sumX=colX[5], sumY=60, sumH=M*60-15;
+  ctx.strokeStyle='rgba(85,136,255,.4)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.roundRect(sumX,sumY,cs,sumH,6); ctx.stroke();
+  let acc=0;
+  if(activeI>=0){
+    for(let i2=0;i2<=activeI;i2++) acc+=contribs[i2];
+    const t=(activeI+1)/M;
+    ctx.fillStyle='rgba(85,136,255,.15)';
+    ctx.beginPath(); ctx.roundRect(sumX,sumY+sumH*(1-t),cs,sumH*t,6); ctx.fill();
+  }
+  ctx.fillStyle=activeI>=0?'#fff':'rgba(150,165,200,.3)'; ctx.font='bold 12px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(activeI>=0?(acc).toFixed(2):'?', sumX+cs/2, sumY+sumH/2-10);
+  ctx.textBaseline='alphabetic';
+  ctx.fillStyle='rgba(150,165,200,.8)'; ctx.font='11px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('全部累加', sumX+cs/2, sumY-10);
+  ctx.fillText('再除以m(平均)', sumX+cs/2, sumY+sumH+18);
+  
+  if (activeI >= M-1) {
+      ctx.fillStyle='#88aaff'; ctx.font='bold 14px monospace'; ctx.textAlign='center';
+      ctx.fillText(`=${(acc/M).toFixed(3)}`, sumX+cs/2, sumY+sumH+38);
+  }
+
+  // Arrow down on sum col
+  if(activeI>=0){
+    ctx.strokeStyle='rgba(85,136,255,.4)'; ctx.lineWidth=1.5; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(sumX+cs/2, sumY+5); ctx.lineTo(sumX+cs/2, sumY+sumH*((activeI+1)/M)-5);
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+}
+
+document.getElementById('btn-grad-play').onclick=function(){
+  if(gradTimer) return;
+  gradStep=0; drawGradCanvas(-1);
+  gradTimer=setInterval(()=>{
+    drawGradCanvas(gradStep);
+    const contribs=ERRORS.map((e,i)=>e*X[i][gradSelJ]);
+    let acc=0; for(let i2=0;i2<=gradStep;i2++) acc+=contribs[i2];
+    
+    document.getElementById('info-grad').innerHTML=
+      `查看样本 ${gradStep}：误差是 ${ERRORS[gradStep].toFixed(2)}，他的特征值(x<sub>${gradSelJ}</sub>)是 ${X[gradStep][gradSelJ].toFixed(1)}。<br>` + 
+      `两者相乘，说明在这次犯错中，权重w<sub>${gradSelJ}</sub>要担 <strong style="color:var(--blue2)">${contribs[gradStep].toFixed(3)}</strong> 的责任。`;
+      
+    gradStep++;
+    if(gradStep>=M){
+      clearInterval(gradTimer); gradTimer=null;
+      const gv=contribs.reduce((s,v)=>s+v,0)/M;
+      setTimeout(() => {
+          document.getElementById('info-grad').innerHTML=
+            `✅ 计算完毕！汇总所有人分给w<sub>${gradSelJ}</sub>的锅，加起来再除以总人数 ${M}，得出最终调整力度（梯度）是 <strong style="color:var(--blue2)">${gv.toFixed(4)}</strong>。<br>注意看：这又是一次<strong>纵向的累加</strong>。`;
+      }, 500);
+    }
+  },1200); // Slower for readability
+};
+function resetGrad(){
+  if(gradTimer){clearInterval(gradTimer);gradTimer=null;}
+  gradStep=0; drawGradCanvas(-1);
+  document.getElementById('info-grad').textContent='选定了权重后，点击上方“算算总责任”开始！';
+}
+
+/* ─── S5: CODE TABS ─── */
+const CODE_LOOP=`<div class="code"><span class="hl-teal"><span class="cm"># 第1步：用 2 层循环算所有的预测值 ŷ（每次横着扫）</span>
+<span class="kw">for</span> <span class="vr">i</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="vr">m</span>): <span class="cm"># 遍历每一个人</span>
+<span class="hl-line">    <span class="vr">y_hat[i]</span> <span class="op">=</span> <span class="nu">0</span>
+    <span class="kw">for</span> <span class="vr">j</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="vr">n</span>): <span class="cm"># 遍历他的所有特征</span>
+        <span class="vr">y_hat[i]</span> <span class="op">+=</span> <span class="vr">w[j]</span> <span class="op">*</span> <span class="vr">X[i][j]</span>  <span class="cm"># ← 第1个Σ：横向点积！</span></span>
+    <span class="cm"># 算完这个人，顺手算出他错得离谱的程度（误差）</span>
+    <span class="vr">error[i]</span> <span class="op">=</span> <span class="vr">y_hat[i]</span> <span class="op">-</span> <span class="vr">y[i]</span></span>
+
+<span class="cm"># --------------------------</span>
+
+<span class="cm"># 第2步：求总代价（把刚刚算出的 error 竖着加起来）</span>
+<span class="vr">J</span> <span class="op">=</span> <span class="fn">sum</span>(<span class="vr">error</span><span class="op">**</span><span class="nu">2</span>) <span class="op">/</span> (<span class="nu">2</span><span class="op">*</span><span class="vr">m</span>)  <span class="cm"># ← 第2个Σ：竖向求和！</span>
+
+<span class="cm"># --------------------------</span>
+
+<span class="hl-gold"><span class="cm"># 第3步：求梯度（对每个权重，收集全班所有人给它的定责）</span>
+<span class="kw">for</span> <span class="vr">j</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="vr">n</span>): <span class="cm"># 遍历每一个权重</span>
+    <span class="vr">grad[j]</span> <span class="op">=</span> <span class="nu">0</span>
+    <span class="kw">for</span> <span class="vr">i</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="vr">m</span>): <span class="cm"># 遍历每一个人</span>
+        <span class="vr">grad[j]</span> <span class="op">+=</span> <span class="vr">error[i]</span> <span class="op">*</span> <span class="vr">X[i][j]</span>  <span class="cm"># ← 还是第2个Σ方向：竖向累加锅！</span>
+    <span class="vr">grad[j]</span> <span class="op">/=</span> <span class="vr">m</span></span></div>`;
+
+const CODE_VEC=`<div class="code"><span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="cm"># NumPy在底层用了C语言，它知道“不要一个人一个人地算，要全班同时算！”</span>
+
+<span class="hl-teal"><span class="cm"># 【预测】全班的预测分 = 数据矩阵 @ 权重向量</span>
+<span class="vr">y_hat</span> <span class="op">=</span> <span class="vr">X</span> <span class="op">@</span> <span class="vr">w</span>               <span class="cm"># 一行代码，瞬间搞定 m 遍的“横向点积”</span></span>
+
+<span class="cm"># 【算代价】全班的误差</span>
+<span class="vr">error</span> <span class="op">=</span> <span class="vr">y_hat</span> <span class="op">-</span> <span class="vr">y</span>           
+<span class="vr">J</span> <span class="op">=</span> <span class="fn">np.sum</span>(<span class="vr">error</span> <span class="op">**</span> <span class="nu">2</span>) <span class="op">/</span> (<span class="nu">2</span><span class="op">*</span><span class="vr">m</span>) <span class="cm"># 瞬间搞定“竖向全班误差和”</span>
+
+<span class="hl-gold"><span class="cm"># 【求梯度】巧妙利用转置 (X.T) 把数据立起来，乘上误差</span>
+<span class="vr">grad</span> <span class="op">=</span> <span class="vr">X</span>.<span class="vr">T</span> <span class="op">@</span> <span class="vr">error</span> <span class="op">/</span> <span class="vr">m</span>      <span class="cm"># 一行代码，让误差分发给所有的列，搞定竖向累加锅</span></span>
+
+<span class="cm"># 最后，同时更新所有的权重</span>
+<span class="vr">w</span> <span class="op">-=</span> <span class="vr">lr</span> <span class="op">*</span> <span class="vr">grad</span></div>`;
+
+const CODE_LINK=`<div class="code"><span class="cm"># 为什么 X @ w 就是在算所有的横向 Σ？</span>
+
+<span class="cm">矩阵 X 的形状是 (m 行, n 列)，向量 w 的形状是 (n 个)。</span>
+<span class="cm">按照矩阵乘法的规则，X 的【每一行】会正好去和 w 的【整条线】对应元素相乘再相加。</span>
+<span class="cm">这不就是我们刚才让小圆点一步步相乘的动画吗？</span>
+<span class="hl-teal"><span class="vr">y_hat</span> <span class="op">=</span> <span class="vr">X</span> <span class="op">@</span> <span class="vr">w</span>  <span class="cm"># 输出形状是 (m,)，刚刚好就是 m 个人的预测分！</span></span>
+
+<span class="cm">────────────────────────────────</span>
+
+<span class="cm"># 为什么 X.T @ error 就能算出所有的纵向梯度 Σ？</span>
+
+<span class="cm">X 原本是 (m行, n列)，转置 X.T 之后变成了 (n行, m列)。</span>
+<span class="cm">这时，X.T 的【每一行】，其实就是原本所有人共享的【某一个特征列】！</span>
+<span class="cm">X.T 的一行去乘以 error 这个长条 (m 个误差)，刚好就是把：</span>
+<span class="cm">"每个人的这个特征" 乘上 "每个人的误差"，然后加起来。这恰恰就是分锅汇总！</span>
+<span class="hl-gold"><span class="vr">grad</span> <span class="op">=</span> <span class="vr">X</span>.<span class="vr">T</span> <span class="op">@</span> <span class="vr">error</span> <span class="op">/</span> <span class="vr">m</span>  <span class="cm"># 输出形状是 (n,)，刚好对应 n 个权重的梯度！</span></span></div>`;
+
+const CODE_CONTENTS={'loop':CODE_LOOP,'vec':CODE_VEC,'link':CODE_LINK};
+function initCodeTabs(){
+  document.getElementById('code-body').innerHTML=CODE_CONTENTS['loop'];
+  document.querySelectorAll('.stab').forEach(b=>{
+    b.onclick=function(){
+      document.querySelectorAll('.stab').forEach(x=>x.classList.remove('on'));
+      this.classList.add('on');
+      document.getElementById('code-body').innerHTML=CODE_CONTENTS[this.dataset.tab];
+    };
+  });
+}
+
+/* ─── S5: MATMUL ANIMATION ─── */
+let mmStep=0, mmTimer=null;
+function drawMatmul(step){
+  const cv=document.getElementById('cv-matmul');
+  const W2=cv.offsetWidth||900; cv.width=W2;
+  const ctx=cv.getContext('2d'); ctx.clearRect(0,0,W2,260);
+  const cs=45, gap=4, pad=20;
+  
+  const xLeft=pad, xTop=40;
+  const wLeft=xLeft+(N+1)*(cs+gap)+20, wTop=xTop+(M-N)/2*(cs+gap);
+  const eqX=wLeft+cs+gap+14;
+  const yLeft=eqX+24, yTop=xTop;
+
+  function drawCell(x,y,text,bg,border,tc,alpha){
+    ctx.globalAlpha=alpha??1;
+    ctx.fillStyle=bg; ctx.strokeStyle=border; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.roundRect(x,y,cs,cs,5); ctx.fill(); ctx.stroke();
+    ctx.fillStyle=tc; ctx.font='bold 11px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(text,x+cs/2,y+cs/2);
+    ctx.globalAlpha=1; ctx.textBaseline='alphabetic';
+  }
+
+  // X matrix
+  ctx.fillStyle='rgba(150,165,200,.6)'; ctx.font='12px sans-serif'; ctx.textAlign='center';
+  ctx.fillText(`X矩阵 (所有人所有特征)`, xLeft+(N*(cs+gap)-gap)/2, xTop-15);
+  for(let i=0;i<M;i++) for(let j=0;j<N;j++){
+    const isActiveRow=step===i+1||step>M;
+    const bg=isActiveRow?'rgba(32,212,160,.2)':'rgba(24,28,40,.9)';
+    const border=isActiveRow?'rgba(32,212,160,.7)':'rgba(100,120,200,.18)';
+    const tc=isActiveRow?'#80eece':'rgba(150,165,200,.7)';
+    drawCell(xLeft+j*(cs+gap), xTop+i*(cs+gap), X[i][j].toFixed(1), bg, border, tc);
+  }
+
+  ctx.fillStyle='rgba(150,165,200,.4)'; ctx.font='20px monospace'; ctx.textAlign='center';
+  ctx.fillText('@', wLeft-12, xTop+M/2*(cs+gap)+6);
+
+  // w vector
+  ctx.fillStyle='rgba(150,165,200,.6)'; ctx.font='12px sans-serif'; ctx.textAlign='center';
+  ctx.fillText(`w向量`, wLeft+cs/2, wTop-15);
+  for(let j=0;j<N;j++){
+    const isActive=step>=1&&step<=M||step>M;
+    const bg=isActive?'rgba(32,212,160,.1)':'rgba(24,28,40,.9)';
+    const tc=isActive?'#80eece':'rgba(150,165,200,.7)';
+    drawCell(wLeft, wTop+j*(cs+gap), W[j].toFixed(1), bg, 'rgba(32,212,160,.4)', tc);
+  }
+
+  ctx.fillStyle='rgba(150,165,200,.4)'; ctx.font='20px monospace'; ctx.textAlign='center';
+  ctx.fillText('=', eqX+4, xTop+M/2*(cs+gap)+6);
+
+  // ŷ column
+  ctx.fillStyle='rgba(150,165,200,.6)'; ctx.font='12px sans-serif'; ctx.textAlign='center';
+  ctx.fillText(`ŷ预测分`, yLeft+cs/2, xTop-15);
+  for(let i=0;i<M;i++){
+    const isDone=step>i;
+    const bg=isDone?'rgba(248,128,64,.2)':'rgba(24,28,40,.9)';
+    const border=isDone?'rgba(248,128,64,.6)':'rgba(100,120,200,.18)';
+    const tc=isDone?'#ffb080':'rgba(100,120,200,.3)';
+    const txt=isDone?YHAT[i].toFixed(2):'?';
+    drawCell(yLeft, xTop+i*(cs+gap), txt, bg, border, tc);
+  }
+
+  if(step>=1&&step<=M){
+    const i=step-1;
+    ctx.strokeStyle='rgba(32,212,160,.5)'; ctx.lineWidth=2; ctx.setLineDash([4,4]);
+    ctx.beginPath();
+    ctx.moveTo(xLeft-5,xTop+i*(cs+gap)+cs/2);
+    ctx.lineTo(wLeft+cs+5, xTop+i*(cs+gap)+cs/2);
+    ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle='rgba(32,212,160,.8)'; ctx.font='12px sans-serif'; ctx.textAlign='left';
+    ctx.fillText(`机器底层的秘密：整行整列地相乘相加 -> 得出 ŷ[${i}]`, xLeft, xTop+M*(cs+gap)+22);
+  } else if(step>M){
+    ctx.fillStyle='rgba(248,128,64,.9)'; ctx.font='13px sans-serif'; ctx.textAlign='center';
+    ctx.fillText(`只需一句代码，${M} 遍横向点积瞬间全部完成！这就是向量化的威力。`, W2/2, xTop+M*(cs+gap)+22);
+  } else {
+    ctx.fillStyle='rgba(150,165,200,.5)'; ctx.font='12px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('点击上方“播放动画”，看看一行代码是如何取代 for 循环的。', W2/2, xTop+M*(cs+gap)+22);
+  }
+}
+document.getElementById('btn-matmul').onclick=function(){
+  if(mmTimer) return;
+  mmStep=0;
+  mmTimer=setInterval(()=>{
+    mmStep++; drawMatmul(mmStep);
+    if(mmStep>M+1){clearInterval(mmTimer);mmTimer=null;}
+  },1000);
+};
+function resetMatmul(){
+  if(mmTimer){clearInterval(mmTimer);mmTimer=null;}
+  mmStep=0; drawMatmul(0);
+}
+
+/* ─── S6: SUMMARY ─── */
+function drawSummary(){
+  const cv=document.getElementById('cv-summary');
+  const W2=cv.offsetWidth||900; cv.width=W2;
+  const ctx=cv.getContext('2d'); ctx.clearRect(0,0,W2,340);
+  const cs=42, gap=4, ML=35;
+
+  for(let i=0;i<M;i++) for(let j=0;j<N;j++){
+    ctx.fillStyle='rgba(24,28,40,.9)'; ctx.strokeStyle='rgba(100,120,200,.2)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.roundRect(ML+j*(cs+gap),60+i*(cs+gap),cs,cs,4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='rgba(150,165,200,.5)'; ctx.font='10px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(X[i][j].toFixed(1),ML+j*(cs+gap)+cs/2,60+i*(cs+gap)+cs/2);
+    ctx.textBaseline='alphabetic';
+  }
+
+  ctx.strokeStyle='rgba(32,212,160,.8)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(ML,55); ctx.lineTo(ML+N*(cs+gap)-gap,55);
+  ctx.stroke();
+  ctx.fillStyle='#20d4a0';
+  ctx.beginPath(); ctx.moveTo(ML+N*(cs+gap)-gap,55);
+  ctx.lineTo(ML+N*(cs+gap)-gap-8,51); ctx.lineTo(ML+N*(cs+gap)-gap-8,59); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#20d4a0'; ctx.font='bold 12px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('→ 针对单人横着加', ML+N*(cs+gap)/2, 45);
+  ctx.fillStyle='#20d4a0'; ctx.font='10px sans-serif';
+  ctx.fillText('为了得出他个人的预测分', ML+N*(cs+gap)/2, 28);
+
+  const midX=ML-18;
+  ctx.strokeStyle='rgba(240,184,64,.8)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(midX,60); ctx.lineTo(midX,60+M*(cs+gap)-gap);
+  ctx.stroke();
+  ctx.fillStyle='#f0b840';
+  ctx.beginPath(); ctx.moveTo(midX,60+M*(cs+gap)-gap);
+  ctx.lineTo(midX-4,60+M*(cs+gap)-gap-9); ctx.lineTo(midX+4,60+M*(cs+gap)-gap-9); ctx.closePath(); ctx.fill();
+
+  ctx.save(); ctx.translate(midX-24, 60+M*(cs+gap)/2);
+  ctx.rotate(-Math.PI/2); ctx.fillStyle='#f0b840'; ctx.font='bold 12px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('↓ 跨越全班竖着加', 0, 0); ctx.restore();
+  ctx.save(); ctx.translate(midX-40, 60+M*(cs+gap)/2);
+  ctx.rotate(-Math.PI/2); ctx.fillStyle='#f0b840'; ctx.font='10px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('为了算整体的惩罚或者给权重分锅', 0, 0); ctx.restore();
+
+  const rx=ML+N*(cs+gap)+40;
+  function drawFBox(x,y,w2,h,text,color,subtext){
+    ctx.fillStyle=color+'11'; ctx.strokeStyle=color+'66'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.roundRect(x,y,w2,h,6); ctx.fill(); ctx.stroke();
+    ctx.fillStyle=color; ctx.font='bold 13px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(text,x+w2/2,y+h/2-(subtext?8:0));
+    if(subtext){ctx.font='11px sans-serif'; ctx.fillStyle=color+'dd'; ctx.fillText(subtext,x+w2/2,y+h/2+10);}
+    ctx.textBaseline='alphabetic';
+  }
+
+  const fw=Math.min(260, W2-rx-ML);
+  drawFBox(rx, 35, fw, 56, 'ŷ = X @ w', '#20d4a0','【第一步】横向点积得预测分');
+  ctx.fillStyle='rgba(150,165,200,.4)'; ctx.font='16px monospace'; ctx.textAlign='center';
+  ctx.fillText('↓', rx+fw/2, 108);
+  drawFBox(rx, 115, fw, 56, 'J = sum((ŷ-y)²)/m', '#f0b840','【第二步】纵向相加算整体代价');
+  ctx.fillStyle='rgba(150,165,200,.4)'; ctx.font='16px monospace'; ctx.textAlign='center';
+  ctx.fillText('↓', rx+fw/2, 188);
+  drawFBox(rx, 195, fw, 60, 'grad = X.T @ (ŷ-y)/m', '#f05858','【第三步】纵向收集误差分配梯度');
+
+  ctx.fillStyle='rgba(150,165,200,.6)'; ctx.font='13px sans-serif'; ctx.textAlign='left';
+  ctx.fillText('数据矩阵（你的大本营）',ML,20);
+}
+
+/* ─── INIT ─── */
+function init(){
+  buildMatrixX(); buildVecW(); buildVecY();
+  buildPredUI(); selectSample(0);
+  buildLossMatrices();
+  buildGradButtons();
+  document.getElementById('gb-0').classList.add('btn-pri');
+  drawGradCanvas(-1);
+  initCodeTabs();
+  drawMatmul(0);
+  drawSummary();
+}
+
+function onResize(){
+  drawGradCanvas(gradStep>0?gradStep-1:-1);
+  drawMatmul(mmStep);
+  drawSummary();
+}
+window.addEventListener('resize',onResize);
+
+const st=document.createElement('style');
+st.textContent='@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}';
+document.head.appendChild(st);
+
+setTimeout(init,80);
+</script>
+</body>
+</html>

@@ -1,3 +1,4 @@
 {
-    "notebook.outline.showMarkdownHeadersOnly": false
+    "notebook.outline.showMarkdownHeadersOnly": false,
+    "chatgpt.openOnStartup": true
 }

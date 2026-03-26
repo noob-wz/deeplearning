@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>从几率推导 Sigmoid 交互演示</title>
+    <style>
+        :root {
+            --color-p: #2196f3;       /* 概率蓝 */
+            --color-odds: #d97706;    /* 几率橙 */
+            --color-z: #c2185b;       /* Z值红 */
+            --bg-color: #fafafa;
+            --card-bg: #f3f4f6;
+            --text-main: #333;
+            --text-sub: #666;
+            --border-color: #e5e7eb;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            line-height: 1.6;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            width: 100%;
+            max-width: 800px;
+        }
+
+        /* 顶部滑块控制区 */
+        .slider-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            font-weight: bold;
+        }
+
+        input[type=range] {
+            flex-grow: 1;
+            cursor: pointer;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #fff;
+            border: 2px solid #ccc;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .p-display-top {
+            font-size: 18px;
+            min-width: 40px;
+            text-align: right;
+        }
+
+        /* 数值卡片区 */
+        .cards-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            flex: 1;
+            background-color: var(--card-bg);
+            padding: 20px 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .card-val {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .card-label {
+            font-size: 12px;
+            color: var(--text-sub);
+        }
+
+        .text-p { color: var(--color-p); }
+        .text-odds { color: var(--color-odds); }
+        .text-z { color: var(--color-z); }
+
+        /* 步骤区 */
+        .step-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+
+        .step-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .icon-p { background-color: #e3f2fd; color: var(--color-p); }
+        .icon-odds { background-color: #fef3c7; color: var(--color-odds); }
+        .icon-z { background-color: #fce4ec; color: var(--color-z); }
+        .icon-final { background-color: #e8f5e9; color: #2e7d32; }
+
+        .step-content {
+            flex-grow: 1;
+        }
+
+        .step-title {
+            font-weight: bold;
+            font-size: 15px;
+            margin-bottom: 4px;
+        }
+
+        .step-desc {
+            font-size: 13px;
+            color: var(--text-sub);
+            margin-bottom: 12px;
+        }
+
+        .formula-box {
+            display: inline-block;
+            background-color: #f8f9fa;
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        /* 坐标轴可是化 */
+        .axis-container {
+            position: relative;
+            height: 40px;
+            margin-top: 10px;
+        }
+
+        .axis-line {
+            position: absolute;
+            top: 10px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: #e0e0e0;
+        }
+
+        .axis-dot {
+            position: absolute;
+            top: 10px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: left 0.1s linear;
+            z-index: 2;
+            box-shadow: 0 0 0 4px rgba(255,255,255,0.8);
+        }
+        .dot-p { background-color: var(--color-p); }
+        .dot-odds { background-color: var(--color-odds); }
+        .dot-z { background-color: var(--color-z); }
+
+        .axis-ticks {
+            position: absolute;
+            top: 22px;
+            left: 0;
+            right: 0;
+            font-size: 12px;
+            color: #999;
+        }
+
+        .tick {
+            position: absolute;
+            transform: translateX(-50%);
+        }
+        .tick::before {
+            content: '';
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            width: 2px;
+            height: 6px;
+            background-color: #ccc;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <div class="slider-header">
+        <span>拖动概率 P：</span>
+        <input type="range" id="main-slider" min="0.01" max="0.99" step="0.01" value="0.37">
+        <span class="p-display-top" id="top-p-val">0.37</span>
+    </div>
+
+    <div class="cards-container">
+        <div class="card">
+            <div class="card-val text-p" id="card-p">0.37</div>
+            <div class="card-label">P (概率)</div>
+        </div>
+        <div class="card">
+            <div class="card-val text-odds" id="card-odds">0.59</div>
+            <div class="card-label">Odds (几率)</div>
+        </div>
+        <div class="card">
+            <div class="card-val text-z" id="card-z">-0.53</div>
+            <div class="card-label">z = ln(Odds)</div>
+        </div>
+    </div>
+
+    <div class="step-row">
+        <div class="step-icon icon-p">1</div>
+        <div class="step-content">
+            <div class="step-title">P 的范围：[0, 1]</div>
+            <div class="step-desc">原始概率，天然受限，但线性回归输出不在这里</div>
+            <div class="axis-container">
+                <div class="axis-line"></div>
+                <div class="axis-dot dot-p" id="dot-p"></div>
+                <div class="axis-ticks">
+                    <span class="tick" style="left: 0%">0</span>
+                    <span class="tick" style="left: 50%">0.5</span>
+                    <span class="tick" style="left: 100%">1</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="step-row">
+        <div class="step-icon icon-odds">2</div>
+        <div class="step-content">
+            <div class="step-title">Odds = P / (1-P)，范围扩到 [0, +∞)</div>
+            <div class="step-desc">把概率换成"胜负比"，右侧打开了，但左侧仍被0卡住</div>
+            <div class="formula-box">Odds = P / ( 1 - P )</div>
+            <div class="axis-container">
+                <div class="axis-line"></div>
+                <div class="axis-dot dot-odds" id="dot-odds"></div>
+                <div class="axis-ticks">
+                    <span class="tick" style="left: 0%">0</span>
+                    <span class="tick" style="left: 16.67%">1</span>
+                    <span class="tick" style="left: 50%">5</span>
+                    <span class="tick" style="left: 66.67%">10</span>
+                    <span class="tick" style="left: 80%">20+</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="step-row">
+        <div class="step-icon icon-z">3</div>
+        <div class="step-content">
+            <div class="step-title">z = ln(Odds)，范围终于达到 (-∞, +∞)</div>
+            <div class="step-desc">取对数后两侧都打开了，和线性回归输出的范围完全一致</div>
+            <div class="formula-box">z = ln( P / ( 1 - P ) )</div>
+            <div class="axis-container">
+                <div class="axis-line"></div>
+                <div class="axis-dot dot-z" id="dot-z"></div>
+                <div class="axis-ticks">
+                    <span class="tick" style="left: 0%">-4</span>
+                    <span class="tick" style="left: 25%">-2</span>
+                    <span class="tick" style="left: 50%">0</span>
+                    <span class="tick" style="left: 75%">2</span>
+                    <span class="tick" style="left: 100%">4</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="step-row">
+        <div class="step-icon icon-final">↩</div>
+        <div class="step-content">
+            <div class="step-title">反过来解出 P，就得到 Sigmoid</div>
+            <div class="step-desc">已知 z，把上面的方程反解，P 就是 Sigmoid 函数——这不是猜出来的，是推出来的。</div>
+            <div class="formula-box">P = 1 / ( 1 + e<sup>-z</sup> ) &nbsp; ← 即 σ(z)</div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const slider = document.getElementById('main-slider');
+    
+    // 文本显示元素
+    const topPVal = document.getElementById('top-p-val');
+    const cardP = document.getElementById('card-p');
+    const cardOdds = document.getElementById('card-odds');
+    const cardZ = document.getElementById('card-z');
+    
+    // 圆点元素
+    const dotP = document.getElementById('dot-p');
+    const dotOdds = document.getElementById('dot-odds');
+    const dotZ = document.getElementById('dot-z');
+
+    function updateVisuals() {
+        const p = parseFloat(slider.value);
+        
+        // 核心数学计算
+        const odds = p / (1 - p);
+        const z = Math.log(odds);
+
+        // 更新文本内容 (保留2位小数)
+        topPVal.innerText = p.toFixed(2);
+        cardP.innerText = p.toFixed(2);
+        cardOdds.innerText = odds.toFixed(2);
+        cardZ.innerText = z.toFixed(2);
+
+        // 1. 更新 P 轴圆点位置 (线性映射 0~1 -> 0%~100%)
+        dotP.style.left = `${p * 100}%`;
+
+        // 2. 更新 Odds 轴圆点位置 (非线性映射处理无穷大)
+        // 为了在有限屏幕展示 [0, +∞)，我们使用 f(x) = x / (x + 5) 进行映射
+        // 这个映射保证了 0在最左，5在正中间(50%)，无穷大趋近于100%最右侧
+        let oddsPercent = (odds / (odds + 5)) * 100;
+        dotOdds.style.left = `${oddsPercent}%`;
+
+        // 3. 更新 Z 轴圆点位置 (限制在 -4 到 4 的视觉范围内展示)
+        // 映射逻辑：将 [-4, 4] 映射到 [0%, 100%]
+        let zPercent = ((z + 4) / 8) * 100;
+        // 限制圆点不要飞出界面
+        zPercent = Math.max(0, Math.min(100, zPercent)); 
+        dotZ.style.left = `${zPercent}%`;
+    }
+
+    // 绑定事件并初始化
+    slider.addEventListener('input', updateVisuals);
+    updateVisuals(); // 页面加载时执行一次
+</script>
+
+</body>
+</html>

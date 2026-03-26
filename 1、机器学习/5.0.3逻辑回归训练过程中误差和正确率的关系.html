@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>逻辑回归梯度下降训练演示</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+    <style>
+        :root {
+            --primary-blue: #2196f3;
+            --primary-green: #00b07c;
+            --primary-red: #f44336;
+            --bg-color: #fafafa;
+            --text-main: #333;
+            --text-sub: #666;
+            --border-color: #e5e7eb;
+            --card-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            line-height: 1.6;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        }
+
+        .text-section { margin-bottom: 40px; }
+        .text-section h3 { font-size: 18px; margin-bottom: 15px; }
+        .text-section p { color: var(--text-sub); margin-bottom: 15px; font-size: 15px; }
+        .formula-box { display: flex; justify-content: center; margin: 25px 0; font-size: 1.1em; }
+
+        .controls-header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; font-size: 14px; }
+        input[type=range] { flex-grow: 1; cursor: pointer; }
+        .val-display { font-weight: bold; min-width: 40px; text-align: right; }
+
+        .button-group { display: flex; gap: 10px; margin-bottom: 30px; }
+        .btn {
+            padding: 8px 16px; border: 1px solid #ccc; background-color: #fff;
+            border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.2s;
+        }
+        .btn:hover { background-color: #f5f5f5; border-color: #aaa; }
+        .btn:active { background-color: #eee; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 30px; }
+        .stat-card { background-color: #f9f9f9; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid var(--border-color); }
+        .stat-val { font-size: 24px; font-weight: bold; margin-bottom: 4px; }
+        .stat-label { font-size: 12px; color: var(--text-sub); }
+        .text-blue { color: var(--primary-blue); }
+        .text-green { color: var(--primary-green); }
+
+        .charts-container { display: flex; flex-direction: column; gap: 20px; margin-bottom: 20px; }
+        .chart-wrapper { position: relative; height: 250px; width: 100%; }
+        
+        .log-console {
+            background-color: #f5f5f5; font-family: monospace; font-size: 12px; color: #555;
+            padding: 15px; border-radius: 6px; height: 80px; overflow-y: auto;
+            border: 1px solid var(--border-color); margin-bottom: 20px; word-wrap: break-word; line-height: 1.8;
+        }
+
+        .bottom-desc { font-size: 14px; color: var(--text-sub); border-top: 1px solid var(--border-color); padding-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="text-section">
+        <p>对整个训练集，把所有样本的损失取平均：</p>
+        <div class="formula-box" id="formula-loss"></div>
+        <p>然后对 w 和 b 求偏导，得到梯度，按学习率更新——和线性回归的过程结构完全相同。</p>
+        <p>而且有一个让人惊喜的事实：逻辑回归的梯度更新公式，形式上和线性回归几乎一样：</p>
+        <div class="formula-box" id="formula-grad"></div>
+        <p>线性回归是 $(\hat{y}_i - y_i)$，逻辑回归是 $(\hat{p}_i - y_i)$，只是把预测值换了个名字。背后的道理是交叉熵和 Sigmoid 组合后，求导时刚好化简得非常干净。</p>
+        <p>来看完整的训练循环：</p>
+    </div>
+
+    <div class="controls-header">
+        <span>学习率 α：</span>
+        <input type="range" id="lr-slider" min="0.01" max="1.0" step="0.01" value="0.10">
+        <span class="val-display" id="lr-display">0.10</span>
+    </div>
+
+    <div class="button-group">
+        <button class="btn" onclick="trainSteps(1)">单步训练 →</button>
+        <button class="btn" onclick="trainSteps(10)">训练 10 步 ↗</button>
+        <button class="btn" onclick="trainSteps(100)">训练 100 步 ↗</button>
+        <button class="btn" onclick="resetModel()">重置</button>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-val" id="val-iteration">0</div>
+            <div class="stat-label">迭代次数</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-val text-blue" id="val-loss">0.6931</div>
+            <div class="stat-label">当前损失 J</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-val text-green" id="val-acc">0%</div>
+            <div class="stat-label">训练准确率</div>
+        </div>
+    </div>
+
+    <div class="charts-container">
+        <div class="chart-wrapper" style="height: 200px;">
+            <canvas id="lineChart"></canvas>
+        </div>
+        <div style="font-size: 12px; color: #666; margin-top: -10px;">决策边界 (绿色阴影 = 判为阳性，红色阴影 = 判为阴性)</div>
+        <div class="chart-wrapper" style="height: 280px;">
+            <canvas id="scatterChart"></canvas>
+        </div>
+    </div>
+
+    <div class="log-console" id="log-console">等待训练开始...</div>
+
+    <div class="bottom-desc">
+        点"单步训练"看每一步发生了什么，再点"训练 100 步"看损失曲线如何下降、决策边界如何找到正确位置。也可以调整学习率，感受太大和太小的区别。
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        katex.render("J(w,b) = -\\frac{1}{n} \\sum_{i=1}^{n} \\left[ y_i \\log(\\hat{p}_i) + (1 - y_i) \\log(1 - \\hat{p}_i) \\right]", document.getElementById("formula-loss"), {displayMode: true});
+        katex.render("w \\leftarrow w - \\alpha \\cdot \\frac{1}{n} \\sum_{i=1}^{n} (\\hat{p}_i - y_i) \\cdot x_i", document.getElementById("formula-grad"), {displayMode: true});
+        initVisualization();
+    });
+
+    // 修正类别映射：根据文本和截图，左下角的绿点是阳性(y=1)，右上角的红三角是阴性(y=0)
+    const class1_positive = [
+        {x: 1, y: 3.5}, {x: 1.2, y: 0.8}, {x: 1.5, y: 2.8}, {x: 1.8, y: 2.2}, {x: 2.1, y: 1.5},
+        {x: 2.2, y: 2.9}, {x: 2.5, y: 1.8}, {x: 2.8, y: 3.1}, {x: 3.0, y: 2.5}, {x: 3.5, y: 1.2}
+    ]; // 绿色圆圈
+    
+    const class0_negative = [
+        {x: 4, y: 5.0}, {x: 4.3, y: 4.2}, {x: 4.7, y: 5.2}, {x: 5.0, y: 3.2}, {x: 5.2, y: 4.5},
+        {x: 5.5, y: 5.5}, {x: 5.8, y: 3.8}, {x: 6.0, y: 5.0}, {x: 6.2, y: 3.5}
+    ]; // 红色三角
+
+    const dataX1 = [], dataX2 = [], dataY = [];
+    class1_positive.forEach(pt => { dataX1.push(pt.x); dataX2.push(pt.y); dataY.push(1); }); // y=1
+    class0_negative.forEach(pt => { dataX1.push(pt.x); dataX2.push(pt.y); dataY.push(0); }); // y=0
+    const N = dataY.length;
+
+    let w1 = 0, w2 = 0, b = 0, iterations = 0, currentLr = 0.10;
+    
+    let historyLossData = [];
+    let historyAccData = [];
+
+    const lrSlider = document.getElementById('lr-slider');
+    const lrDisplay = document.getElementById('lr-display');
+    const valIteration = document.getElementById('val-iteration');
+    const valLoss = document.getElementById('val-loss');
+    const valAcc = document.getElementById('val-acc');
+    const logConsole = document.getElementById('log-console');
+
+    lrSlider.addEventListener('input', (e) => {
+        currentLr = parseFloat(e.target.value);
+        lrDisplay.innerText = currentLr.toFixed(2);
+    });
+
+    function sigmoid(z) { return 1 / (1 + Math.exp(-z)); }
+
+    function computeMetrics() {
+        let lossSum = 0, correctCount = 0;
+        for (let i = 0; i < N; i++) {
+            let z = w1 * dataX1[i] + w2 * dataX2[i] + b;
+            let p = sigmoid(z);
+            let p_clip = Math.max(1e-15, Math.min(1 - 1e-15, p));
+            lossSum += - (dataY[i] * Math.log(p_clip) + (1 - dataY[i]) * Math.log(1 - p_clip));
+            if ((p >= 0.5 ? 1 : 0) === dataY[i]) correctCount++;
+        }
+        return { loss: lossSum / N, acc: (correctCount / N) * 100 };
+    }
+
+    let lineChart, scatterChart, logs = [];
+
+    function trainSteps(steps) {
+        if(iterations === 0 && logs.length === 0) logConsole.innerHTML = ""; 
+
+        for (let step = 0; step < steps; step++) {
+            let dw1 = 0, dw2 = 0, db = 0;
+            for (let i = 0; i < N; i++) {
+                let p = sigmoid(w1 * dataX1[i] + w2 * dataX2[i] + b);
+                let dz = p - dataY[i];
+                dw1 += dz * dataX1[i]; dw2 += dz * dataX2[i]; db += dz;
+            }
+            w1 -= currentLr * (dw1 / N);
+            w2 -= currentLr * (dw2 / N);
+            b -= currentLr * (db / N);
+            iterations++;
+
+            if(steps === 1 || step === steps - 1 || step % 10 === 0) {
+                let metrics = computeMetrics();
+                historyLossData.push({x: iterations, y: metrics.loss});
+                historyAccData.push({x: iterations, y: metrics.acc});
+            }
+        }
+        updateUI();
+    }
+
+    function resetModel() {
+        w1 = 0; w2 = 0; b = 0; iterations = 0;
+        historyLossData = []; historyAccData = []; logs = ["模型已重置，等待训练开始..."];
+        
+        let initM = computeMetrics();
+        historyLossData.push({x: 0, y: initM.loss});
+        historyAccData.push({x: 0, y: initM.acc});
+        updateUI();
+    }
+
+    function updateUI() {
+        let metrics = computeMetrics();
+        valIteration.innerText = iterations;
+        valLoss.innerText = metrics.loss.toFixed(4);
+        valAcc.innerText = metrics.acc.toFixed(0) + '%';
+
+        let logStr = `完成 ${iterations} 步 损失=${metrics.loss.toFixed(4)} 准确率=${metrics.acc.toFixed(0)}% w1=${w1.toFixed(3)} w2=${w2.toFixed(3)} b=${b.toFixed(3)} `;
+        if(iterations > 0) logs.unshift(logStr);
+        if(logs.length > 50) logs.pop();
+        logConsole.innerHTML = logs.join(" &nbsp;&nbsp; ");
+
+        lineChart.data.datasets[0].data = historyLossData;
+        lineChart.data.datasets[1].data = historyAccData;
+        lineChart.update();
+        scatterChart.update();
+    }
+
+    // 修正边界渲染数学逻辑：z > 0 为绿色阴影(阳性)，z < 0 为红色阴影(阴性)
+    const decisionBoundaryPlugin = {
+        id: 'decisionBoundary',
+        beforeDraw: (chart) => {
+            if (w1 === 0 && w2 === 0 && b === 0) return; 
+
+            const ctx = chart.ctx;
+            const xAxis = chart.scales.x;
+            const yAxis = chart.scales.y;
+            
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(xAxis.left, yAxis.top, xAxis.right - xAxis.left, yAxis.bottom - yAxis.top);
+            ctx.clip();
+
+            if (Math.abs(w2) > 0.001) {
+                let xLeft = xAxis.min - 10; 
+                let xRight = xAxis.max + 10;
+                let pyLeft = yAxis.getPixelForValue((-w1 * xLeft - b) / w2);
+                let pyRight = yAxis.getPixelForValue((-w1 * xRight - b) / w2);
+                let pxLeft = xAxis.getPixelForValue(xLeft);
+                let pxRight = xAxis.getPixelForValue(xRight);
+
+                if(w2 > 0) {
+                    // w2 > 0 时，y越大z越大。上方是z>0(绿区)，下方是z<0(红区)
+                    ctx.fillStyle = 'rgba(0, 176, 124, 0.08)'; // 绿区(阳性)
+                    ctx.beginPath(); ctx.moveTo(pxLeft, pyLeft); ctx.lineTo(pxRight, pyRight);
+                    ctx.lineTo(pxRight, yAxis.top - 1000); ctx.lineTo(pxLeft, yAxis.top - 1000); ctx.fill();
+                    
+                    ctx.fillStyle = 'rgba(244, 67, 54, 0.08)'; // 红区(阴性)
+                    ctx.beginPath(); ctx.moveTo(pxLeft, pyLeft); ctx.lineTo(pxRight, pyRight);
+                    ctx.lineTo(pxRight, yAxis.bottom + 1000); ctx.lineTo(pxLeft, yAxis.bottom + 1000); ctx.fill();
+                } else {
+                    // w2 < 0 时，y越大z越小。上方是z<0(红区)，下方是z>0(绿区)
+                    ctx.fillStyle = 'rgba(244, 67, 54, 0.08)'; 
+                    ctx.beginPath(); ctx.moveTo(pxLeft, pyLeft); ctx.lineTo(pxRight, pyRight);
+                    ctx.lineTo(pxRight, yAxis.top - 1000); ctx.lineTo(pxLeft, yAxis.top - 1000); ctx.fill();
+                    
+                    ctx.fillStyle = 'rgba(0, 176, 124, 0.08)';
+                    ctx.beginPath(); ctx.moveTo(pxLeft, pyLeft); ctx.lineTo(pxRight, pyRight);
+                    ctx.lineTo(pxRight, yAxis.bottom + 1000); ctx.lineTo(pxLeft, yAxis.bottom + 1000); ctx.fill();
+                }
+            } else {
+                if (Math.abs(w1) > 0.001) {
+                    let pxBound = xAxis.getPixelForValue(-b / w1);
+                    if (w1 > 0) {
+                        ctx.fillStyle = 'rgba(0, 176, 124, 0.08)'; // 右边绿
+                        ctx.fillRect(pxBound, yAxis.top, xAxis.right - pxBound + 1000, yAxis.bottom - yAxis.top);
+                        ctx.fillStyle = 'rgba(244, 67, 54, 0.08)'; // 左边红
+                        ctx.fillRect(xAxis.left - 1000, yAxis.top, pxBound - (xAxis.left - 1000), yAxis.bottom - yAxis.top);
+                    } else {
+                        ctx.fillStyle = 'rgba(244, 67, 54, 0.08)'; // 右边红
+                        ctx.fillRect(pxBound, yAxis.top, xAxis.right - pxBound + 1000, yAxis.bottom - yAxis.top);
+                        ctx.fillStyle = 'rgba(0, 176, 124, 0.08)'; // 左边绿
+                        ctx.fillRect(xAxis.left - 1000, yAxis.top, pxBound - (xAxis.left - 1000), yAxis.bottom - yAxis.top);
+                    }
+                }
+            }
+            ctx.restore();
+        }
+    };
+
+    function initVisualization() {
+        const ctxLine = document.getElementById('lineChart').getContext('2d');
+        lineChart = new Chart(ctxLine, {
+            type: 'line',
+            data: { datasets: [
+                { label: '损失曲线', data: [], borderColor: '#2196f3', backgroundColor: 'transparent', yAxisID: 'yLoss', tension: 0.1, pointRadius: 0, borderWidth: 2 },
+                { label: '准确率', data: [], borderColor: '#00b07c', backgroundColor: 'transparent', yAxisID: 'yAcc', tension: 0.1, pointRadius: 0, borderWidth: 2 }
+            ]},
+            options: {
+                responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { position: 'bottom', align: 'start', labels: { boxWidth: 12, font: {size: 12} } } },
+                scales: {
+                    x: { type: 'linear', display: false, min: 0 }, 
+                    yLoss: { type: 'linear', position: 'left', min: 0, max: 0.8, title: { display: true, text: '损失', color: '#999', font: {size: 10} }, grid: { color: '#f0f0f0' }, ticks: { color: '#999', stepSize: 0.1 } },
+                    yAcc: { type: 'linear', position: 'right', min: 0, max: 100, title: { display: true, text: '准确率', color: '#999', font: {size: 10} }, grid: { display: false }, ticks: { color: '#999', callback: (v) => v + '%' } }
+                }
+            }
+        });
+
+        const ctxScatter = document.getElementById('scatterChart').getContext('2d');
+        scatterChart = new Chart(ctxScatter, {
+            type: 'scatter', plugins: [decisionBoundaryPlugin],
+            data: { datasets: [
+                { label: '阳性 (y=1)', data: class1_positive, backgroundColor: '#00b07c', pointStyle: 'circle', radius: 6, hoverRadius: 8 },
+                { label: '阴性 (y=0)', data: class0_negative, backgroundColor: '#f44336', pointStyle: 'triangle', radius: 7, hoverRadius: 9 }
+            ]},
+            options: {
+                responsive: true, maintainAspectRatio: false, 
+                plugins: { 
+                    legend: { 
+                        display: true, 
+                        position: 'bottom',
+                        labels: { usePointStyle: true, boxWidth: 8 }
+                    } 
+                },
+                scales: { x: { min: 0, max: 7, grid: { color: '#f5f5f5' } }, y: { min: 0, max: 7, grid: { color: '#f5f5f5' } } }
+            }
+        });
+
+        let initM = computeMetrics();
+        historyLossData.push({x: 0, y: initM.loss}); historyAccData.push({x: 0, y: initM.acc});
+        updateUI();
+    }
+</script>
+
+</body>
+</html>

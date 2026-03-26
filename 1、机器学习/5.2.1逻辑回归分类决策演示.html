@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>决策门槛交互演示</title>
+    <style>
+        :root {
+            --primary-green: #00b07c;
+            --primary-red: #f44336;
+            --primary-gray: #888888;
+            --bg-gray: #f9f9f9;
+            --bg-left: #fceceb; /* 偏红底色 */
+            --bg-right: #e6f4ea; /* 偏绿底色 */
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-gray);
+            color: #333;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        /* 标签页按钮 */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background-color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background-color: #f0f0f0;
+            border-color: #ccc;
+            font-weight: bold;
+        }
+
+        /* 可视化区域 */
+        .viz-container {
+            position: relative;
+            height: 120px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+        }
+
+        .bg-left {
+            background-color: var(--bg-left);
+            height: 100%;
+            transition: width 0.1s;
+        }
+
+        .bg-right {
+            background-color: var(--bg-right);
+            height: 100%;
+            flex-grow: 1;
+        }
+
+        .threshold-line {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: #4a90e2;
+            border-left: 2px dashed #4a90e2;
+            background: transparent;
+            transform: translateX(-50%);
+            z-index: 10;
+            pointer-events: none;
+            transition: left 0.1s;
+        }
+
+        .bg-text {
+            position: absolute;
+            top: 10px;
+            font-size: 12px;
+            color: #aaa;
+            z-index: 5;
+        }
+        .bg-text.left { left: 25%; transform: translateX(-50%); }
+        .bg-text.right { right: 25%; transform: translateX(50%); }
+
+        /* 数据点 */
+        .point {
+            position: absolute;
+            font-weight: bold;
+            font-size: 18px;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+            transition: color 0.2s;
+        }
+
+        .point-x::after { content: '×'; font-size: 22px; }
+        .point-o::after { content: '●'; font-size: 16px; }
+
+        .axis-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        /* 滑块控制区 */
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        input[type=range] {
+            flex-grow: 1;
+            cursor: pointer;
+        }
+
+        .threshold-value {
+            font-weight: bold;
+            min-width: 40px;
+        }
+
+        /* 统计数据网格 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-num {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* 颜色辅助类 */
+        .text-green { color: var(--primary-green); }
+        .text-red { color: var(--primary-red); }
+        .text-gray { color: var(--primary-gray); }
+        .text-orange { color: #ff9800; }
+
+        /* 底部说明文字 */
+        .bottom-desc {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-title">用图来看：门槛移动时发生了什么</div>
+
+    <div class="tabs">
+        <button class="tab-btn" onclick="setScenario('spam')">垃圾邮件过滤</button>
+        <button class="tab-btn" onclick="setScenario('cancer')">癌症筛查</button>
+        <button class="tab-btn active" onclick="setScenario('balanced')">均衡场景</button>
+    </div>
+
+    <div class="viz-container" id="viz-container">
+        <div class="bg-left" id="bg-left" style="width: 48%;"></div>
+        <div class="bg-right"></div>
+        <div class="threshold-line" id="threshold-line" style="left: 48%;"></div>
+        <div class="bg-text left">← 判为阴性</div>
+        <div class="bg-text right">判为阳性 →</div>
+        
+        <div id="points-layer"></div>
+    </div>
+
+    <div class="axis-labels">
+        <span>0（肯定是阴性）</span>
+        <span>概率轴 →</span>
+        <span>1（肯定是阳性）</span>
+    </div>
+
+    <div class="slider-container">
+        <span>决策门槛：</span>
+        <input type="range" id="threshold-slider" min="0" max="1" step="0.01" value="0.48">
+        <span class="threshold-value" id="threshold-display">0.48</span>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-box">
+            <div class="stat-num text-green" id="tn-count">10</div>
+            <div class="stat-label">正确判为阴性</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-num text-red" id="fp-count">2</div>
+            <div class="stat-label">误判为阳性</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-num text-orange" id="fn-count">0</div>
+            <div class="stat-label">漏掉阳性</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-num text-green" id="tp-count">8</div>
+            <div class="stat-label">正确判为阳性</div>
+        </div>
+    </div>
+
+    <div class="bottom-desc" id="bottom-desc">
+        这里“误判为阳性”代价小（正常邮件进垃圾桶），“漏掉阳性”代价也可接受。门槛设在中间位置。
+    </div>
+</div>
+
+<script>
+    // 模拟数据点: type 0 是真实阴性(x)，type 1 是真实阳性(圆)
+    const dataPoints = [
+        // 真实阴性样本 (预期分布在偏左侧)
+        { val: 0.10, type: 0 }, { val: 0.16, type: 0 }, { val: 0.22, type: 0 },
+        { val: 0.28, type: 0 }, { val: 0.35, type: 0 }, { val: 0.42, type: 0 },
+        { val: 0.46, type: 0 }, { val: 0.12, type: 0 }, { val: 0.30, type: 0 },
+        { val: 0.38, type: 0 }, 
+        { val: 0.52, type: 0 }, { val: 0.58, type: 0 }, // 这两个在0.48阈值下会成为误判(FP)
+
+        // 真实阳性样本 (预期分布在偏右侧)
+        { val: 0.55, type: 1 }, { val: 0.65, type: 1 }, { val: 0.72, type: 1 },
+        { val: 0.80, type: 1 }, { val: 0.85, type: 1 }, { val: 0.92, type: 1 },
+        { val: 0.78, type: 1 }, { val: 0.96, type: 1 }
+    ];
+
+    const slider = document.getElementById('threshold-slider');
+    const display = document.getElementById('threshold-display');
+    const bgLeft = document.getElementById('bg-left');
+    const thresholdLine = document.getElementById('threshold-line');
+    const pointsLayer = document.getElementById('points-layer');
+
+    // 绘制点
+    function renderPoints() {
+        pointsLayer.innerHTML = '';
+        dataPoints.forEach((point, index) => {
+            const el = document.createElement('div');
+            el.className = `point ${point.type === 0 ? 'point-x' : 'point-o'}`;
+            
+            // 随机Y轴位置让图表看起来更自然 (20% - 80% 高度之间)
+            // 为了固定演示效果，利用 index 生成伪随机 Y
+            const yPos = 20 + ((index * 37) % 60); 
+            
+            el.style.left = `${point.val * 100}%`;
+            el.style.top = `${yPos}%`;
+            el.id = `pt-${index}`;
+            pointsLayer.appendChild(el);
+        });
+    }
+
+    // 更新逻辑与颜色
+    function updateVisualization(threshold) {
+        let tn = 0, fp = 0, fn = 0, tp = 0;
+
+        dataPoints.forEach((point, index) => {
+            const el = document.getElementById(`pt-${index}`);
+            const isPredictedPositive = point.val >= threshold;
+
+            if (point.type === 0) { // 真实阴性
+                if (!isPredictedPositive) {
+                    tn++;
+                    el.style.color = 'var(--primary-gray)'; // 判对阴性：灰色x
+                } else {
+                    fp++;
+                    el.style.color = 'var(--primary-red)'; // 误判阳性：红色x
+                }
+            } else { // 真实阳性
+                if (isPredictedPositive) {
+                    tp++;
+                    el.style.color = 'var(--primary-green)'; // 判对阳性：绿色圆
+                } else {
+                    fn++;
+                    el.style.color = '#ff9800'; // 漏掉阳性：橙色圆
+                }
+            }
+        });
+
+        // 更新UI文字
+        document.getElementById('tn-count').innerText = tn;
+        document.getElementById('fp-count').innerText = fp;
+        document.getElementById('fn-count').innerText = fn;
+        document.getElementById('tp-count').innerText = tp;
+
+        // 更新背景和线
+        const percentage = threshold * 100;
+        bgLeft.style.width = `${percentage}%`;
+        thresholdLine.style.left = `${percentage}%`;
+        display.innerText = parseFloat(threshold).toFixed(2);
+    }
+
+    // 绑定滑块事件
+    slider.addEventListener('input', (e) => {
+        updateVisualization(e.target.value);
+        updateTabStyling('none'); // 手动滑动时取消Tab的激活状态
+    });
+
+    // 场景切换
+    const scenarios = {
+        'spam': { val: 0.85, text: "【垃圾邮件过滤】阈值调高：宁可放过垃圾邮件（漏掉阳性），也不要误伤正常邮件。因为把重要邮件扔进垃圾箱的代价很大。" },
+        'cancer': { val: 0.30, text: "【癌症筛查】阈值调低：宁可多做一次复查（误判为阳性），也不能漏掉任何疑似患者。因为漏诊的生命代价极大。" },
+        'balanced': { val: 0.48, text: "【均衡场景】折中阈值：在误判和漏判之间寻找平衡点，适用于两者代价相当的常规业务场景。" }
+    };
+
+    window.setScenario = function(type) {
+        const threshold = scenarios[type].val;
+        slider.value = threshold;
+        updateVisualization(threshold);
+        document.getElementById('bottom-desc').innerText = scenarios[type].text;
+        updateTabStyling(type);
+    };
+
+    function updateTabStyling(activeType) {
+        const tabs = document.querySelectorAll('.tab-btn');
+        tabs.forEach(tab => tab.classList.remove('active'));
+        if(activeType === 'spam') tabs[0].classList.add('active');
+        if(activeType === 'cancer') tabs[1].classList.add('active');
+        if(activeType === 'balanced') tabs[2].classList.add('active');
+    }
+
+    // 初始化
+    renderPoints();
+    updateVisualization(0.48);
+
+</script>
+
+</body>
+</html>

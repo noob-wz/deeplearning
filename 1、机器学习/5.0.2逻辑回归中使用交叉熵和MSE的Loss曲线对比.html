@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交叉熵与MSE损失交互演示</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+    <style>
+        :root {
+            --primary-blue: #007bff;
+            --primary-gray: #f5f5f5;
+            --text-gray: #666;
+            --card-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            --border-radius: 8px;
+            --main-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            font-family: var(--main-font);
+            background-color: #fff;
+            color: #333;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .formula-top-container {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .formula-top { font-size: 24px; margin-bottom: 15px; }
+        .formula-top-desc, .formula-top-sub-desc { font-size: 14px; color: var(--text-gray); line-height: 1.6; }
+        .formula-top-sub-desc { margin-top: 10px; }
+
+        .button-group { display: flex; gap: 15px; justify-content: center; margin-bottom: 30px; }
+        .tab-button {
+            padding: 10px 20px; border: 1px solid #ccc; background-color: #fff;
+            border-radius: var(--border-radius); cursor: pointer; font-size: 14px; transition: all 0.2s;
+        }
+        .tab-button.active { background-color: var(--primary-gray); border-color: #aaa; font-weight: bold; }
+
+        .slider-container { display: flex; align-items: center; gap: 15px; margin-bottom: 40px; }
+        .slider-label { font-size: 14px; white-space: nowrap; }
+        input[type=range] { flex-grow: 1; cursor: pointer; }
+        .p-hat-value { font-size: 18px; font-weight: bold; min-width: 40px; text-align: right; }
+
+        .cards-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 40px; }
+        .card {
+            background-color: #fcfcfc; padding: 20px; border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow); border: 1px solid #eee; display: flex;
+            flex-direction: column; align-items: center; text-align: center;
+        }
+        .card-label { font-size: 13px; color: var(--text-gray); margin-bottom: 10px; }
+        .card-value { font-size: 32px; font-weight: bold; margin-bottom: 10px; }
+        .ce-card-value { color: var(--primary-blue); }
+        .mse-card-value { color: #888; }
+        .card-formula { font-size: 13px; color: var(--text-gray); min-height: 1.2em; }
+
+        .chart-container { position: relative; height: 300px; margin-bottom: 15px; }
+
+        .legend-container {
+            display: flex; justify-content: center; gap: 20px; font-size: 12px;
+            color: var(--text-gray); margin-bottom: 30px;
+        }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-color { width: 12px; height: 12px; border-radius: 2px; }
+
+        /* 底部动态描述文本块 */
+        .bottom-desc-block {
+            border-left: 3px solid #ff4d4f; /* 初始为红色，后续靠JS动态改变 */
+            padding-left: 15px;
+            margin-bottom: 30px;
+            margin-top: 30px;
+            font-size: 13px;
+            color: #444;
+            line-height: 1.8;
+            margin-left: 15px;
+            background-color: #fcfcfc;
+            padding-top: 10px;
+            padding-bottom: 10px;
+            border-radius: 0 4px 4px 0;
+            transition: border-color 0.3s ease;
+        }
+        
+        .bottom-desc { font-size: 13px; color: var(--text-gray); line-height: 1.8; margin-bottom: 40px; text-align: center; }
+        .hat-p { font-style: normal; position: relative; display: inline-block; }
+        .hat-p::after { content: '^'; position: absolute; top: -0.6em; left: 50%; transform: translateX(-50%); font-size: 0.8em; }
+
+        .down-arrow-container { text-align: center; }
+        .down-arrow-button {
+            display: inline-flex; width: 36px; height: 36px; background-color: var(--primary-gray);
+            border-radius: 50%; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;
+        }
+        .down-arrow-button:hover { background-color: #eee; }
+        .down-arrow-icon { font-size: 16px; color: #888; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="formula-top-container">
+        <div class="formula-top" id="formula-top"></div>
+        <div class="formula-top-desc">看起来复杂，其实很简单——y=1 时只看第一项，y=0 时只看第二项，两个情况的逻辑完全对称。</div>
+        <div class="formula-top-sub-desc">先来互动地感受一下交叉熵损失的"惩罚机制"：</div>
+    </div>
+
+    <div class="button-group">
+        <button class="tab-button active" onclick="setLabel(1)">真实标签 y=1 (阳性)</button>
+        <button class="tab-button" onclick="setLabel(0)">真实标签 y=0 (阴性)</button>
+    </div>
+
+    <div class="slider-container">
+        <span class="slider-label">模型预测概率 <span class="hat-p">p</span>：</span>
+        <input type="range" id="p-hat-slider" min="0.01" max="0.99" step="0.01" value="0.01">
+        <span class="p-hat-value" id="p-hat-display">0.01</span>
+    </div>
+
+    <div class="cards-container">
+        <div class="card">
+            <div class="card-label">交叉熵损失</div>
+            <div class="card-value ce-card-value" id="ce-value">0.000</div>
+            <div class="card-formula" id="ce-formula"></div>
+        </div>
+        <div class="card">
+            <div class="card-label">MSE 损失 (对比用)</div>
+            <div class="card-value mse-card-value" id="mse-value">0.000</div>
+            <div class="card-formula" id="mse-formula"></div>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="lossChart"></canvas>
+    </div>
+
+    <div class="legend-container">
+        <div class="legend-item"><div class="legend-color" style="background-color: var(--primary-blue);"></div><span>交叉熵</span></div>
+        <div class="legend-item"><div class="legend-color" style="background-color: #888;"></div><span>MSE</span></div>
+    </div>
+
+    <div class="bottom-desc-block" id="dynamic-desc-block">
+        </div>
+
+
+    <div class="down-arrow-container">
+        <div class="down-arrow-button"><span class="down-arrow-icon">↓</span></div>
+    </div>
+</div>
+
+<script>
+    let currentY = 1;
+    let currentPHat = 0.01;
+    let chart;
+
+    const slider = document.getElementById('p-hat-slider');
+    const pHatDisplay = document.getElementById('p-hat-display');
+    const ceValueElem = document.getElementById('ce-value');
+    const mseValueElem = document.getElementById('mse-value');
+    const ceFormulaElem = document.getElementById('ce-formula');
+    const mseFormulaElem = document.getElementById('mse-formula');
+    const formulaTop = document.getElementById('formula-top');
+    const dynamicDescBlock = document.getElementById('dynamic-desc-block');
+
+    function calculateCE(y, pHat) {
+        if (y === 1) return -Math.log(pHat);
+        if (y === 0) return -Math.log(1 - pHat);
+    }
+    function calculateMSE(y, pHat) {
+        if (y === 1) return Math.pow(pHat - 1, 2);
+        if (y === 0) return Math.pow(pHat, 2);
+    }
+
+    // 动态更新逻辑结论文字
+    function updateDynamicDescription(y, pHat) {
+        const ceVal = calculateCE(y, pHat).toFixed(2);
+        const mseVal = calculateMSE(y, pHat).toFixed(2);
+        
+        let text = "";
+        let borderColor = "";
+
+        if (y === 1) {
+            if (pHat >= 0.7) {
+                text = "模型预测方向正确且置信度高 → 损失很小，几乎不需要调整参数。";
+                borderColor = "#52c41a"; // 绿色
+            } else if (pHat >= 0.5) {
+                text = "预测方向正确但置信度不足 → 仍有一定损失，模型会继续调整参数，变得更加确定。";
+                borderColor = "#faad14"; // 橙黄色
+            } else {
+                text = `预测方向错误。交叉熵惩罚 ${ceVal}，MSE 惩罚 ${mseVal}。注意交叉熵在错误边缘时惩罚更陡，梯度更大，参数更新更有力。`;
+                borderColor = "#ff4d4f"; // 红色
+            }
+        } else { // y === 0
+            if (pHat <= 0.3) {
+                text = "模型预测方向正确且置信度高 → 损失很小，几乎不需要调整参数。";
+                borderColor = "#52c41a"; // 绿色
+            } else if (pHat <= 0.5) {
+                text = "预测方向正确但置信度不足 → 仍有一定损失，模型会继续调整参数，变得更加确定。";
+                borderColor = "#faad14"; // 橙黄色
+            } else {
+                text = `预测方向错误。交叉熵惩罚 ${ceVal}，MSE 惩罚 ${mseVal}。注意交叉熵在错误边缘时惩罚更陡，梯度更大，参数更新更有力。`;
+                borderColor = "#ff4d4f"; // 红色
+            }
+        }
+
+        dynamicDescBlock.innerText = text;
+        dynamicDescBlock.style.borderLeftColor = borderColor;
+    }
+
+    function updateCards(y, pHat) {
+        const ceVal = calculateCE(y, pHat);
+        ceValueElem.textContent = ceVal.toFixed(3);
+        let ceFormula = y === 1 ? `-log(\\hat{p}) = -log(${pHat.toFixed(2)})` : `-log(1-\\hat{p}) = -log(1-${pHat.toFixed(2)})`;
+        katex.render(ceFormula, ceFormulaElem);
+
+        const mseVal = calculateMSE(y, pHat);
+        mseValueElem.textContent = mseVal.toFixed(3);
+        let mseFormula = y === 1 ? `= (\\hat{p} - 1)^2 = (${pHat.toFixed(2)} - 1)^2` : `= \\hat{p}^2 = ${pHat.toFixed(2)}^2`;
+        katex.render(mseFormula, mseFormulaElem);
+        
+        // 调用新增的描述更新函数
+        updateDynamicDescription(y, pHat);
+    }
+
+    function initChart() {
+        const ctx = document.getElementById('lossChart').getContext('2d');
+        const xValues = [];
+        for (let x = 0.01; x <= 0.99; x += 0.02) xValues.push(x.toFixed(2));
+
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: xValues,
+                datasets: [
+                    { label: '交叉熵', borderColor: '#007bff', backgroundColor: 'rgba(0, 123, 255, 0.1)', borderWidth: 2, data: [], fill: false, tension: 0.1, pointRadius: 0 },
+                    { label: 'MSE', borderColor: '#888', borderWidth: 2, data: [], fill: false, tension: 0.1, pointRadius: 0 },
+                    { label: '当前点', data: [], borderColor: '#eee', backgroundColor: '#888', borderWidth: 2, type: 'scatter', pointRadius: 6, pointHoverRadius: 8 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'linear', min: 0, max: 1, grid: { color: '#eee' },
+                        ticks: { color: '#ccc', callback: function(value) { return [0.01, 0.18, 0.35, 0.52, 0.69, 0.86, 1].includes(value) ? value.toFixed(2) : ''; } },
+                        title: { display: true, text: '预测概率 <span class="hat-p">p</span>', color: '#ccc', font: {size: 11} }
+                    },
+                    y: { min: 0, max: 3.0, grid: { color: '#eee' }, ticks: { color: '#ccc', stepSize: 0.5 }, title: { display: true, text: '损失值', color: '#ccc', font: {size: 11} } }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    function updateChart(y, pHat) {
+        const ceData = [], mseData = [];
+        for (let x = 0.01; x <= 0.99; x += 0.02) {
+            ceData.push({ x: x, y: calculateCE(y, x) });
+            mseData.push({ x: x, y: calculateMSE(y, x) });
+        }
+        chart.data.datasets[0].data = ceData;
+        chart.data.datasets[1].data = mseData;
+        chart.data.datasets[2].data = [{ x: pHat, y: calculateMSE(y, pHat) }];
+        chart.update();
+    }
+
+    window.setLabel = function(y) {
+        currentY = y;
+        document.querySelectorAll('.tab-button')[0].classList.toggle('active', y === 1);
+        document.querySelectorAll('.tab-button')[1].classList.toggle('active', y === 0);
+        updateCards(currentY, currentPHat);
+        updateChart(currentY, currentPHat);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        katex.render("L = -[y \\cdot \\log(\\hat{p}) + (1-y) \\cdot \\log(1 - \\hat{p})]", formulaTop);
+        initChart();
+        updateCards(currentY, currentPHat);
+        updateChart(currentY, currentPHat);
+
+        slider.addEventListener('input', (e) => {
+            currentPHat = parseFloat(e.target.value);
+            pHatDisplay.textContent = currentPHat.toFixed(2);
+            updateCards(currentY, currentPHat);
+            updateChart(currentY, currentPHat);
+        });
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>逻辑回归：把 p、z、w、b、Loss、决策边界串起来</title>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #5b6472;
+      --line: #dbe2ea;
+      --accent: #2563eb;
+      --accent2: #059669;
+      --danger: #dc2626;
+      --warn: #d97706;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+      color: var(--text);
+      line-height: 1.65;
+    }
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px 18px 80px;
+    }
+    .hero {
+      background: linear-gradient(135deg, #e7f0ff 0%, #f4fbf8 100%);
+      border: 1px solid #d7e6ff;
+      border-radius: 24px;
+      padding: 28px 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+    h1, h2, h3 { line-height: 1.3; }
+    h1 { margin: 0 0 10px; font-size: 32px; }
+    h2 { margin: 0 0 12px; font-size: 24px; }
+    h3 { margin: 0 0 8px; font-size: 18px; }
+    p { margin: 10px 0; }
+    .muted { color: var(--muted); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .card {
+      grid-column: span 12;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+    .col-6 { grid-column: span 6; }
+    .col-7 { grid-column: span 7; }
+    .col-5 { grid-column: span 5; }
+    .col-4 { grid-column: span 4; }
+    .col-8 { grid-column: span 8; }
+    .chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .chip {
+      background: #eef4ff;
+      border: 1px solid #d7e6ff;
+      color: #1d4ed8;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 14px;
+    }
+    .formula {
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+    .arrow-chain {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+      align-items: center;
+    }
+    .node {
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #fbfdff;
+      min-width: 140px;
+    }
+    .arrow {
+      font-size: 24px;
+      color: #94a3b8;
+      padding: 0 2px;
+    }
+    .note {
+      border-left: 4px solid var(--accent);
+      background: #eff6ff;
+      padding: 12px 14px;
+      border-radius: 12px;
+      margin: 12px 0;
+    }
+    .warn {
+      border-left-color: var(--warn);
+      background: #fffbeb;
+    }
+    .danger {
+      border-left-color: var(--danger);
+      background: #fef2f2;
+    }
+    .ok {
+      border-left-color: var(--accent2);
+      background: #ecfdf5;
+    }
+    ul {
+      padding-left: 20px;
+      margin: 10px 0;
+    }
+    li { margin: 6px 0; }
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 12px;
+    }
+    .control {
+      background: #fafcff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+    }
+    .control label {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    input[type="range"] { width: 100%; }
+    select, button {
+      font: inherit;
+      border-radius: 12px;
+      border: 1px solid #cbd5e1;
+      background: white;
+      padding: 8px 10px;
+    }
+    button {
+      cursor: pointer;
+      background: #f8fafc;
+    }
+    button:hover { background: #eef2ff; }
+    .button-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .stat {
+      border: 1px solid var(--line);
+      background: #fbfdff;
+      border-radius: 14px;
+      padding: 12px;
+    }
+    .stat .k {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .stat .v {
+      font-size: 20px;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+    canvas {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+    th, td {
+      border-bottom: 1px solid #e5e7eb;
+      padding: 8px 6px;
+      text-align: center;
+    }
+    th {
+      background: #f8fafc;
+      position: sticky;
+      top: 0;
+    }
+    tr.active {
+      background: #eff6ff;
+    }
+    .mini {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge {
+      display: inline-flex;
+      width: 28px;
+      height: 28px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      background: #e0e7ff;
+      color: #3730a3;
+      font-weight: 700;
+    }
+    .footer {
+      margin-top: 24px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    @media (max-width: 900px) {
+      .col-6, .col-7, .col-5, .col-4, .col-8 { grid-column: span 12; }
+      .controls, .stats { grid-template-columns: 1fr; }
+      h1 { font-size: 26px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>逻辑回归：把 <code>p</code>、<code>z</code>、<code>w,b</code>、Loss、决策边界、梯度下降一口气串起来 🌱</h1>
+      <p>你现在最大的困扰，其实不是某一个公式不会，而是<strong>脑子里混着三张不同的“几何图”</strong>：</p>
+      <div class="chips">
+        <div class="chip">图 1：Loss 关于预测概率 p̂ 的图</div>
+        <div class="chip">图 2：Sigmoid 把 z 压到 0~1 的图</div>
+        <div class="chip">图 3：总损失 J(w,b) 关于参数的图</div>
+      </div>
+      <div class="note ok">
+        一旦把这三张图分清楚，你的大部分困惑会一下子散开：<strong>梯度下降真正走的，是参数空间里的图（w,b → J）</strong>；而不是你手画的那个 <strong>L 对 p̂</strong> 的图。
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="card">
+        <div class="section-title"><span class="badge">1</span><h2>先把整条链路写完整</h2></div>
+        <div class="arrow-chain">
+          <div class="node"><strong>输入样本</strong><br/>x</div>
+          <div class="arrow">→</div>
+          <div class="node"><strong>线性打分</strong><br/>z = wx + b</div>
+          <div class="arrow">→</div>
+          <div class="node"><strong>概率输出</strong><br/>p̂ = σ(z)</div>
+          <div class="arrow">→</div>
+          <div class="node"><strong>单样本损失</strong><br/>ℓ(p̂, y)</div>
+          <div class="arrow">→</div>
+          <div class="node"><strong>总体损失</strong><br/>J(w,b)=平均所有样本</div>
+        </div>
+        <div class="formula">σ(z)=1/(1+e<sup>-z</sup>)　　　ℓ(p̂,y)=−[ y·log(p̂) + (1−y)·log(1−p̂) ]</div>
+        <p>这条链非常关键：</p>
+        <ul>
+          <li><strong>z</strong> 是模型的原始分数，来自参数 <code>w,b</code>。</li>
+          <li><strong>p̂</strong> 是把 z 经过 sigmoid 压缩后的概率。</li>
+          <li><strong>Loss</strong> 是拿这个概率去和真实标签 <code>y</code> 比较后的惩罚。</li>
+          <li><strong>梯度下降调的不是 p̂，也不是 z 本身，而是 w 和 b</strong>。因为只有 w,b 才是模型真正能改的旋钮。</li>
+        </ul>
+      </section>
+
+      <section class="card col-6">
+        <div class="section-title"><span class="badge">2</span><h2>你手画的图到底在说什么？</h2></div>
+        <p>你画的那两条曲线，本质上是：</p>
+        <div class="formula">当 y=1：ℓ(p̂)=−log(p̂)　　　当 y=0：ℓ(p̂)=−log(1−p̂)</div>
+        <ul>
+          <li>若真实标签是 <code>y=1</code>，那就希望 <code>p̂</code> 越接近 1 越好，Loss 越接近 0。</li>
+          <li>若真实标签是 <code>y=0</code>，那就希望 <code>p̂</code> 越接近 0 越好，Loss 越接近 0。</li>
+        </ul>
+        <div class="note">
+          这张图回答的是：<strong>“给定一个概率预测 p̂，这个预测会被罚多少？”</strong><br/>
+          它回答的不是：<strong>“当前 w,b 应该往哪里走？”</strong>
+        </div>
+      </section>
+
+      <section class="card col-6">
+        <div class="section-title"><span class="badge">3</span><h2>为什么 z=0 不是训练目标？</h2></div>
+        <p>这里是最容易混的地方：</p>
+        <div class="formula">z=0 ⇔ p̂=0.5</div>
+        <ul>
+          <li><strong>z=0 只是分类边界</strong>，因为 sigmoid(0)=0.5。</li>
+          <li>当我们用 <code>p̂≥0.5</code> 判成 1 类时，就等价于用 <code>z≥0</code> 判成 1 类。</li>
+          <li>所以 <strong>z=0 只是在输入空间里画出一条“分界线”</strong>，不是说训练要把每个点都推到 z=0。</li>
+        </ul>
+        <div class="note danger">
+          对单个样本来说：<br/>
+          若 <code>y=1</code>，模型想把它推向 <strong>更大的 z</strong>（让 p̂ 更接近 1）；<br/>
+          若 <code>y=0</code>，模型想把它推向 <strong>更小的 z</strong>（让 p̂ 更接近 0）。<br/>
+          <strong>不是推到 z=0，而是把正确类别推离边界。</strong>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-title"><span class="badge">4</span><h2>最关键的转换：把 Loss 从 p̂ 写成 z 的函数</h2></div>
+        <p>这一步一做，很多几何直觉会变得清楚：</p>
+        <div class="formula">当 y=1：ℓ(z)=log(1+e<sup>−z</sup>)　　　当 y=0：ℓ(z)=log(1+e<sup>z</sup>)</div>
+        <ul>
+          <li>若 <code>y=1</code>，z 越大，Loss 越小。</li>
+          <li>若 <code>y=0</code>，z 越小，Loss 越小。</li>
+        </ul>
+        <div class="note ok">
+          所以从几何上，你可以这样想：<br/>
+          <strong>每个样本都希望自己的 z 朝“正确方向”远离 0。</strong><br/>
+          0 只是边界，正类想去右边更远，负类想去左边更远。
+        </div>
+        <div class="warn note">
+          但一个模型只有一组 <code>w,b</code>，它必须同时照顾所有样本。所以训练不是单独给某个样本挑 z，而是通过统一调整 <code>w,b</code>，让所有样本的总损失尽量小。
+        </div>
+      </section>
+
+      <section class="card col-7">
+        <div class="section-title"><span class="badge">5</span><h2>交互图 A：数据空间 + 决策边界 + Sigmoid 曲线</h2></div>
+        <p class="mini">拖动下面的 <code>w</code> 和 <code>b</code>，观察：① 决策边界如何移动；② 同一个 x 如何映射成 z，再映射成 p̂。</p>
+        <canvas id="dataCanvas" width="760" height="430"></canvas>
+      </section>
+
+      <section class="card col-5">
+        <div class="section-title"><span class="badge">6</span><h2>控制区</h2></div>
+        <div class="controls">
+          <div class="control">
+            <label><span>权重 w</span><strong id="wVal">1.20</strong></label>
+            <input id="wSlider" type="range" min="-4" max="4" step="0.01" value="1.2" />
+          </div>
+          <div class="control">
+            <label><span>偏置 b</span><strong id="bVal">0.00</strong></label>
+            <input id="bSlider" type="range" min="-4" max="4" step="0.01" value="0" />
+          </div>
+          <div class="control">
+            <label><span>查看哪个样本？</span></label>
+            <select id="sampleSelect"></select>
+          </div>
+          <div class="control">
+            <label><span>学习率 η</span><strong id="lrVal">0.40</strong></label>
+            <input id="lrSlider" type="range" min="0.01" max="1.2" step="0.01" value="0.4" />
+          </div>
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="k">当前总损失 J(w,b)</div><div class="v" id="totalLoss">-</div></div>
+          <div class="stat"><div class="k">当前决策边界 x*</div><div class="v" id="boundaryVal">-</div></div>
+          <div class="stat"><div class="k">梯度 ∂J/∂w</div><div class="v" id="dwVal">-</div></div>
+          <div class="stat"><div class="k">梯度 ∂J/∂b</div><div class="v" id="dbVal">-</div></div>
+        </div>
+        <div class="button-row">
+          <button id="randBtn">随机初始化</button>
+          <button id="stepBtn">下降 1 步</button>
+          <button id="step10Btn">下降 10 步</button>
+          <button id="syncBtn">用滑块位置重置路径</button>
+        </div>
+        <div class="note">
+          梯度下降更新的是：<br/>
+          <code>w ← w − η·∂J/∂w</code><br/>
+          <code>b ← b − η·∂J/∂b</code>
+        </div>
+      </section>
+
+      <section class="card col-6">
+        <div class="section-title"><span class="badge">7</span><h2>交互图 B：Loss 对 p̂ 的图</h2></div>
+        <p class="mini">这张图回答“给定一个概率，会被罚多少”。它解释惩罚机制，不是梯度下降行走的坐标系。</p>
+        <canvas id="probCanvas" width="560" height="360"></canvas>
+      </section>
+
+      <section class="card col-6">
+        <div class="section-title"><span class="badge">8</span><h2>交互图 C：Loss 对 z 的图</h2></div>
+        <p class="mini">这张图最能解释“为什么不是找 z=0”。对正类，z 越大越好；对负类，z 越小越好。</p>
+        <canvas id="zCanvas" width="560" height="360"></canvas>
+      </section>
+
+      <section class="card col-8">
+        <div class="section-title"><span class="badge">9</span><h2>交互图 D：参数空间里的损失地形 J(w,b)</h2></div>
+        <p class="mini">这才是梯度下降真正“顺坡往下走”的地方。红点是当前参数，虚线是下降路径。</p>
+        <canvas id="paramCanvas" width="760" height="520"></canvas>
+        <div class="warn note">
+          这里的示例数据故意设置成<strong>略微不可完全线性分开</strong>，这样不加正则时也有比较稳定的有限最小值，更利于看出“碗底”。<br/>
+          若数据<strong>完全线性可分</strong>，不加正则的逻辑回归可能会让参数越变越大、Loss 越逼近 0，却没有一个有限的真正“碗底”。
+        </div>
+      </section>
+
+      <section class="card col-4">
+        <div class="section-title"><span class="badge">10</span><h2>单样本视角：每个样本怎么“拉”参数？</h2></div>
+        <div class="formula">∂ℓ/∂z = p̂ − y</div>
+        <ul>
+          <li>若 <code>y=1</code> 且 <code>p̂</code> 太小，那么 <code>p̂−y &lt; 0</code>，说明要把 z 往上推。</li>
+          <li>若 <code>y=0</code> 且 <code>p̂</code> 太大，那么 <code>p̂−y &gt; 0</code>，说明要把 z 往下推。</li>
+        </ul>
+        <div class="note ok">
+          这比“所有样本都去找 z=0”更准确：<br/>
+          <strong>每个样本都在对参数投票，想把自己推到正确一侧，并离边界更远一点。</strong>
+        </div>
+        <div id="sampleExplain" class="note">-</div>
+      </section>
+
+      <section class="card">
+        <div class="section-title"><span class="badge">11</span><h2>当前参数下，每个样本的 x、z、p̂、Loss 是什么</h2></div>
+        <div style="overflow:auto; max-height: 320px; border:1px solid var(--line); border-radius:14px;">
+          <table id="sampleTable">
+            <thead>
+              <tr>
+                <th>样本</th>
+                <th>x</th>
+                <th>y</th>
+                <th>z = wx+b</th>
+                <th>p̂ = σ(z)</th>
+                <th>单样本 Loss</th>
+                <th>p̂ − y</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-title"><span class="badge">12</span><h2>最后，把你最困惑的地方一句句捋顺</h2></div>
+        <ul>
+          <li><strong>“Loss 图的横轴是 p̂，不是权重，那梯度下降怎么理解？”</strong><br/>答：Loss 对 p̂ 的图只是惩罚规则；真正优化的是 <code>J(w,b)</code>。因为 <code>p̂</code> 由 <code>z</code> 决定，<code>z</code> 又由 <code>w,b</code> 决定，所以梯度通过链式法则传回到参数。</li>
+          <li><strong>“是不是最后都变成 z=0 最好？”</strong><br/>答：不是。<code>z=0</code> 只是边界。正类希望 <code>z&gt;0</code> 而且越大越稳，负类希望 <code>z&lt;0</code> 而且越小越稳。</li>
+          <li><strong>“逻辑回归从几何上到底在做什么？”</strong><br/>答：在输入空间里，它在移动一条决策边界；在概率空间里，它把线性分数压成概率；在参数空间里，它通过梯度下降寻找让总损失更小的一组参数。</li>
+          <li><strong>“线性回归和逻辑回归最像、也最不同的地方是什么？”</strong><br/>答：最像的是都先算 <code>z=wx+b</code>。最不同的是：线性回归直接把 z 当输出；逻辑回归先把 z 过 sigmoid 变成概率，再用交叉熵来衡量好坏。</li>
+        </ul>
+        <div class="note ok">
+          你可以把逻辑回归记成一句很完整的话：<br/>
+          <strong>“参数 w,b 决定分数 z；分数 z 决定概率 p̂；概率 p̂ 决定损失；梯度下降再根据损失反过来修改 w,b。”</strong>
+        </div>
+      </section>
+    </div>
+
+    <div class="footer">这个页面是自包含的交互式 HTML，可以直接反复拖动参数、点按钮、看每张图之间如何联动。</div>
+  </div>
+
+  <script>
+    const data = [
+      { x: -2.0, y: 0 },
+      { x: -1.3, y: 0 },
+      { x: -0.6, y: 0 },
+      { x: -0.1, y: 1 },
+      { x:  0.3, y: 0 },
+      { x:  0.9, y: 1 },
+      { x:  1.5, y: 1 },
+      { x:  2.2, y: 1 }
+    ];
+
+    const state = {
+      w: 1.2,
+      b: 0,
+      lr: 0.4,
+      selected: 3,
+      path: []
+    };
+
+    const els = {
+      wSlider: document.getElementById('wSlider'),
+      bSlider: document.getElementById('bSlider'),
+      lrSlider: document.getElementById('lrSlider'),
+      wVal: document.getElementById('wVal'),
+      bVal: document.getElementById('bVal'),
+      lrVal: document.getElementById('lrVal'),
+      totalLoss: document.getElementById('totalLoss'),
+      boundaryVal: document.getElementById('boundaryVal'),
+      dwVal: document.getElementById('dwVal'),
+      dbVal: document.getElementById('dbVal'),
+      sampleSelect: document.getElementById('sampleSelect'),
+      sampleExplain: document.getElementById('sampleExplain'),
+      sampleTableBody: document.querySelector('#sampleTable tbody'),
+      dataCanvas: document.getElementById('dataCanvas'),
+      probCanvas: document.getElementById('probCanvas'),
+      zCanvas: document.getElementById('zCanvas'),
+      paramCanvas: document.getElementById('paramCanvas'),
+      randBtn: document.getElementById('randBtn'),
+      stepBtn: document.getElementById('stepBtn'),
+      step10Btn: document.getElementById('step10Btn'),
+      syncBtn: document.getElementById('syncBtn')
+    };
+
+    function sigmoid(z) {
+      if (z >= 0) {
+        const ez = Math.exp(-z);
+        return 1 / (1 + ez);
+      }
+      const ez = Math.exp(z);
+      return ez / (1 + ez);
+    }
+
+    function softplus(t) {
+      if (t > 30) return t;
+      if (t < -30) return Math.exp(t);
+      return Math.log(1 + Math.exp(t));
+    }
+
+    function lossFromZ(z, y) {
+      return y === 1 ? softplus(-z) : softplus(z);
+    }
+
+    function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+    function fmt(v, n = 3) { return Number(v).toFixed(n); }
+
+    function predictRow(x, y, w = state.w, b = state.b) {
+      const z = w * x + b;
+      const p = sigmoid(z);
+      const loss = lossFromZ(z, y);
+      return { x, y, z, p, loss, residual: p - y };
+    }
+
+    function totalLoss(w = state.w, b = state.b) {
+      let s = 0;
+      for (const d of data) s += lossFromZ(w * d.x + b, d.y);
+      return s / data.length;
+    }
+
+    function gradients(w = state.w, b = state.b) {
+      let dw = 0, db = 0;
+      for (const d of data) {
+        const p = sigmoid(w * d.x + b);
+        const r = p - d.y;
+        dw += r * d.x;
+        db += r;
+      }
+      return { dw: dw / data.length, db: db / data.length };
+    }
+
+    function initSelect() {
+      data.forEach((d, i) => {
+        const option = document.createElement('option');
+        option.value = i;
+        option.textContent = `样本 ${i + 1}：x=${d.x}, y=${d.y}`;
+        els.sampleSelect.appendChild(option);
+      });
+      els.sampleSelect.value = String(state.selected);
+    }
+
+    function syncStateToUI() {
+      els.wSlider.value = state.w;
+      els.bSlider.value = state.b;
+      els.lrSlider.value = state.lr;
+      els.sampleSelect.value = String(state.selected);
+    }
+
+    function readUIToState() {
+      state.w = parseFloat(els.wSlider.value);
+      state.b = parseFloat(els.bSlider.value);
+      state.lr = parseFloat(els.lrSlider.value);
+      state.selected = parseInt(els.sampleSelect.value, 10);
+    }
+
+    function resetPath() {
+      state.path = [{ w: state.w, b: state.b }];
+    }
+
+    function stepGD(times = 1) {
+      for (let i = 0; i < times; i++) {
+        const { dw, db } = gradients(state.w, state.b);
+        state.w -= state.lr * dw;
+        state.b -= state.lr * db;
+        state.path.push({ w: state.w, b: state.b });
+      }
+      syncStateToUI();
+      renderAll();
+    }
+
+    function randomInit() {
+      state.w = Math.random() * 6 - 3;
+      state.b = Math.random() * 6 - 3;
+      syncStateToUI();
+      resetPath();
+      renderAll();
+    }
+
+    function setupEvents() {
+      [els.wSlider, els.bSlider, els.lrSlider, els.sampleSelect].forEach(el => {
+        el.addEventListener('input', () => {
+          readUIToState();
+          renderAll();
+        });
+      });
+      els.randBtn.addEventListener('click', randomInit);
+      els.stepBtn.addEventListener('click', () => stepGD(1));
+      els.step10Btn.addEventListener('click', () => stepGD(10));
+      els.syncBtn.addEventListener('click', () => {
+        readUIToState();
+        resetPath();
+        renderAll();
+      });
+    }
+
+    function drawAxes(ctx, x, y, w, h, opts = {}) {
+      const { xTicks = 5, yTicks = 5, xLabel = '', yLabel = '' } = opts;
+      ctx.save();
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, w, h);
+      ctx.fillStyle = '#64748b';
+      ctx.font = '12px sans-serif';
+      if (xLabel) ctx.fillText(xLabel, x + w - 18, y + h - 6);
+      if (yLabel) ctx.fillText(yLabel, x + 8, y + 14);
+      for (let i = 1; i < xTicks; i++) {
+        const xx = x + (i / xTicks) * w;
+        ctx.beginPath();
+        ctx.moveTo(xx, y);
+        ctx.lineTo(xx, y + h);
+        ctx.strokeStyle = '#eef2f7';
+        ctx.stroke();
+      }
+      for (let i = 1; i < yTicks; i++) {
+        const yy = y + (i / yTicks) * h;
+        ctx.beginPath();
+        ctx.moveTo(x, yy);
+        ctx.lineTo(x + w, yy);
+        ctx.strokeStyle = '#eef2f7';
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawLine(ctx, pts, color, width = 2) {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      pts.forEach((p, i) => {
+        if (i === 0) ctx.moveTo(p[0], p[1]);
+        else ctx.lineTo(p[0], p[1]);
+      });
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawDataCanvas() {
+      const c = els.dataCanvas;
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, c.width, c.height);
+      const pad = 46;
+      const topH = 140;
+      const gap = 30;
+      const botY = pad + topH + gap;
+      const botH = c.height - botY - pad;
+      const left = pad;
+      const width = c.width - pad * 2;
+      const xMin = -3, xMax = 3;
+      const mapX = x => left + (x - xMin) / (xMax - xMin) * width;
+      const mapYTop = cls => pad + (1 - cls) * topH;
+      const mapYProb = p => botY + (1 - p) * botH;
+
+      // Top: data line
+      drawAxes(ctx, left, pad, width, topH, { xLabel: 'x', yLabel: '类别', xTicks: 6, yTicks: 2 });
+      ctx.fillStyle = '#64748b';
+      ctx.fillText('1', left - 16, pad + 12);
+      ctx.fillText('0', left - 16, pad + topH - 4);
+
+      data.forEach((d, i) => {
+        const row = predictRow(d.x, d.y);
+        const x = mapX(d.x);
+        const y = mapYTop(d.y);
+        ctx.beginPath();
+        ctx.arc(x, y, i === state.selected ? 8 : 6, 0, Math.PI * 2);
+        ctx.fillStyle = d.y === 1 ? '#16a34a' : '#2563eb';
+        ctx.fill();
+        if (i === state.selected) {
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = '#111827';
+          ctx.stroke();
+        }
+        ctx.fillStyle = '#334155';
+        ctx.font = '12px sans-serif';
+        ctx.fillText(`x=${d.x}`, x - 18, y + (d.y === 1 ? -10 : 22));
+      });
+
+      // Decision boundary
+      if (Math.abs(state.w) > 1e-6) {
+        const xb = -state.b / state.w;
+        if (xb >= xMin && xb <= xMax) {
+          const xx = mapX(xb);
+          ctx.save();
+          ctx.strokeStyle = '#ef4444';
+          ctx.setLineDash([8, 6]);
+          ctx.beginPath();
+          ctx.moveTo(xx, pad);
+          ctx.lineTo(xx, pad + topH);
+          ctx.stroke();
+          ctx.fillStyle = '#ef4444';
+          ctx.fillText('z=0 的边界', xx + 6, pad + 18);
+          ctx.restore();
+        }
+      }
+
+      // Bottom sigmoid
+      drawAxes(ctx, left, botY, width, botH, { xLabel: 'x', yLabel: 'p̂', xTicks: 6, yTicks: 5 });
+      ctx.fillStyle = '#64748b';
+      ctx.fillText('1', left - 16, botY + 12);
+      ctx.fillText('0', left - 16, botY + botH - 4);
+
+      const pts = [];
+      for (let i = 0; i <= 240; i++) {
+        const x = xMin + (i / 240) * (xMax - xMin);
+        const p = sigmoid(state.w * x + state.b);
+        pts.push([mapX(x), mapYProb(p)]);
+      }
+      drawLine(ctx, pts, '#0f766e', 3);
+
+      data.forEach((d, i) => {
+        const row = predictRow(d.x, d.y);
+        const x = mapX(d.x);
+        const y = mapYProb(row.p);
+        ctx.beginPath();
+        ctx.arc(x, y, i === state.selected ? 8 : 6, 0, Math.PI * 2);
+        ctx.fillStyle = d.y === 1 ? '#16a34a' : '#2563eb';
+        ctx.fill();
+        if (i === state.selected) {
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = '#111827';
+          ctx.stroke();
+          ctx.fillStyle = '#111827';
+          ctx.fillText(`z=${fmt(row.z,2)}, p̂=${fmt(row.p,2)}`, x + 8, y - 10);
+        }
+      });
+    }
+
+    function drawProbCanvas() {
+      const c = els.probCanvas;
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, c.width, c.height);
+      const pad = 46;
+      const left = pad, top = pad, width = c.width - pad * 2, height = c.height - pad * 2;
+      const pMin = 0.01, pMax = 0.99, lMin = 0, lMax = 4.8;
+      const mapX = p => left + (p - pMin) / (pMax - pMin) * width;
+      const mapY = l => top + (1 - (l - lMin) / (lMax - lMin)) * height;
+      drawAxes(ctx, left, top, width, height, { xLabel: 'p̂', yLabel: 'Loss', xTicks: 5, yTicks: 6 });
+      const pts1 = [], pts0 = [];
+      for (let i = 0; i <= 240; i++) {
+        const p = pMin + (i / 240) * (pMax - pMin);
+        pts1.push([mapX(p), mapY(-Math.log(p))]);
+        pts0.push([mapX(p), mapY(-Math.log(1 - p))]);
+      }
+      drawLine(ctx, pts1, '#16a34a', 3);
+      drawLine(ctx, pts0, '#2563eb', 3);
+      ctx.fillStyle = '#16a34a'; ctx.fillText('y=1：−log(p̂)', left + 12, top + 18);
+      ctx.fillStyle = '#2563eb'; ctx.fillText('y=0：−log(1−p̂)', left + width - 130, top + 18);
+
+      const s = predictRow(data[state.selected].x, data[state.selected].y);
+      const px = mapX(clamp(s.p, pMin, pMax));
+      const py = mapY(clamp(s.loss, lMin, lMax));
+      ctx.beginPath();
+      ctx.arc(px, py, 7, 0, Math.PI * 2);
+      ctx.fillStyle = '#111827';
+      ctx.fill();
+      ctx.fillText(`当前样本：p̂=${fmt(s.p,2)}, Loss=${fmt(s.loss,2)}`, px + 8, py - 10);
+    }
+
+    function drawZCanvas() {
+      const c = els.zCanvas;
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, c.width, c.height);
+      const pad = 46;
+      const left = pad, top = pad, width = c.width - pad * 2, height = c.height - pad * 2;
+      const zMin = -6, zMax = 6, lMin = 0, lMax = 6.2;
+      const mapX = z => left + (z - zMin) / (zMax - zMin) * width;
+      const mapY = l => top + (1 - (l - lMin) / (lMax - lMin)) * height;
+      drawAxes(ctx, left, top, width, height, { xLabel: 'z', yLabel: 'Loss', xTicks: 6, yTicks: 6 });
+      const pts1 = [], pts0 = [];
+      for (let i = 0; i <= 260; i++) {
+        const z = zMin + (i / 260) * (zMax - zMin);
+        pts1.push([mapX(z), mapY(lossFromZ(z, 1))]);
+        pts0.push([mapX(z), mapY(lossFromZ(z, 0))]);
+      }
+      drawLine(ctx, pts1, '#16a34a', 3);
+      drawLine(ctx, pts0, '#2563eb', 3);
+      ctx.fillStyle = '#16a34a'; ctx.fillText('y=1：log(1+e^(−z))', left + 12, top + 18);
+      ctx.fillStyle = '#2563eb'; ctx.fillText('y=0：log(1+e^z)', left + width - 120, top + 18);
+
+      const x0 = mapX(0);
+      ctx.save();
+      ctx.strokeStyle = '#ef4444';
+      ctx.setLineDash([7, 5]);
+      ctx.beginPath(); ctx.moveTo(x0, top); ctx.lineTo(x0, top + height); ctx.stroke();
+      ctx.fillStyle = '#ef4444'; ctx.fillText('z=0（边界）', x0 + 6, top + height - 12);
+      ctx.restore();
+
+      const s = predictRow(data[state.selected].x, data[state.selected].y);
+      const px = mapX(clamp(s.z, zMin, zMax));
+      const py = mapY(clamp(s.loss, lMin, lMax));
+      ctx.beginPath();
+      ctx.arc(px, py, 7, 0, Math.PI * 2);
+      ctx.fillStyle = '#111827';
+      ctx.fill();
+      ctx.fillText(`当前样本：z=${fmt(s.z,2)}, Loss=${fmt(s.loss,2)}`, px + 8, py - 10);
+    }
+
+    function drawParamCanvas() {
+      const c = els.paramCanvas;
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, c.width, c.height);
+      const pad = 58;
+      const left = pad, top = 24, width = c.width - pad * 2, height = c.height - 78;
+      const wMin = -5, wMax = 5, bMin = -5, bMax = 5;
+      const mapX = w => left + (w - wMin) / (wMax - wMin) * width;
+      const mapY = b => top + (1 - (b - bMin) / (bMax - bMin)) * height;
+
+      // Compute heatmap values
+      const grid = 90;
+      let minL = Infinity, maxL = -Infinity;
+      const vals = [];
+      for (let iy = 0; iy < grid; iy++) {
+        vals[iy] = [];
+        for (let ix = 0; ix < grid; ix++) {
+          const w = wMin + (ix / (grid - 1)) * (wMax - wMin);
+          const b = bMin + (iy / (grid - 1)) * (bMax - bMin);
+          const L = totalLoss(w, b);
+          vals[iy][ix] = L;
+          if (L < minL) minL = L;
+          if (L > maxL) maxL = L;
+        }
+      }
+
+      // Draw heatmap
+      const cellW = width / grid;
+      const cellH = height / grid;
+      for (let iy = 0; iy < grid; iy++) {
+        for (let ix = 0; ix < grid; ix++) {
+          const v = (vals[iy][ix] - minL) / (maxL - minL + 1e-12);
+          const hue = 220 - 220 * v;
+          const light = 94 - 54 * v;
+          ctx.fillStyle = `hsl(${hue}, 75%, ${light}%)`;
+          ctx.fillRect(left + ix * cellW, top + iy * cellH, cellW + 0.8, cellH + 0.8);
+        }
+      }
+
+      // Axes and border
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(left, top, width, height);
+      ctx.fillStyle = '#64748b';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('b', left + 6, top + 14);
+      ctx.fillText('w', left + width - 12, top + height - 8);
+
+      // zero axes
+      const x0 = mapX(0), y0 = mapY(0);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(15,23,42,0.25)';
+      ctx.setLineDash([6, 5]);
+      ctx.beginPath(); ctx.moveTo(x0, top); ctx.lineTo(x0, top + height); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(left, y0); ctx.lineTo(left + width, y0); ctx.stroke();
+      ctx.restore();
+
+      // Path
+      if (state.path.length > 1) {
+        ctx.save();
+        ctx.strokeStyle = '#111827';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([7, 4]);
+        ctx.beginPath();
+        state.path.forEach((p, i) => {
+          const xx = mapX(p.w), yy = mapY(p.b);
+          if (i === 0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy);
+        });
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Current point
+      const cx = mapX(state.w), cy = mapY(state.b);
+      ctx.beginPath();
+      ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+      ctx.fillStyle = '#ef4444';
+      ctx.fill();
+      ctx.strokeStyle = '#7f1d1d';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = '#111827';
+      ctx.fillText(`当前点 (w=${fmt(state.w,2)}, b=${fmt(state.b,2)})`, cx + 10, cy - 10);
+
+      // Legend
+      ctx.fillStyle = '#334155';
+      ctx.fillText(`浅色：Loss 小    深暖色：Loss 大`, left + 8, c.height - 18);
+    }
+
+    function renderStatsAndTable() {
+      els.wVal.textContent = fmt(state.w, 2);
+      els.bVal.textContent = fmt(state.b, 2);
+      els.lrVal.textContent = fmt(state.lr, 2);
+      const L = totalLoss();
+      const g = gradients();
+      els.totalLoss.textContent = fmt(L, 4);
+      els.dwVal.textContent = fmt(g.dw, 4);
+      els.dbVal.textContent = fmt(g.db, 4);
+      if (Math.abs(state.w) < 1e-6) els.boundaryVal.textContent = '∞ / 不存在';
+      else els.boundaryVal.textContent = fmt(-state.b / state.w, 3);
+
+      const rows = data.map((d, i) => ({ i, ...predictRow(d.x, d.y) }));
+      els.sampleTableBody.innerHTML = rows.map(r => `
+        <tr class="${r.i === state.selected ? 'active' : ''}">
+          <td>${r.i + 1}</td>
+          <td>${fmt(r.x, 2)}</td>
+          <td>${r.y}</td>
+          <td>${fmt(r.z, 4)}</td>
+          <td>${fmt(r.p, 4)}</td>
+          <td>${fmt(r.loss, 4)}</td>
+          <td>${fmt(r.residual, 4)}</td>
+        </tr>
+      `).join('');
+
+      const s = rows[state.selected];
+      const direction = s.residual < 0 ? '往上推 z（增大 z）' : '往下推 z（减小 z）';
+      els.sampleExplain.innerHTML = `
+        <strong>当前查看样本：</strong> x=${fmt(s.x,2)}, y=${s.y}<br/>
+        当前 z=${fmt(s.z,3)}, p̂=${fmt(s.p,3)}, Loss=${fmt(s.loss,3)}。<br/>
+        因为 p̂−y = ${fmt(s.residual,3)}，所以这个样本正在“投票”要求模型把它的 <strong>z ${direction}</strong>。
+      `;
+    }
+
+    function renderAll() {
+      renderStatsAndTable();
+      drawDataCanvas();
+      drawProbCanvas();
+      drawZCanvas();
+      drawParamCanvas();
+    }
+
+    initSelect();
+    syncStateToUI();
+    resetPath();
+    setupEvents();
+    renderAll();
+  </script>
+</body>
+</html>

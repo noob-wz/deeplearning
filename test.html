@@ -1,161 +1,1151 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <title>从迷雾到通透：逻辑回归的几何之美</title>
-    <!-- 引入 Plotly.js 用于渲染真实的 3D 碗底图 -->
-    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
-    <!-- 引入 MathJax 用于渲染优雅的数学公式 -->
-    <script>
-      MathJax = {
-        tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}
-      };
-    </script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-    
-    <style>
-        :root { --primary-color: #2c3e50; --secondary-color: #34495e; --accent-color: #e74c3c; --bg-color: #ecf0f1; --card-bg: #ffffff; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.6; color: var(--primary-color); background-color: var(--bg-color); margin: 0; padding: 0; }
-        .container { max-width: 900px; margin: 40px auto; padding: 20px; }
-        h1, h2, h3 { color: var(--primary-color); }
-        h1 { text-align: center; border-bottom: 2px solid var(--accent-color); padding-bottom: 10px; }
-        .card { background-color: var(--card-bg); border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 30px; margin-bottom: 30px; transition: transform 0.2s; }
-        .highlight { background-color: #ffeaa7; padding: 2px 5px; border-radius: 4px; }
-        .equation { text-align: center; font-size: 1.2em; margin: 15px 0; color: #2980b9; }
-        .visual-container { width: 100%; height: 500px; border: 1px solid #ccc; background: #fff; margin-bottom: 15px; }
-        .note { border-left: 4px solid var(--accent-color); background-color: #f9ebea; padding: 15px; margin: 20px 0; }
-        .btn-toggle { background: #2980b9; color: #fff; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; }
-        .btn-toggle:hover { background: #3498db; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>线性回归 & 逻辑回归 · 第一性原理</title>
+<style>
+  :root {
+    --bg: #0f0f10;
+    --bg2: #17171a;
+    --bg3: #1e1e22;
+    --border: rgba(255,255,255,0.08);
+    --text: #e8e6de;
+    --text2: #9a9890;
+    --text3: #5e5d5a;
+    --green: #4ade80;
+    --blue: #60a5fa;
+    --orange: #fb923c;
+    --red: #f87171;
+    --purple: #a78bfa;
+    --yellow: #fbbf24;
+    --teal: #2dd4bf;
+    --accent: #4ade80;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'SF Pro Text', -apple-system, 'Helvetica Neue', sans-serif;
+    font-size: 16px;
+    line-height: 1.75;
+  }
+
+  /* ─── NAV ─── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(15,15,16,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0; padding: 0 24px;
+    height: 52px;
+  }
+  nav .logo { font-size: 13px; font-weight: 600; color: var(--green); margin-right: 32px; letter-spacing: 0.04em; white-space: nowrap; }
+  nav a { font-size: 13px; color: var(--text2); text-decoration: none; padding: 4px 14px; border-radius: 6px; transition: all .15s; white-space: nowrap; }
+  nav a:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+
+  /* ─── LAYOUT ─── */
+  .page { max-width: 860px; margin: 0 auto; padding: 80px 24px 120px; }
+
+  /* ─── HERO ─── */
+  .hero { text-align: center; padding: 80px 0 64px; }
+  .hero h1 { font-size: clamp(28px, 5vw, 48px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 20px; }
+  .hero h1 span { color: var(--green); }
+  .hero p { font-size: 17px; color: var(--text2); max-width: 560px; margin: 0 auto 32px; }
+  .tags { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .tag { font-size: 12px; padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border); color: var(--text2); }
+
+  /* ─── SECTION ─── */
+  .section { margin-bottom: 80px; }
+  .section-label { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: var(--text3); text-transform: uppercase; margin-bottom: 8px; }
+  h2 { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 12px; }
+  h3 { font-size: 19px; font-weight: 600; margin: 32px 0 10px; }
+  p { color: var(--text2); margin-bottom: 14px; }
+  strong { color: var(--text); font-weight: 600; }
+
+  /* ─── CALLOUT ─── */
+  .callout {
+    border-left: 3px solid var(--green);
+    background: rgba(74,222,128,0.05);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin: 20px 0;
+    font-size: 15px;
+    color: var(--text);
+  }
+  .callout.orange { border-color: var(--orange); background: rgba(251,146,60,0.05); }
+  .callout.blue { border-color: var(--blue); background: rgba(96,165,250,0.05); }
+  .callout.red { border-color: var(--red); background: rgba(248,113,113,0.05); }
+  .callout.purple { border-color: var(--purple); background: rgba(167,139,250,0.05); }
+
+  /* ─── FORMULA ─── */
+  .formula-block {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 20px 0;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 15px;
+    color: var(--text);
+    line-height: 2;
+  }
+  .formula-block .comment { color: var(--text3); font-size: 13px; }
+  .hl-green { color: var(--green); }
+  .hl-blue { color: var(--blue); }
+  .hl-orange { color: var(--orange); }
+  .hl-red { color: var(--red); }
+  .hl-purple { color: var(--purple); }
+  .hl-yellow { color: var(--yellow); }
+
+  /* ─── CANVAS CARD ─── */
+  .canvas-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin: 24px 0;
+    position: relative;
+  }
+  .canvas-card canvas { display: block; border-radius: 8px; }
+  .canvas-title {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 14px;
+  }
+  .controls { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .ctrl-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .ctrl-row label { min-width: 100px; color: var(--text2); }
+  .ctrl-row input[type=range] {
+    flex: 1; -webkit-appearance: none; height: 3px;
+    background: var(--bg3); border-radius: 2px; outline: none;
+  }
+  .ctrl-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px;
+    border-radius: 50%; background: var(--accent); cursor: pointer;
+  }
+  .ctrl-val { min-width: 48px; text-align: right; font-family: monospace; font-size: 13px; color: var(--text); }
+  .loss-val { font-size: 20px; font-weight: 700; color: var(--yellow); }
+  .stat-row { display: flex; gap: 20px; margin-top: 10px; flex-wrap: wrap; }
+  .stat { background: var(--bg3); border-radius: 8px; padding: 10px 16px; }
+  .stat .s-label { font-size: 11px; color: var(--text3); margin-bottom: 2px; }
+  .stat .s-val { font-size: 18px; font-weight: 700; }
+
+  /* ─── STEP NAV ─── */
+  .stepper { display: flex; align-items: center; gap: 0; margin: 24px 0 16px; border-bottom: 1px solid var(--border); }
+  .step-btn {
+    padding: 10px 18px; font-size: 13px; cursor: pointer;
+    color: var(--text2); border: none; background: none;
+    border-bottom: 2px solid transparent; transition: all .15s;
+    font-family: inherit;
+  }
+  .step-btn.active { color: var(--green); border-bottom-color: var(--green); font-weight: 600; }
+  .step-panel { display: none; }
+  .step-panel.active { display: block; }
+
+  /* ─── GRADIENT DESCENT ANIM ─── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 500;
+    cursor: pointer; border: 1px solid var(--border);
+    background: var(--bg3); color: var(--text);
+    transition: all .15s; font-family: inherit;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--green); color: #000; border-color: var(--green); }
+  .btn.primary:hover { opacity: 0.85; }
+  .btn-row { display: flex; gap: 10px; margin: 12px 0; flex-wrap: wrap; }
+
+  /* ─── TABLE ─── */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th { text-align: left; color: var(--text3); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text2); }
+  td:first-child { color: var(--text); font-weight: 500; }
+
+  /* ─── DIVIDER ─── */
+  .divider { height: 1px; background: var(--border); margin: 60px 0; }
+
+  /* ─── COMPARE ─── */
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+  .compare-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+  .compare-card h4 { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+
+  @media (max-width: 600px) {
+    .compare-grid { grid-template-columns: 1fr; }
+    nav a { display: none; }
+  }
+
+  /* ─── SCROLL HINT ─── */
+  .scroll-hint { text-align: center; color: var(--text3); font-size: 12px; margin-top: 8px; }
+
+  /* ─── CODE INLINE ─── */
+  code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; background: var(--bg3); padding: 2px 6px; border-radius: 4px; color: var(--teal); }
+
+  /* ─── PROGRESS BAR ─── */
+  .prog-bar { height: 3px; background: var(--border); border-radius: 2px; margin: 8px 0; overflow: hidden; }
+  .prog-fill { height: 100%; background: var(--green); border-radius: 2px; transition: width 0.3s; }
+</style>
 </head>
 <body>
 
-<div class="container">
-    <h1>从草图迷雾到真·全局视图：逻辑回归可视化指南</h1>
+<nav>
+  <div class="logo">ML · 第一性原理</div>
+  <a href="#linear">线性回归</a>
+  <a href="#problem">分类问题</a>
+  <a href="#sigmoid">Sigmoid</a>
+  <a href="#logistic">逻辑回归</a>
+  <a href="#compare">对比总结</a>
+</nav>
 
-    <div class="card">
-        <h2>1. 解构你的困惑点：为什么拼图接不上？</h2>
-        <p>你现在的大脑中漂浮着这几个断裂的概念板块：</p>
-        <ul>
-            <li><b>板块A（本纸上的草图）：</b> 交叉熵损失函数 $L$ 和预测概率值 $\hat{p}$ 构成的“二维图”。（即当你横坐标看预测结果时，看到了局部最优解）</li>
-            <li><b>板块B（线性模型的经验）：</b> 把所有样本Loss加起来得到关于权重 $(w,b)$ 的巨大多维“深碗”，也就是所谓的 Loss Landscape（损失曲面），也就是梯度下降真正在上面滑动的图。</li>
-            <li><b>板块C（神秘的转换）：</b> 神奇的 S曲线（Sigmoid）把线性的数值空间缩压进了 [0, 1]，莫名其妙中间还出来个 $z=0$ 做切刀（边界）。</li>
-        </ul>
-        <p>你的疑惑总结为一句话：<b>“在数学推导都对的情况下，怎样才能通过改变权重($w,b$) 这个输入点，直观反映在空间切割、以及最终降落在那张针对$w,b$构筑出的‘深大损失碗底’这整个故事链上的？”</b></p>
+<div class="page">
+
+<!-- HERO -->
+<div class="hero">
+  <h1>从<span> 线性回归</span> 到<span> 逻辑回归</span></h1>
+  <p>不是背公式，而是理解设计者为什么这样设计——每一个符号背后都有它出现的理由。</p>
+  <div class="tags">
+    <span class="tag">设计者视角</span>
+    <span class="tag">第一性原理</span>
+    <span class="tag">交互可视化</span>
+    <span class="tag">适合初学者</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     第一章：线性回归
+═══════════════════════════════════════════ -->
+<div class="section" id="linear">
+  <div class="section-label">第一章</div>
+  <h2>线性回归：用一根木棍拟合散点</h2>
+
+  <p>想象你收集了一批数据：房子的面积和它的价格。把这些点画在坐标系里，你会发现它们大致沿着一条斜线分布。<strong>线性回归的任务，就是找到那根"最合适"的线。</strong></p>
+
+  <div class="callout">
+    <strong>设计者的第一个问题：</strong>什么叫"最合适"？我们需要先定义一个衡量标准，才能谈"最优"。这个标准就是<strong>损失函数</strong>。
+  </div>
+
+  <h3>模型长什么样</h3>
+  <p>线性回归的预测非常直白，就是一条直线方程：</p>
+
+  <div class="formula-block">
+    <span class="hl-green">ŷ</span> = <span class="hl-blue">w</span> · x + <span class="hl-orange">b</span>
+    <br>
+    <span class="comment">// ŷ = 预测值，x = 输入特征，w = 权重（斜率），b = 偏置（截距）</span>
+  </div>
+
+  <p>这里只有两个参数需要学习：<strong>w（斜率，决定直线倾斜角度）</strong> 和 <strong>b（截距，决定直线上下位置）</strong>。整个训练过程就是找到最好的 w 和 b。</p>
+
+  <h3>🪤 弹簧比喻：直觉理解损失函数</h3>
+
+  <div class="canvas-card">
+    <div class="canvas-title">交互 · 弹簧模型 — 拖动滑块，感受"拉力"</div>
+    <canvas id="springCanvas" width="820" height="300" style="width:100%"></canvas>
+    <div class="controls">
+      <div class="ctrl-row">
+        <label>斜率 w</label>
+        <input type="range" id="sw" min="-2" max="3" step="0.05" value="0.5">
+        <span class="ctrl-val" id="swv">0.50</span>
+      </div>
+      <div class="ctrl-row">
+        <label>截距 b</label>
+        <input type="range" id="sb" min="-2" max="2" step="0.05" value="0">
+        <span class="ctrl-val" id="sbv">0.00</span>
+      </div>
     </div>
-
-    <div class="card">
-        <h2>2. 打通故事链条：四大空间的几何旅行</h2>
-        <p>千万别企图把所有概念硬塞进同一个坐标系，因为我们在不同时刻处在不同的<b>几何空间</b>内！逻辑回归实际上经历了四个空间的连续投射（链式法则在物理空间上的隐喻）。</p>
-        
-        <h3>🗺️ 第一层：样本的“物理空间”（样本特征系 $X$ 找边界 $z=0$）</h3>
-        <p>这是真实数据待的图（纵轴$X_2$、横轴$X_1$上散落红蓝两堆数据）。你在此时需要给一个方向——找到最棒的棍子劈开他们（找到线段公式 $z = w_{1}x_{1}+ w_{2}x_{2} + b$）。当 <b><span class="highlight">$z=0$ 这道防波堤正好压在线上时</span></b>，$z>0$属于第一类，$z<0$属二类。<br/>
-        <b>破解你的疑惑点（关于z的随机变0）：</b> 不是让样本去凑到0！这本身就是一个 <b>试探边界的位置找寻游戏</b>：随便画一条线起手（这就是<b>权重的初始化随机产生</b>一个$w、b$），这根粗糙的棍子可能并没分隔清楚；而后你的梯度下降去微调棍子平移或旋转角度的过程，正是在重定义什么情况下才算出那个分隔两域的核心警戒哨所“也就是谁将获得值域身份 $z=0$”。
-        </p>
-
-        <h3>🗜️ 第二层：“折叠变形的中间空间”（$z$ 跨越到 $\hat{p}$ 的 Sigmoid 层）</h3>
-        <p>在这里横轴是算出的物理打分 $z$ 轴，竖轴化成了具有强解释性 [0, 1] 的区间图。“越跑偏的地方强压变形幅度变弱，近乎水平；唯有 $z=0$ 是折叠剧变核心处 $\hat{p} = 0.5$ ”。<br/> 这纯是个用来映射“谁更有可能倾向某个分类（以概率显示把握）”的激活函数！不关权重寻底什么事儿，这是必经的数据桥梁，使数学后续有了“算分（判死生或测真假概率的极大似然）的可微分逻辑基础。 </p>
-        
-        <h3>📈 第三层：“你画的那幅图”（局域代价测算表：针对某个数据的Loss vs 结果$\hat{p}$）</h3>
-        <p>你在纸上绘制的双函数组合完全对：就是交叉熵单独在某个特定正确标记$Y \in {0,1}$情况下时的单独表现线。“比如当前是个阳性猫的样本 $Y=1$ ），要是当前经过所有环节得到的你的估分$\hat{p}=0.01$那就会在这跟函数曲线上被挂得很偏高挨一顿巨额痛揍！反之 $\hat{p}=0.99$ 就贴切曲线极低部分”。 这解释了对<b>单样本单点</b>评定的判别函数样貌。
-        </p>
+    <div class="stat-row">
+      <div class="stat"><div class="s-label">MSE 损失</div><div class="s-val hl-yellow" id="mseLoss">—</div></div>
+      <div class="stat"><div class="s-label">MAE 损失</div><div class="s-val" style="color:var(--blue)" id="maeLoss">—</div></div>
+      <div class="stat"><div class="s-label">最优 w</div><div class="s-val" style="color:var(--text2)" id="optW">—</div></div>
     </div>
+    <p style="margin-top:12px; font-size:13px;">🔵 蓝色点 = 样本 &nbsp; 🟢 绿线 = 当前直线（木棍）&nbsp; 🟠 橙色线段 = 弹簧（误差） · 越长拉力越大</p>
+  </div>
 
-    <div class="card">
-        <h2>3. 终极真相与互动图表：真·“寻找碗底图”（$L_{total}$ 关于权重 $w$ 的图）</h2>
-        <p class="note"><b>核心桥梁连接说明：</b> 你迷茫的原因是你想从 <b>预测值的代价评估图</b>上看到下降趋势。但这只是最后算分数的方法。<br/>真正梯度下坡（Gradient Descent）找最低山谷的过程中是在“**总宏观统筹战场空间内进行的**”。<br/>也就是以全体平均的总计误差均值设为山丘高耸维度 $Y_{\text{Height}}：Total Loss J$ ;  由基础探秘兵们——也就是各维度对应的特征参数权重组成的广大二维或者超维“**地理平面地平维度** ($X \rightarrow W$, $Z \rightarrow B$...)”。我们要根据总和出来的 $J$, 微小探索周身梯面最顺的一边斜率慢慢往前探脚，最后聚向整体峡谷极渊。</p>
-        <p>你现在可以通过下方代码自动为你运算并在你的浏览器空间上渲染生成的基于实际数据集下 $w$ 、$b$ 二维平面的 $Loss J_{total}$ （整个图）真正的峡谷找山坑碗景。</p>
-        
-        <div id="plot3d" class="visual-container"></div>
-        <div style="text-align: center; color: #7f8c8d; font-size: 0.9em;">↑使用鼠标可随意旋转、放大这个真实属于逻辑回归代价$W/b$损失下真正的山坡曲面 </div>
+  <p><strong>比喻解释：</strong>把每个样本点当作钉在木板上的图钉，直线是一根木棍，每个图钉和木棍之间用弹簧相连。弹簧越长（误差越大），拉力越大。木棍会在所有弹簧的合力下自动旋转、平移，直到"所有弹力之和最小"——这就是模型训练的本质。</p>
 
-        <p style="margin-top:20px;">
-        在上述图表中（为你虚拟了数据）：水平两个轴分别代表我们要找的最完美超参“棍棒走向控制法子”$W$(权重控制线角度)，与$b$(基元常量操控平切点偏移值)，竖直线表明是当前总宏包交叉损误差 $L_{\text{总代}} (\text{总所有你的图上小惩罚相求的总值}) $。这就是你想象中与理解的梯度最直击靶心的全样形貌！<br/>我们只是沿着那上万个类似图你那个小单纸面累出后的函数求极偏微斜找寻大谷底最低标参数而已。你手写绘制那版只是评判单个局部损失“合理不？”的表现表像图。
-        </p>
+  <div class="callout orange">
+    <strong>MSE vs MAE 的区别：</strong><br><br>
+    · MSE（均方误差）下：<strong>弹力的大小（模型对单个样本的敏感度） = Loss对预测值的导数 = 2(预测值-真实值)</strong> ，离得远的点惩罚急剧增大，对异常值非常敏感。<br><br>
+    · MAE（平均绝对误差）下：<strong></strong>弹力的大小（模型对单个样本的敏感度） = Loss对预测值的导数 = 正负1</strong>，所有样本点对模型的拉力一致，对异常点的抗干扰能力强<br><br>
+    工程上默认用 MSE，因为它处处可导，梯度下降更顺畅。
+  </div>
+
+  <div class="formula-block">
+    <span class="comment">// MSE 损失函数</span><br>
+    <span class="hl-yellow">L</span> = <span class="hl-blue">(1/n)</span> · Σ (<span class="hl-green">ŷᵢ</span> - <span class="hl-orange">yᵢ</span>)²
+    <br><br>
+    <span class="comment">// 展开：预测值 ŷ = wx + b</span><br>
+    <span class="hl-yellow">L</span> = <span class="hl-blue">(1/n)</span> · Σ (<span class="hl-green">wxᵢ+b</span> - <span class="hl-orange">yᵢ</span>)²
+  </div>
+
+  <h3>🎯 梯度下降：怎么调整木棍</h3>
+  <p>有了损失函数，下一个问题是：<strong>如何系统地调整 w 和 b 让损失变小？</strong></p>
+  <p>答案是对损失函数求导。导数告诉我们：当前 w 和 b 在"损失地形"的哪个方向上是下坡方向。沿着下坡方向走，损失就会减小——这就是梯度下降。</p>
+
+  <div class="formula-block">
+    <span class="comment">// 对 w 求偏导（"弹力 × 特征 x" 的直觉）</span><br>
+    ∂L/∂<span class="hl-blue">w</span> = <span class="hl-blue">(2/n)</span> · Σ (<span class="hl-green">ŷᵢ</span> - <span class="hl-orange">yᵢ</span>) · <span class="hl-purple">xᵢ</span>
+    <br><br>
+    <span class="comment">// 对 b 求偏导（只是弹力之和）</span><br>
+    ∂L/∂<span class="hl-blue">b</span> = <span class="hl-blue">(2/n)</span> · Σ (<span class="hl-green">ŷᵢ</span> - <span class="hl-orange">yᵢ</span>)
+    <br><br>
+    <span class="comment">// 更新规则（α = 学习率）</span><br>
+    <span class="hl-blue">w</span> ← <span class="hl-blue">w</span> - α · ∂L/∂<span class="hl-blue">w</span><br>
+    <span class="hl-blue">b</span> ← <span class="hl-blue">b</span> - α · ∂L/∂<span class="hl-blue">b</span>
+  </div>
+
+  <div class="callout blue">
+    根据链式法则（针对所有模型）<br><br>
+    <strong>关于 w 的导数 = "L 关于 ŷ 的导数" 乘以 "ŷ 关于 w 的导数"。所以在线性回归模型下：</strong></strong> <br>
+    <ul>
+        <li>L 关于 ŷ 的导数 → 就是弹力的大小（模型对单个样本点的敏感度）</li>
+        <li>ŷ 关于 w 的导数 → 就是特征 x（力矩）</li>
+    </ul><br>
+
+    所以，单个样本对模型最终的影响（真实破坏力） = 对权重的导数 = 弹簧弹力大小(L 关于 ŷ 的导数) * 力矩(x)。<br><br>
+    总结就是：<strong>一个样本点对模型的最终影响，不仅取决于它错得有多离谱（弹簧拉力），还取决于它站在什么位置（杠杆有多长）！></strong>
+  </div>
+
+  <h3>🏔️ 梯度下降动画：在损失曲面上滚球</h3>
+
+  <div class="canvas-card">
+    <div class="canvas-title">交互 · 梯度下降过程</div>
+    <canvas id="gdCanvas" width="820" height="320" style="width:100%"></canvas>
+    <div class="btn-row">
+      <button class="btn primary" onclick="startGD()">▶ 开始训练</button>
+      <button class="btn" onclick="resetGD()">↺ 重置</button>
     </div>
-    
-    <div class="card" style="background-color: #fdfefe; border: 1px solid #d0ece7;">
-        <h2>📝 最后的复盘与隐喻串联</h2>
-        <p>你用线性模型（弹簧模型）的物理隐喻来类比是很棒的思路。对逻辑回归，我们可以更换一个更好的物理隐喻来连起四个维度的盲肠区：</p>
-        <p>
-            你可以将它假想为一块“磁铁黑板膜”的调频摆放区。<br>
-            📌 面板底端仍是有个分类坐标盘散放各个实体样本红点标(正例=阳磁性)、与绿标志物点(假伪群)。你仍需要甩下去的一道木条充切断刀。<br>
-            🧲 但这回不再有“直线式的伸出实体弹力索直接强硬连在你的拉伸板（没有原始硬弹拉，所以不能直解一键找碗）”。这个切片被包裹覆在一个带有<b>"电磁压缩薄布幕套"的套管机制</b>之中 (这里指经受过了神来压包魔法 $\text{Sigmoid()}$ 的折叠拉皮套，软质有极大弯极限曲收尾特质使得不再生直拉，强行规缩区间 1 ~ 0 值 范值框界。这相当于弹簧越长由于橡皮膜包变钝导致受张被大幅降折)。<br>
-            🚨 所有真实样例红方发信号指令：“要把所有折皮包布这头的高凸面 也就是 $\hat{p}$逼得极为朝拢贴拢 1 强贴着我站队 ！（ $Y_{\text{标真实值就是}}1$)！” 若你不往靠反跑, 就动用了如您草记记绘制过的黑曲线“用无穷高分值的交叉猛咒打向偏方 (${\log_{}{失配区惩界极大！}  }$).。 所有全数据一起扯呼吼完汇总惩发量后。即汇总后出产的是第三块里立高 那个真正整体由偏导找谷向的宏大多超模型图： 针对权重组调整与最后发回误差惩的真实 “高斯宏形峡谷坡！”我们在这上面缓慢调动 那些$W$系数 与常量的平量$b$ 直到了整个巨形坡找向最妥谷位 —— 我们自然也就推挪敲移好得了这底下横穿黑面板 那个完美使 $wx+b$ 正是过界时处于临线分 5：5的 $= 0$！边界线。<br>
-        </p>
+    <div class="ctrl-row" style="margin-top:8px;">
+      <label>学习率 α</label>
+      <input type="range" id="lr" min="0.01" max="0.5" step="0.01" value="0.1">
+      <span class="ctrl-val" id="lrv">0.10</span>
     </div>
+    <div class="stat-row">
+      <div class="stat"><div class="s-label">迭代步数</div><div class="s-val" id="gdStep">0</div></div>
+      <div class="stat"><div class="s-label">当前 w</div><div class="s-val hl-blue" id="gdW">2.00</div></div>
+      <div class="stat"><div class="s-label">当前损失</div><div class="s-val hl-yellow" id="gdLoss">—</div></div>
+    </div>
+    <p style="margin-top:10px;font-size:13px;">左图：损失曲线（对 w 轴）· 右图：实时拟合效果 · 注意：学习率太大会"跳过"最低点</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     第二章：为什么线性回归不能做分类
+═══════════════════════════════════════════ -->
+<div class="divider"></div>
+
+<div class="section" id="problem">
+  <div class="section-label">第二章</div>
+  <h2>为什么线性回归不能做分类？</h2>
+
+  <p>假设我们要判断一封邮件是否是垃圾邮件（是=1，否=0）。如果直接用线性回归预测 y，会发生什么？</p>
+
+  <div class="canvas-card">
+    <div class="canvas-title">演示 · 线性回归用于分类时的问题</div>
+    <canvas id="failCanvas" width="820" height="280" style="width:100%"></canvas>
+    <div class="ctrl-row">
+      <label>极端值影响</label>
+      <input type="range" id="outlier" min="0" max="1" step="0.01" value="0">
+      <span class="ctrl-val" id="outv">0.00</span>
+    </div>
+    <p style="margin-top:10px;font-size:13px;">👆 把滑块拉到右边，加入一个极端点——观察原本不错的分类线如何被破坏</p>
+  </div>
+
+  <div class="callout red">
+    <strong>线性回归用于分类的三个致命问题：</strong><br>
+    1. <strong>预测值超出 [0,1]</strong>：线性回归可以输出 -5 或 3.7，而概率必须在 0 到 1 之间<br>
+    2. <strong>对异常值极度敏感</strong>：一个极端点会把整条线拉偏，破坏所有已经分好的类<br>
+    3. <strong>损失函数不匹配</strong>：分类问题是"对了就是对了，错了就是错了"，不适合用数值大小来惩罚
+  </div>
+
+  <div class="callout">
+    <strong>设计者的思路：</strong>我们需要一个函数，能把任意实数 z 压缩到 (0,1) 范围内，而且在 z=0 处有一个自然的分界点。有没有这样的函数？——有，它叫 Sigmoid。
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     第三章：Sigmoid 函数
+═══════════════════════════════════════════ -->
+<div class="divider"></div>
+
+<div class="section" id="sigmoid">
+  <div class="section-label">第三章</div>
+  <h2>Sigmoid：把任意数值压缩成概率</h2>
+
+  <div class="formula-block">
+    σ(z) = <span class="hl-green">1</span> / (<span class="hl-blue">1</span> + e<sup>-z</sup>)
+    <br><br>
+    <span class="comment">// z 可以是任意实数：-∞ 到 +∞</span><br>
+    <span class="comment">// σ(z) 的输出：永远在 (0, 1) 之间</span><br>
+    <span class="comment">// σ(0) = 0.5  ← 这是关键：z=0 是自然分界点</span>
+  </div>
+
+  <div class="canvas-card">
+    <div class="canvas-title">交互 · Sigmoid 函数解剖</div>
+    <canvas id="sigCanvas" width="820" height="280" style="width:100%"></canvas>
+    <div class="ctrl-row">
+      <label>输入 z</label>
+      <input type="range" id="sigZ" min="-6" max="6" step="0.1" value="0">
+      <span class="ctrl-val" id="sigZv">0.0</span>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><div class="s-label">输入 z</div><div class="s-val hl-blue" id="sigInput">0.0</div></div>
+      <div class="stat"><div class="s-label">σ(z) 输出</div><div class="s-val hl-green" id="sigOutput">0.500</div></div>
+      <div class="stat"><div class="s-label">判断</div><div class="s-val" id="sigJudge" style="color:var(--text2)">边界上</div></div>
+    </div>
+    <p style="margin-top:10px;font-size:13px;">拖动滑块感受：z 越大 → 概率越接近 1；z 越小 → 概率越接近 0；z=0 → 概率恰好 0.5</p>
+  </div>
+
+  <h3>为什么 z=0 是决策边界？</h3>
+  <p>在逻辑回归里，我们让 <code>z = wx + b</code>，然后送入 sigmoid：<code>p = σ(wx+b)</code>。</p>
+  <p>我们规定：当 <code>p ≥ 0.5</code> 时，预测为类别 1；当 <code>p < 0.5</code> 时，预测为类别 0。</p>
+  <p>那么分界点在哪？<code>p = 0.5</code> ⟺ <code>σ(z) = 0.5</code> ⟺ <code>z = 0</code> ⟺ <code>wx + b = 0</code></p>
+
+  <div class="callout purple">
+    <strong>关键顺序（你说的"果而非因"✓）：</strong><br>
+    先有 sigmoid 函数 → 用 p=0.5 作阈值 → 对应 z=0 → 投影回特征空间得到 wx+b=0 这条线。<br>
+    <strong>wx+b=0 是决策边界，它是 sigmoid 分类规则的自然结果，不是我们强行规定的。</strong>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     第四章：逻辑回归完整拼图
+═══════════════════════════════════════════ -->
+<div class="divider"></div>
+
+<div class="section" id="logistic">
+  <div class="section-label">第四章</div>
+  <h2>逻辑回归：完整拼图</h2>
+
+  <p>现在我们把所有零件组装起来：</p>
+
+  <div class="canvas-card">
+    <div class="canvas-title">逻辑回归完整流程图</div>
+    <canvas id="flowCanvas" width="820" height="120" style="width:100%"></canvas>
+  </div>
+
+  <div class="stepper">
+    <button class="step-btn active" onclick="switchStep('s1', this)">1 · 线性组合</button>
+    <button class="step-btn" onclick="switchStep('s2', this)">2 · 概率输出</button>
+    <button class="step-btn" onclick="switchStep('s3', this)">3 · 损失函数</button>
+    <button class="step-btn" onclick="switchStep('s4', this)">4 · 梯度更新</button>
+  </div>
+
+  <div id="s1" class="step-panel active">
+    <div class="formula-block">
+      <span class="comment">// 步骤 1：把所有特征线性组合成一个值 z</span><br>
+      z = <span class="hl-blue">w₁</span>x₁ + <span class="hl-blue">w₂</span>x₂ + ... + <span class="hl-blue">wₙ</span>xₙ + <span class="hl-orange">b</span>
+      <br><br>
+      <span class="comment">// 简写为向量形式</span><br>
+      z = <span class="hl-blue">w</span>ᵀ<span class="hl-purple">x</span> + <span class="hl-orange">b</span>
+    </div>
+    <p>z 可以是任何实数。它综合了所有特征的"证据"：z 越大，说明特征越支持"是类别1"；z 越小，说明越支持"是类别0"。</p>
+    <p>多个特征时，w 是一个向量，每个 wᵢ 代表对应特征 xᵢ 在判断中的"重要程度"和"方向"。</p>
+  </div>
+
+  <div id="s2" class="step-panel">
+    <div class="formula-block">
+      <span class="comment">// 步骤 2：把 z 转换为概率</span><br>
+      p = σ(z) = <span class="hl-green">1 / (1 + e⁻ᶻ)</span>
+      <br><br>
+      <span class="comment">// p 代表"样本属于类别1的概率"</span><br>
+      <span class="comment">// 决策：p ≥ 0.5 → 类别1；p < 0.5 → 类别0</span>
+    </div>
+    <p>sigmoid 不只是"压缩"了数值，它有更深的含义：<strong>在统计上，sigmoid 正是二元分类问题在指数族分布假设下的自然输出函数</strong>（这是为什么它"刚好"好用的深层原因）。</p>
+  </div>
+
+  <div id="s3" class="step-panel">
+    <div class="formula-block">
+      <span class="comment">// 步骤 3：损失函数——交叉熵</span><br>
+      <span class="comment">// 单个样本损失：</span><br>
+      L = -[<span class="hl-orange">y</span>·log(<span class="hl-green">p</span>) + (<span class="hl-blue">1-y</span>)·log(<span class="hl-red">1-p</span>)]
+      <br><br>
+      <span class="comment">// 当 y=1（真实是正例）：L = -log(p)</span><br>
+      <span class="comment">// 当 y=0（真实是负例）：L = -log(1-p)</span><br><br>
+      <span class="comment">// 整个数据集的平均损失：</span><br>
+      J = <span class="hl-blue">(1/n)</span> · Σ Lᵢ
+    </div>
+    <div class="canvas-card" style="margin:12px 0">
+      <div class="canvas-title">交叉熵损失的行为</div>
+      <canvas id="lossCanvas" width="820" height="220" style="width:100%"></canvas>
+    </div>
+    <div class="callout red">
+      <strong>⚠️ 你之前只写了 -log(p)，这只对 y=1 时成立！</strong><br>
+      完整形式必须考虑两种情况：y=1 用 -log(p)；y=0 用 -log(1-p)。<br>
+      合并写法 <code>-[y·log(p) + (1-y)·log(1-p)]</code> 通过 y 的取值自动"切换"——这是一个优雅的数学技巧。
+    </div>
+    <div class="callout">
+      <strong>为什么不用 MSE？</strong><br>
+      逻辑回归如果用 MSE，损失函数关于 w 的图像是非凸的（有很多局部最小值），梯度下降很容易卡住。交叉熵保证了损失曲面是凸的（有唯一全局最小值）。这是选择交叉熵的数学原因。
+    </div>
+  </div>
+
+  <div id="s4" class="step-panel">
+    <div class="formula-block">
+      <span class="comment">// 步骤 4：梯度下降更新（形式与线性回归惊人地相似！）</span><br>
+      ∂J/∂<span class="hl-blue">w</span> = <span class="hl-blue">(1/n)</span> · Σ (<span class="hl-green">pᵢ</span> - <span class="hl-orange">yᵢ</span>) · <span class="hl-purple">xᵢ</span>
+      <br><br>
+      ∂J/∂<span class="hl-blue">b</span> = <span class="hl-blue">(1/n)</span> · Σ (<span class="hl-green">pᵢ</span> - <span class="hl-orange">yᵢ</span>)
+      <br><br>
+      <span class="hl-blue">w</span> ← <span class="hl-blue">w</span> - α · ∂J/∂<span class="hl-blue">w</span><br>
+      <span class="hl-blue">b</span> ← <span class="hl-blue">b</span> - α · ∂J/∂<span class="hl-blue">b</span>
+    </div>
+    <div class="callout purple">
+      <strong>漂亮的对称性：</strong>逻辑回归的梯度公式和线性回归几乎一样，都是"误差 × 特征"。唯一区别：线性回归的"误差"是 (ŷ-y)，逻辑回归的"误差"是 (p-y)。这不是巧合，而是因为它们都是广义线性模型 (GLM) 的特例——深层数学结构是一致的。
+    </div>
+  </div>
+
+  <h3>逻辑回归完整交互演示</h3>
+
+  <div class="canvas-card">
+    <div class="canvas-title">交互 · 逻辑回归分类 — 拖动调整决策边界</div>
+    <canvas id="logCanvas" width="820" height="340" style="width:100%"></canvas>
+    <div class="controls">
+      <div class="ctrl-row">
+        <label>权重 w</label>
+        <input type="range" id="lrw" min="-4" max="4" step="0.1" value="2">
+        <span class="ctrl-val" id="lrwv">2.0</span>
+      </div>
+      <div class="ctrl-row">
+        <label>偏置 b</label>
+        <input type="range" id="lrb" min="-4" max="4" step="0.1" value="0">
+        <span class="ctrl-val" id="lrbv">0.0</span>
+      </div>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><div class="s-label">交叉熵损失</div><div class="s-val hl-yellow" id="logLoss">—</div></div>
+      <div class="stat"><div class="s-label">分类准确率</div><div class="s-val hl-green" id="logAcc">—</div></div>
+      <div class="stat"><div class="s-label">错误分类数</div><div class="s-val hl-red" id="logWrong">—</div></div>
+    </div>
+    <p style="margin-top:10px;font-size:13px;">🔵 实心圆 = 类别1 · ⭕ 空心圆 = 类别0 · 🔴 红色高亮 = 被错误分类（损失趋向无穷大）· 黑线 = 决策边界 wx+b=0</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     第五章：对比总结
+═══════════════════════════════════════════ -->
+<div class="divider"></div>
+
+<div class="section" id="compare">
+  <div class="section-label">第五章</div>
+  <h2>对比总结：两者的本质区别</h2>
+
+  <div class="compare-grid">
+    <div class="compare-card" style="border-color:rgba(74,222,128,0.3)">
+      <h4 style="color:var(--green)">线性回归</h4>
+      <table>
+        <tr><th>项目</th><th>内容</th></tr>
+        <tr><td>任务</td><td>预测连续数值</td></tr>
+        <tr><td>输出</td><td>任意实数 ŷ</td></tr>
+        <tr><td>模型</td><td>ŷ = wx + b</td></tr>
+        <tr><td>损失</td><td>MSE: (ŷ-y)²</td></tr>
+        <tr><td>激活</td><td>无（恒等函数）</td></tr>
+        <tr><td>比喻</td><td>弹簧拉木棍找平衡</td></tr>
+      </table>
+    </div>
+    <div class="compare-card" style="border-color:rgba(96,165,250,0.3)">
+      <h4 style="color:var(--blue)">逻辑回归</h4>
+      <table>
+        <tr><th>项目</th><th>内容</th></tr>
+        <tr><td>任务</td><td>预测类别（分类）</td></tr>
+        <tr><td>输出</td><td>概率 p ∈ (0,1)</td></tr>
+        <tr><td>模型</td><td>p = σ(wx + b)</td></tr>
+        <tr><td>损失</td><td>交叉熵: -[y·log(p)+...]</td></tr>
+        <tr><td>激活</td><td>Sigmoid</td></tr>
+        <tr><td>比喻</td><td>错误分类时弹力无穷大</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h3>关键洞见：它们的共同本质</h3>
+
+  <div class="callout purple">
+    <strong>两者都是"广义线性模型 (GLM)"</strong><br>
+    核心都是 <code>z = wx + b</code>，区别只是最后套了什么"激活函数"：<br>
+    · 线性回归：套了"恒等函数"（不做变换）<br>
+    · 逻辑回归：套了"sigmoid 函数"<br>
+    · 神经网络：套了各种激活函数（ReLU、tanh 等）……是的，神经网络就是这个思路的扩展。
+  </div>
+
+  <h3>梯度公式的对称美</h3>
+
+  <div class="formula-block">
+    <span class="comment">// 线性回归</span><br>
+    ∂L/∂w = <span class="hl-blue">(1/n)</span> · Σ (<span class="hl-orange">ŷᵢ - yᵢ</span>) · <span class="hl-purple">xᵢ</span><br><br>
+    <span class="comment">// 逻辑回归（形式完全一样！只是误差定义不同）</span><br>
+    ∂J/∂w = <span class="hl-blue">(1/n)</span> · Σ (<span class="hl-green">pᵢ - yᵢ</span>) · <span class="hl-purple">xᵢ</span><br><br>
+    <span class="comment">// 统一形式：梯度 = 误差 × 特征，这是最重要的直觉</span>
+  </div>
+
+  <div class="callout">
+    <strong>🎯 最后记住这一句话：</strong><br>
+    训练神经网络 = 找一组参数 w 和 b，让损失函数最小。不管模型多复杂，都是这一件事。
+    梯度下降就是算"向哪个方向调整参数能让损失最快降低"，然后迈一小步。重复这个过程，直到收敛。
+  </div>
+
+  <h3>Python 代码对照（验证你的理解）</h3>
+
+  <div class="formula-block" style="font-size:13px; line-height:1.9">
+    <span class="hl-green">import</span> numpy <span class="hl-green">as</span> np<br><br>
+    <span class="comment"># ── 线性回归 ──</span><br>
+    <span class="hl-blue">def</span> <span class="hl-yellow">linear_regression_step</span>(X, y, w, b, lr):<br>
+    &nbsp;&nbsp;y_hat = X @ w + b &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># 前向传播</span><br>
+    &nbsp;&nbsp;error = y_hat - y &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># 误差（弹力）</span><br>
+    &nbsp;&nbsp;dw = (error @ X) / len(y) &nbsp;&nbsp;<span class="comment"># 梯度 = 误差 × x</span><br>
+    &nbsp;&nbsp;db = error.mean()<br>
+    &nbsp;&nbsp;<span class="hl-green">return</span> w - lr*dw, b - lr*db<br><br>
+    <span class="comment"># ── 逻辑回归 ──</span><br>
+    <span class="hl-blue">def</span> <span class="hl-yellow">sigmoid</span>(z): <span class="hl-green">return</span> 1 / (1 + np.exp(-z))<br><br>
+    <span class="hl-blue">def</span> <span class="hl-yellow">logistic_regression_step</span>(X, y, w, b, lr):<br>
+    &nbsp;&nbsp;z = X @ w + b &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># 线性组合</span><br>
+    &nbsp;&nbsp;p = sigmoid(z) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># 转概率</span><br>
+    &nbsp;&nbsp;error = p - y &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># 误差（注意：p 不是 z）</span><br>
+    &nbsp;&nbsp;dw = (error @ X) / len(y) &nbsp;&nbsp;<span class="comment"># 梯度形式完全一样！</span><br>
+    &nbsp;&nbsp;db = error.mean()<br>
+    &nbsp;&nbsp;<span class="hl-green">return</span> w - lr*dw, b - lr*db
+  </div>
 
 </div>
 
-<!-- 下方的JS是使用内置数据跑真实Cost损失生成那个真正用来优化 W 和 b的三维地形山丘图的核心图层画卷工具代码 -->
+</div><!-- end .page -->
+
 <script>
-    // 定义我们玩具模型非常极简直观的测试真实物理坐标。1 为正(在+区被激到接近1）,0位假想样本。
-    const xData = [-2, -1, 1, 2]; // 横切原数据线样本x轴上
-    const yData = [0, 0, 1, 1]; // 每个点本身真实的0或1的真实目标答案分布 
-    
-    // 生成sigmoid基础组件
-    function sigmoid(z) {
-        return 1 / (1 + Math.exp(-z));
-    }
-    // 实现如你的本子绘画过的公式计算：整个数据单带到函数累起来（取整个参数分布下交叉误差测估全表总表现分山面表现) 
-    function computeTotalLoss(w, b) {
-        let totalLoss = 0;
-        let n = xData.length;
-        for(let i=0; i<n; i++) {
-            let z = w * xData[i] + b; 
-            let p_hat = sigmoid(z);
-            // 夹入防极大对撞除的非常小小修常数 e 阻止出问题
-            p_hat = Math.max(1e-15, Math.min(1 - 1e-15, p_hat));
-            //  公式完美还给你原绘画草图表上的逻辑代法
-            let cost = - (yData[i] * Math.log(p_hat) + (1 - yData[i]) * Math.log(1 - p_hat));
-            totalLoss += cost;
-        }
-        return totalLoss / n; // 整个取向做求回
-    }
+// ═══════ SHARED UTILS ═══════
+const $ = id => document.getElementById(id);
+function sigmoid(z) { return 1 / (1 + Math.exp(-z)); }
 
-    // 这里我们将利用以上真实定义生成一组矩阵去给 Plot库搭建用来绘画图展示的三边数值系全图
-    const wRange = [];
-    const bRange =[];
-    const wResolution = 50; 
-    for(let i=0; i<wResolution; i++) {
-        // 造图 W范围设置 -10 -> 10区间探找 
-        wRange.push(-5 + (10 / wResolution) * i);
-        // 生成出切分线的那个平行B值位 设其从平探移动 (-10 to 10
-        bRange.push(-5 + (10 / wResolution) * i);
+function toCanvas(x, y, W, H, xmin, xmax, ymin, ymax) {
+  return [(x - xmin) / (xmax - xmin) * W, H - (y - ymin) / (ymax - ymin) * H];
+}
+
+function drawAxes(ctx, W, H, xmin, xmax, ymin, ymax, options={}) {
+  const gridColor = 'rgba(255,255,255,0.05)';
+  const axisColor = 'rgba(255,255,255,0.2)';
+  ctx.strokeStyle = gridColor; ctx.lineWidth = 0.5;
+  for (let v = Math.ceil(xmin); v <= xmax; v++) {
+    const [cx] = toCanvas(v, 0, W, H, xmin, xmax, ymin, ymax);
+    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
+  }
+  for (let v = Math.ceil(ymin); v <= ymax; v++) {
+    const [, cy] = toCanvas(0, v, W, H, xmin, xmax, ymin, ymax);
+    ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy); ctx.stroke();
+  }
+  ctx.strokeStyle = axisColor; ctx.lineWidth = 1;
+  const [ax] = toCanvas(0, 0, W, H, xmin, xmax, ymin, ymax);
+  const [, ay] = toCanvas(0, 0, W, H, xmin, xmax, ymin, ymax);
+  if (ax >= 0 && ax <= W) { ctx.beginPath(); ctx.moveTo(ax, 0); ctx.lineTo(ax, H); ctx.stroke(); }
+  if (ay >= 0 && ay <= H) { ctx.beginPath(); ctx.moveTo(0, ay); ctx.lineTo(W, ay); ctx.stroke(); }
+  if (options.xlabel) {
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.font = '11px monospace'; ctx.textAlign = 'center';
+    ctx.fillText(options.xlabel, W - 10, ay + 15);
+  }
+  if (options.ylabel) {
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.font = '11px monospace'; ctx.textAlign = 'left';
+    ctx.fillText(options.ylabel, ax + 4, 14);
+  }
+}
+
+// ═══════ SPRING CANVAS ═══════
+const linPts = [[-2.1,-1.6],[-1.7,-1.2],[-1.2,-0.8],[-0.8,-0.3],[-0.4,0.1],[0.0,0.3],[0.5,0.7],[1.0,1.1],[1.4,1.4],[1.8,1.9],[2.1,2.2]];
+
+function drawSpring() {
+  const c = $('springCanvas');
+  const ctx = c.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const W = c.clientWidth, H = c.clientHeight;
+  c.width = W * dpr; c.height = H * dpr;
+  ctx.scale(dpr, dpr);
+  const w = parseFloat($('sw').value), b = parseFloat($('sb').value);
+  const xmin=-3,xmax=3,ymin=-3,ymax=3;
+
+  ctx.fillStyle = '#17171a'; ctx.fillRect(0,0,W,H);
+  drawAxes(ctx,W,H,xmin,xmax,ymin,ymax,{xlabel:'x',ylabel:'y'});
+
+  let mse=0,mae=0;
+  linPts.forEach(([x,y]) => {
+    const yhat = w*x+b;
+    const err = yhat-y;
+    mse += err*err; mae += Math.abs(err);
+    const [cx,cy] = toCanvas(x,y,W,H,xmin,xmax,ymin,ymax);
+    const [,cy2] = toCanvas(x,yhat,W,H,xmin,xmax,ymin,ymax);
+    const alpha = Math.min(1, Math.abs(err)*0.6+0.2);
+    ctx.strokeStyle = `rgba(251,146,60,${alpha})`; ctx.lineWidth = 1.5; ctx.setLineDash([3,2]);
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx,cy2); ctx.stroke();
+    ctx.setLineDash([]);
+  });
+  mse /= linPts.length; mae /= linPts.length;
+
+  const [x0,y0] = toCanvas(xmin,w*xmin+b,W,H,xmin,xmax,ymin,ymax);
+  const [x1,y1] = toCanvas(xmax,w*xmax+b,W,H,xmin,xmax,ymin,ymax);
+  ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 2; ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+
+  linPts.forEach(([x,y]) => {
+    const [cx,cy] = toCanvas(x,y,W,H,xmin,xmax,ymin,ymax);
+    ctx.fillStyle = '#60a5fa'; ctx.beginPath(); ctx.arc(cx,cy,4.5,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.5; ctx.stroke();
+  });
+
+  const xs = linPts.map(p=>p[0]), ys = linPts.map(p=>p[1]);
+  const n = xs.length;
+  const xm = xs.reduce((a,b)=>a+b)/n, ym = ys.reduce((a,b)=>a+b)/n;
+  const optW = xs.reduce((a,v,i)=>a+(v-xm)*(ys[i]-ym),0) / xs.reduce((a,v)=>a+(v-xm)**2,0);
+
+  $('mseLoss').textContent = mse.toFixed(4);
+  $('maeLoss').textContent = mae.toFixed(4);
+  $('optW').textContent = optW.toFixed(3);
+}
+
+$('sw').addEventListener('input',()=>{$('swv').textContent=parseFloat($('sw').value).toFixed(2);drawSpring();});
+$('sb').addEventListener('input',()=>{$('sbv').textContent=parseFloat($('sb').value).toFixed(2);drawSpring();});
+
+// ═══════ GRADIENT DESCENT CANVAS ═══════
+let gdState = { w: 2.0, b: 0, step: 0, running: false, history: [], timer: null };
+
+function gdLoss(w) {
+  let s = 0;
+  linPts.forEach(([x,y]) => { const e = w*x+0 - y; s += e*e; });
+  return s / linPts.length;
+}
+
+function gdGradW(w) {
+  let s = 0;
+  linPts.forEach(([x,y]) => { s += 2*(w*x - y)*x; });
+  return s / linPts.length;
+}
+
+function drawGD() {
+  const c = $('gdCanvas');
+  const ctx = c.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const W = c.clientWidth, H = c.clientHeight;
+  c.width = W * dpr; c.height = H * dpr;
+  ctx.scale(dpr, dpr);
+  const halfW = W/2;
+
+  ctx.fillStyle = '#17171a'; ctx.fillRect(0,0,W,H);
+
+  // Left: Loss curve
+  ctx.save(); ctx.beginPath(); ctx.rect(0,0,halfW,H); ctx.clip();
+  const wmin=-3,wmax=4; const lmin=0,lmax=25;
+  drawAxes(ctx,halfW,H,wmin,wmax,lmin,lmax,{xlabel:'w',ylabel:'Loss'});
+
+  ctx.strokeStyle='rgba(251,146,60,0.6)'; ctx.lineWidth=2; ctx.beginPath();
+  let first=true;
+  for(let wi=wmin;wi<=wmax;wi+=0.05) {
+    const loss=gdLoss(wi);
+    if(loss>lmax) { first=true; continue; }
+    const [cx,cy]=toCanvas(wi,loss,halfW,H,wmin,wmax,lmin,lmax);
+    first?(ctx.moveTo(cx,cy),first=false):ctx.lineTo(cx,cy);
+  }
+  ctx.stroke();
+
+  if(gdState.history.length>1) {
+    ctx.strokeStyle='rgba(74,222,128,0.4)'; ctx.lineWidth=1; ctx.setLineDash([]);
+    for(let i=1;i<gdState.history.length;i++) {
+      const [ax,ay]=toCanvas(gdState.history[i-1].w,gdState.history[i-1].loss,halfW,H,wmin,wmax,lmin,lmax);
+      const [bx,by]=toCanvas(gdState.history[i].w,gdState.history[i].loss,halfW,H,wmin,wmax,lmin,lmax);
+      ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by);
+      ctx.strokeStyle=`rgba(74,222,128,${0.2+0.6*(i/gdState.history.length)})`; ctx.stroke();
     }
-    const lossSurfaceGridZ =[];
+  }
 
-    // 造那个真正用来做整体斜坡去探大斜找地心下降碗的最庞面图山点。  (针对 W 参数及b截值
-    for (let i = 0; i < wResolution; i++) {
-        const tempZ_YLineRow =[]; 
-        for (let j = 0; j < wResolution; j++) {
-           let theLoss = computeTotalLoss(wRange[i], bRange[j]);
-           tempZ_YLineRow.push(theLoss);
-        }
-        lossSurfaceGridZ.push(tempZ_YLineRow);
+  const curLoss=gdLoss(gdState.w);
+  const [px,py]=toCanvas(gdState.w,curLoss,halfW,H,wmin,wmax,lmin,lmax);
+  ctx.fillStyle='#fbbf24'; ctx.beginPath(); ctx.arc(px,py,6,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // Right: Current fit
+  ctx.save(); ctx.translate(halfW,0); ctx.beginPath(); ctx.rect(0,0,halfW,H); ctx.clip();
+  const xmin=-3,xmax=3,ymin=-3,ymax=3;
+  drawAxes(ctx,halfW,H,xmin,xmax,ymin,ymax,{});
+
+  const [lx,ly]=toCanvas(xmin,gdState.w*xmin,halfW,H,xmin,xmax,ymin,ymax);
+  const [rx,ry]=toCanvas(xmax,gdState.w*xmax,halfW,H,xmin,xmax,ymin,ymax);
+  ctx.strokeStyle='#4ade80'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(rx,ry); ctx.stroke();
+
+  linPts.forEach(([x,y])=>{
+    const [cx,cy]=toCanvas(x,y,halfW,H,xmin,xmax,ymin,ymax);
+    ctx.fillStyle='#60a5fa'; ctx.beginPath(); ctx.arc(cx,cy,4,0,Math.PI*2); ctx.fill();
+  });
+  ctx.restore();
+
+  $('gdStep').textContent = gdState.step;
+  $('gdW').textContent = gdState.w.toFixed(4);
+  $('gdLoss').textContent = curLoss.toFixed(4);
+}
+
+function gdStep() {
+  const lr = parseFloat($('lr').value);
+  const grad = gdGradW(gdState.w);
+  gdState.w -= lr * grad;
+  gdState.step++;
+  gdState.history.push({w:gdState.w, loss:gdLoss(gdState.w)});
+  drawGD();
+  if(Math.abs(grad) < 0.0005 || gdState.step > 300) { clearInterval(gdState.timer); gdState.running=false; }
+}
+
+function startGD() { if(gdState.running) return; gdState.running=true; gdState.timer=setInterval(gdStep,60); }
+function resetGD() {
+  clearInterval(gdState.timer); gdState.running=false;
+  gdState.w=2.0; gdState.b=0; gdState.step=0; gdState.history=[];
+  drawGD();
+}
+$('lr').addEventListener('input',()=>{ $('lrv').textContent=parseFloat($('lr').value).toFixed(2); });
+
+// ═══════ FAIL CANVAS (linear regression for classification) ═══════
+const pts0 = [[-2.2,0],[-1.8,0],[-1.5,0],[-1.1,0],[-0.7,0],[-0.4,0],[0.1,0]];
+const pts1 = [[0.3,1],[0.7,1],[1.0,1],[1.4,1],[1.8,1],[2.1,1]];
+
+function linRegForClassif(pts, outlierX) {
+  const all = [...pts];
+  if(outlierX > 0) all.push([outlierX, 1]);
+  const n=all.length, xs=all.map(p=>p[0]), ys=all.map(p=>p[1]);
+  const xm=xs.reduce((a,b)=>a+b)/n, ym=ys.reduce((a,b)=>a+b)/n;
+  const w=xs.reduce((a,v,i)=>a+(v-xm)*(ys[i]-ym),0)/xs.reduce((a,v)=>a+(v-xm)**2,0);
+  const b=ym-w*xm;
+  return {w,b};
+}
+
+function drawFail() {
+  const c=$('failCanvas');
+  const ctx=c.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  const W=c.clientWidth,H=c.clientHeight;
+  c.width=W*dpr; c.height=H*dpr; ctx.scale(dpr,dpr);
+  const ov=parseFloat($('outlier').value);
+  const outlierX = ov*5;
+  $('outv').textContent=ov.toFixed(2);
+
+  const xmin=-3,xmax=5.5,ymin=-0.6,ymax=1.8;
+  ctx.fillStyle='#17171a'; ctx.fillRect(0,0,W,H);
+  drawAxes(ctx,W,H,xmin,xmax,ymin,ymax,{xlabel:'特征x',ylabel:'标签y'});
+
+  const {w,b}=linRegForClassif([...pts0,...pts1], ov>0.05?outlierX:0);
+
+  // 0.5 threshold line
+  const th=0.5; const xt=(th-b)/w;
+  if(xt>xmin&&xt<xmax) {
+    const [cx]=toCanvas(xt,0,W,H,xmin,xmax,ymin,ymax);
+    ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(cx,0); ctx.lineTo(cx,H); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='11px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('ŷ=0.5分界',cx,12);
+  }
+
+  // regression line
+  const [lx,ly]=toCanvas(xmin,w*xmin+b,W,H,xmin,xmax,ymin,ymax);
+  const [rx,ry]=toCanvas(xmax,w*xmax+b,W,H,xmin,xmax,ymin,ymax);
+  ctx.strokeStyle='#4ade80'; ctx.lineWidth=1.5; ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(rx,ry); ctx.stroke();
+
+  // y=0 and y=1 region
+  const [,y1c]=toCanvas(0,1,W,H,xmin,xmax,ymin,ymax);
+  const [,y0c]=toCanvas(0,0,W,H,xmin,xmax,ymin,ymax);
+  ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=0.5; ctx.setLineDash([6,4]);
+  ctx.beginPath(); ctx.moveTo(0,y1c); ctx.lineTo(W,y1c); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,y0c); ctx.lineTo(W,y0c); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.font='11px sans-serif'; ctx.textAlign='left';
+  ctx.fillText('y=1',W-30,y1c-4); ctx.fillText('y=0',W-30,y0c-4);
+
+  // points
+  const drawPt=(x,y,cls)=>{
+    const [cx,cy]=toCanvas(x,y,W,H,xmin,xmax,ymin,ymax);
+    ctx.fillStyle=cls===1?'#60a5fa':'transparent';
+    ctx.strokeStyle=cls===1?'#60a5fa':'#fb923c'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(cx,cy,5,0,Math.PI*2);
+    if(cls===1)ctx.fill(); else ctx.stroke();
+    ctx.strokeStyle=cls===1?'rgba(96,165,250,0.3)':'rgba(251,146,60,0.3)'; ctx.lineWidth=0.5; ctx.stroke();
+  };
+  pts0.forEach(([x,y])=>drawPt(x,y,0));
+  pts1.forEach(([x,y])=>drawPt(x,y,1));
+  if(ov>0.05) {
+    const [cx,cy]=toCanvas(outlierX,1,W,H,xmin,xmax,ymin,ymax);
+    ctx.fillStyle='#f87171'; ctx.beginPath(); ctx.arc(cx,cy,7,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font='10px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('极端点',cx,cy-10);
+  }
+
+  // out-of-range annotation
+  ctx.fillStyle='rgba(248,113,113,0.7)'; ctx.font='11px sans-serif'; ctx.textAlign='left';
+  ctx.fillText('⚠ 预测值超出[0,1]',8,H-8);
+}
+
+$('outlier').addEventListener('input',drawFail);
+
+// ═══════ SIGMOID CANVAS ═══════
+function drawSigmoid() {
+  const c=$('sigCanvas');
+  const ctx=c.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  const W=c.clientWidth,H=c.clientHeight;
+  c.width=W*dpr; c.height=H*dpr; ctx.scale(dpr,dpr);
+  const zval=parseFloat($('sigZ').value);
+  $('sigZv').textContent=zval.toFixed(1);
+
+  const zmin=-7,zmax=7,pmin=-0.1,pmax=1.1;
+  ctx.fillStyle='#17171a'; ctx.fillRect(0,0,W,H);
+  drawAxes(ctx,W,H,zmin,zmax,pmin,pmax,{xlabel:'z',ylabel:'σ(z)'});
+
+  // shade regions
+  const [,py05]=toCanvas(0,0.5,W,H,zmin,zmax,pmin,pmax);
+  ctx.fillStyle='rgba(74,222,128,0.04)'; const [lx]=toCanvas(0,0,W,H,zmin,zmax,pmin,pmax);
+  ctx.fillRect(lx,0,W-lx,H);
+  ctx.fillStyle='rgba(248,113,113,0.04)'; ctx.fillRect(0,0,lx,H);
+
+  // 0.5 line
+  ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=0.8; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(0,py05); ctx.lineTo(W,py05); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,255,255,0.25)'; ctx.font='10px sans-serif'; ctx.textAlign='left';
+  ctx.fillText('p=0.5',4,py05-4);
+
+  // sigmoid curve
+  ctx.strokeStyle='#4ade80'; ctx.lineWidth=2.5;
+  ctx.beginPath(); let first=true;
+  for(let px=0;px<W;px++) {
+    const z=zmin+(px/W)*(zmax-zmin), p=sigmoid(z);
+    const [cx,cy]=toCanvas(z,p,W,H,zmin,zmax,pmin,pmax);
+    first?(ctx.moveTo(cx,cy),first=false):ctx.lineTo(cx,cy);
+  }
+  ctx.stroke();
+
+  // current z marker
+  const p=sigmoid(zval);
+  const [cx,cy]=toCanvas(zval,p,W,H,zmin,zmax,pmin,pmax);
+  const [,axY]=toCanvas(0,p,W,H,zmin,zmax,pmin,pmax);
+  const [axX,]=toCanvas(zval,0,W,H,zmin,zmax,pmin,pmax);
+
+  ctx.strokeStyle='rgba(251,191,36,0.4)'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.moveTo(cx,axY); ctx.lineTo(cx,cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(axX,cy); ctx.lineTo(cx,cy); ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle='#fbbf24'; ctx.beginPath(); ctx.arc(cx,cy,7,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#17171a'; ctx.lineWidth=1.5; ctx.stroke();
+
+  // labels
+  ctx.fillStyle='rgba(74,222,128,0.6)'; ctx.font='11px sans-serif'; ctx.textAlign='left';
+  ctx.fillText('预测类别1',W*0.6,H*0.25);
+  ctx.fillStyle='rgba(248,113,113,0.6)'; ctx.textAlign='right';
+  ctx.fillText('预测类别0',W*0.4,H*0.75);
+
+  $('sigInput').textContent=zval.toFixed(1);
+  $('sigOutput').textContent=p.toFixed(4);
+  $('sigJudge').textContent=p>0.5?'→ 类别 1 ✓':p===0.5?'边界上':'→ 类别 0 ✓';
+  $('sigJudge').style.color=p>0.5?'var(--green)':p<0.5?'var(--red)':'var(--text2)';
+}
+
+$('sigZ').addEventListener('input',drawSigmoid);
+
+// ═══════ FLOW CANVAS ═══════
+function drawFlow() {
+  const c=$('flowCanvas');
+  const ctx=c.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  const W=c.clientWidth,H=c.clientHeight;
+  c.width=W*dpr; c.height=H*dpr; ctx.scale(dpr,dpr);
+
+  ctx.fillStyle='#17171a'; ctx.fillRect(0,0,W,H);
+  const boxes=[
+    {x:20, label:'输入特征', sub:'x₁,x₂,...,xₙ', color:'#60a5fa'},
+    {x:190, label:'线性组合', sub:'z = wx + b', color:'#a78bfa'},
+    {x:380, label:'Sigmoid', sub:'p = σ(z)', color:'#4ade80'},
+    {x:550, label:'损失函数', sub:'交叉熵 L', color:'#fb923c'},
+    {x:720, label:'梯度更新', sub:'w ← w - α·∂L/∂w', color:'#f87171'},
+  ];
+  const bW=150,bH=70,cy=H/2;
+  boxes.forEach(({x,label,sub,color})=>{
+    ctx.fillStyle='rgba(255,255,255,0.04)';
+    ctx.strokeStyle=color+'55'; ctx.lineWidth=1;
+    roundRect(ctx,x,cy-bH/2,bW,bH,8);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle=color; ctx.font='13px sans-serif'; ctx.textAlign='center';
+    ctx.fillText(label,x+bW/2,cy-8);
+    ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.font='11px monospace';
+    ctx.fillText(sub,x+bW/2,cy+10);
+  });
+  // arrows
+  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1.5;
+  for(let i=0;i<boxes.length-1;i++) {
+    const x1=boxes[i].x+bW+2,x2=boxes[i+1].x-2;
+    const mx=(x1+x2)/2;
+    ctx.beginPath(); ctx.moveTo(x1,cy); ctx.lineTo(x2-8,cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x2-8,cy-5); ctx.lineTo(x2,cy); ctx.lineTo(x2-8,cy+5); ctx.fill();
+  }
+  // backprop arrow
+  ctx.strokeStyle='rgba(251,146,60,0.3)'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+  ctx.beginPath();
+  ctx.moveTo(boxes[4].x+bW/2, cy+bH/2);
+  ctx.lineTo(boxes[4].x+bW/2, cy+bH/2+20);
+  ctx.lineTo(boxes[1].x+bW/2, cy+bH/2+20);
+  ctx.lineTo(boxes[1].x+bW/2, cy+bH/2);
+  ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='rgba(251,146,60,0.5)'; ctx.font='10px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('反向传播 / 梯度',W/2,cy+bH/2+35);
+}
+
+function roundRect(ctx,x,y,w,h,r) {
+  ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+  ctx.arcTo(x+w,y,x+w,y+r,r); ctx.lineTo(x+w,y+h-r);
+  ctx.arcTo(x+w,y+h,x+w-r,y+h,r); ctx.lineTo(x+r,y+h);
+  ctx.arcTo(x,y+h,x,y+h-r,r); ctx.lineTo(x,y+r);
+  ctx.arcTo(x,y,x+r,y,r); ctx.closePath();
+}
+
+// ═══════ LOSS CANVAS (cross-entropy) ═══════
+function drawLossCanvas() {
+  const c=$('lossCanvas');
+  if(!c) return;
+  const ctx=c.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  const W=c.clientWidth,H=c.clientHeight;
+  c.width=W*dpr; c.height=H*dpr; ctx.scale(dpr,dpr);
+  const halfW=W/2;
+
+  ctx.fillStyle='#17171a'; ctx.fillRect(0,0,W,H);
+
+  const drawCurve=(offsetX,y_true,color,title)=>{
+    ctx.save(); ctx.translate(offsetX,0); ctx.beginPath(); ctx.rect(0,0,halfW,H); ctx.clip();
+    const pmin=0.001,pmax=0.999,lmin=0,lmax=7;
+    drawAxes(ctx,halfW,H,pmin,pmax,lmin,lmax,{xlabel:'p',ylabel:'L'});
+    ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath(); let first=true;
+    for(let px=0;px<halfW;px++) {
+      const p=pmin+(px/halfW)*(pmax-pmin);
+      const L=y_true===1?-Math.log(p):-Math.log(1-p);
+      if(L>lmax){first=true;continue;}
+      const [cx,cy]=toCanvas(p,L,halfW,H,pmin,pmax,lmin,lmax);
+      first?(ctx.moveTo(cx,cy),first=false):ctx.lineTo(cx,cy);
     }
+    ctx.stroke();
+    ctx.fillStyle=color; ctx.font='12px sans-serif'; ctx.textAlign='left';
+    ctx.fillText(title,8,16);
+    ctx.fillStyle='rgba(255,255,255,0.2)'; ctx.font='10px sans-serif';
+    if(y_true===1) ctx.fillText('预测越接近1，损失越小',8,H-8);
+    else ctx.fillText('预测越接近0，损失越小',8,H-8);
+    ctx.restore();
+  };
 
-    // 调用真正渲染可视化空间  出展现真正针对参数变化导致的 全宏 碗结构 （并非单个判断评选的小预测线 ) 
-    const plotDataInfoForDisplayBowl =[{
-            z: lossSurfaceGridZ,
-            x: bRange,  
-            y: wRange,
-            type: 'surface',
-            colorscale: 'Viridis' 
-    }];
-    
-    var layoutFormatStyle_bowlVisual_info= {
-      title: '你找寻了很久真正的: 基于特征 W 及 B平移参 打造总出的"大 Loss 山坑盆形探找底部图形(损失平面)" ',
-      autosize: true,
-      margin: {l:15, r:15, b:25, t:60 },
-      scene: {
-        xaxis:{title: '参数: 偏执 b'}, // X为偏见移动调参数 平横推找参数
-        yaxis:{title: '权重方向: w'},     // 主调节棒 轴方向找 偏数点
-        zaxis:{title: '误差求出后的深底 Loss (降坡值区！山下深海)'} // 高处为误差总测最大的 山区、探到底求极限 谷是最全答最佳W合最佳b
-        }
-    };
+  drawCurve(0,1,'#4ade80','y=1 时：L = -log(p)');
+  drawCurve(halfW,0,'#60a5fa','y=0 时：L = -log(1-p)');
+  ctx.strokeStyle='var(--border)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(halfW,0); ctx.lineTo(halfW,H); ctx.stroke();
+}
 
-    Plotly.newPlot('plot3d', plotDataInfoForDisplayBowl, layoutFormatStyle_bowlVisual_info);
+// ═══════ LOGISTIC CANVAS ═══════
+const logPts=[[-2.2,0],[-1.8,0],[-1.5,0],[-1.0,0],[-0.6,0],[-0.3,0],[0.0,0],[0.4,1],[0.8,1],[1.2,1],[1.6,1],[2.0,1],[2.3,1],[-0.2,1],[1.9,0]];
+
+function drawLogistic() {
+  const c=$('logCanvas');
+  const ctx=c.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  const W=c.clientWidth,H=c.clientHeight;
+  c.width=W*dpr; c.height=H*dpr; ctx.scale(dpr,dpr);
+  const w=parseFloat($('lrw').value),b=parseFloat($('lrb').value);
+  const halfW=W/2;
+
+  ctx.fillStyle='#17171a'; ctx.fillRect(0,0,W,H);
+
+  // Left: scatter + decision boundary
+  ctx.save(); ctx.beginPath(); ctx.rect(0,0,halfW,H); ctx.clip();
+  const xmin=-3,xmax=3,ymin=-0.5,ymax=1.5;
+  drawAxes(ctx,halfW,H,xmin,xmax,ymin,ymax,{});
+
+  // shade
+  if(w!==0) {
+    const xb=-b/w;
+    if(xb>=xmin&&xb<=xmax) {
+      const [cx]=toCanvas(xb,0,halfW,H,xmin,xmax,ymin,ymax);
+      ctx.fillStyle='rgba(74,222,128,0.04)'; ctx.fillRect(cx,0,halfW-cx,H);
+      ctx.fillStyle='rgba(248,113,113,0.04)'; ctx.fillRect(0,0,cx,H);
+      ctx.strokeStyle='rgba(255,255,255,0.6)'; ctx.lineWidth=2; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(cx,0); ctx.lineTo(cx,H); ctx.stroke();
+      ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='11px monospace'; ctx.textAlign='center';
+      ctx.fillText('wx+b=0',cx,14);
+    }
+  }
+
+  let loss=0,wrong=0;
+  logPts.forEach(([x,y])=>{
+    const z=w*x+b, p=sigmoid(z), pred=p>=0.5?1:0;
+    const isWrong=pred!==y;
+    if(isWrong) wrong++;
+    loss+=-(y*Math.log(p+1e-10)+(1-y)*Math.log(1-p+1e-10));
+    const [cx,cy]=toCanvas(x,y,halfW,H,xmin,xmax,ymin,ymax);
+    if(isWrong) {
+      ctx.fillStyle='rgba(248,113,113,0.25)'; ctx.beginPath(); ctx.arc(cx,cy,14,0,Math.PI*2); ctx.fill();
+    }
+    if(y===1) {
+      ctx.fillStyle='#60a5fa'; ctx.beginPath(); ctx.arc(cx,cy,5,0,Math.PI*2); ctx.fill();
+    } else {
+      ctx.strokeStyle='#fb923c'; ctx.lineWidth=2; ctx.fillStyle='transparent';
+      ctx.beginPath(); ctx.arc(cx,cy,5,0,Math.PI*2); ctx.stroke();
+    }
+  });
+  loss/=logPts.length;
+  ctx.restore();
+
+  // Right: sigmoid curve with current boundary
+  ctx.save(); ctx.translate(halfW,0); ctx.beginPath(); ctx.rect(0,0,halfW,H); ctx.clip();
+  const zmin=-6,zmax=6,pmin2=-0.1,pmax2=1.1;
+  drawAxes(ctx,halfW,H,zmin,zmax,pmin2,pmax2,{xlabel:'z',ylabel:'p=σ(z)'});
+
+  ctx.strokeStyle='#4ade80'; ctx.lineWidth=2; ctx.beginPath(); let first=true;
+  for(let px=0;px<halfW;px++) {
+    const z=zmin+(px/halfW)*(zmax-zmin),p=sigmoid(z);
+    const [cx,cy]=toCanvas(z,p,halfW,H,zmin,zmax,pmin2,pmax2);
+    first?(ctx.moveTo(cx,cy),first=false):ctx.lineTo(cx,cy);
+  }
+  ctx.stroke();
+
+  const [,line05y]=toCanvas(0,0.5,halfW,H,zmin,zmax,pmin2,pmax2);
+  ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=0.8; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(0,line05y); ctx.lineTo(halfW,line05y); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='10px sans-serif'; ctx.textAlign='left';
+  ctx.fillText('p=0.5 分界',4,line05y-4);
+
+  logPts.forEach(([x,y])=>{
+    const z=w*x+b,p=sigmoid(z);
+    const [cx,cy]=toCanvas(z,p,halfW,H,zmin,zmax,pmin2,pmax2);
+    ctx.fillStyle=y===1?'#60a5fa':'#fb923c'; ctx.beginPath(); ctx.arc(cx,cy,4,0,Math.PI*2); ctx.fill();
+  });
+  ctx.restore();
+
+  $('logLoss').textContent=loss.toFixed(3);
+  $('logAcc').textContent=((logPts.length-wrong)/logPts.length*100).toFixed(0)+'%';
+  $('logWrong').textContent=wrong;
+}
+
+$('lrw').addEventListener('input',()=>{$('lrwv').textContent=parseFloat($('lrw').value).toFixed(1);drawLogistic();});
+$('lrb').addEventListener('input',()=>{$('lrbv').textContent=parseFloat($('lrb').value).toFixed(1);drawLogistic();});
+
+// ═══════ STEP SWITCH ═══════
+function switchStep(id, btn) {
+  document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.step-btn').forEach(b=>b.classList.remove('active'));
+  $(id).classList.add('active'); btn.classList.add('active');
+  if(id==='s3') { setTimeout(drawLossCanvas,50); }
+}
+
+// ═══════ RESIZE ═══════
+let resizeTimer;
+window.addEventListener('resize',()=>{
+  clearTimeout(resizeTimer);
+  resizeTimer=setTimeout(()=>{
+    drawSpring(); drawGD(); drawFail(); drawSigmoid(); drawFlow(); drawLogistic();
+    if($('lossCanvas')) drawLossCanvas();
+  },100);
+});
+
+// ═══════ INIT ═══════
+window.addEventListener('load',()=>{
+  drawSpring(); drawGD(); drawFail(); drawSigmoid(); drawFlow(); drawLogistic();
+});
 </script>
 </body>
 </html>

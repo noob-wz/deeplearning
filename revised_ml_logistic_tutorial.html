@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>从线性回归到逻辑回归｜第一性原理交互教程（修订版）</title>
+<style>
+:root{
+  --bg:#0f1115;
+  --bg2:#171a21;
+  --bg3:#1e2430;
+  --panel:#131822;
+  --border:rgba(255,255,255,0.08);
+  --text:#e8ecf3;
+  --text2:#bcc5d3;
+  --text3:#748196;
+  --green:#4ade80;
+  --blue:#60a5fa;
+  --orange:#fb923c;
+  --red:#f87171;
+  --purple:#a78bfa;
+  --yellow:#fbbf24;
+  --teal:#2dd4bf;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:linear-gradient(180deg,#0d0f13,#10141d 18%,#0f1115 100%);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
+  line-height:1.72;
+}
+a{color:inherit}
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:1000;
+  height:56px;
+  display:flex;align-items:center;gap:8px;
+  padding:0 18px;
+  background:rgba(10,12,17,.84);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+}
+nav .logo{font-size:13px;font-weight:700;color:var(--green);margin-right:14px;white-space:nowrap}
+nav a{
+  text-decoration:none;color:var(--text2);font-size:12px;padding:6px 10px;border-radius:8px;transition:.16s;
+}
+nav a:hover{background:rgba(255,255,255,.05);color:var(--text)}
+.page{max-width:960px;margin:0 auto;padding:86px 20px 120px}
+.hero{
+  padding:52px 0 42px;
+  text-align:center;
+}
+.hero h1{
+  font-size:clamp(30px,5.6vw,52px);
+  line-height:1.08;
+  letter-spacing:-.03em;
+  margin-bottom:18px;
+}
+.hero .g{color:var(--green)}
+.hero p{
+  max-width:760px;margin:0 auto 18px;color:var(--text2);font-size:16px;
+}
+.tags{
+  display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:18px 0 12px;
+}
+.tag{
+  font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:999px;color:var(--text3)
+}
+.tip{
+  display:inline-block;padding:8px 14px;border:1px solid var(--border);border-radius:999px;
+  background:rgba(255,255,255,.03);font-size:12px;color:var(--text2)
+}
+.section{margin-top:44px}
+.section-label{
+  font-size:11px;color:var(--text3);letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px;font-weight:700
+}
+h2{
+  font-size:28px;letter-spacing:-.02em;line-height:1.18;margin-bottom:12px
+}
+h3{
+  margin:28px 0 8px;font-size:19px;color:var(--text)
+}
+p{margin:10px 0;color:var(--text2)}
+strong{color:var(--text)}
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin:56px 0 44px}
+.card{
+  background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.01));
+  border:1px solid var(--border);border-radius:18px;padding:18px 18px 16px;margin:18px 0;
+  box-shadow:0 14px 40px rgba(0,0,0,.18);
+}
+.canvas-card{
+  background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.01));
+  border:1px solid var(--border);border-radius:18px;padding:18px 18px 14px;margin:18px 0;
+}
+.canvas-title{
+  font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--text3);margin-bottom:12px
+}
+canvas{
+  display:block;width:100%;height:300px;border-radius:12px;background:#0f141d;
+}
+.controls{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.ctrl-row{display:flex;align-items:center;gap:12px}
+.ctrl-row label{min-width:104px;color:var(--text2);font-size:13px}
+.ctrl-row input[type=range]{
+  flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:999px;background:#2a3141;outline:none;
+}
+.ctrl-row input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;
+  background:var(--green);box-shadow:0 0 0 2px #10141d;cursor:pointer
+}
+.ctrl-val{min-width:54px;text-align:right;font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.stat-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}
+.stat{
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:12px;padding:10px 14px;min-width:120px
+}
+.s-label{font-size:11px;color:var(--text3);margin-bottom:2px}
+.s-val{font-size:19px;font-weight:700}
+.note{font-size:13px;color:var(--text3);margin-top:10px}
+.callout{
+  margin:16px 0;padding:14px 16px;border-radius:14px;border:1px solid rgba(255,255,255,.05);
+  background:rgba(255,255,255,.03);color:var(--text2);font-size:14px
+}
+.callout strong{display:inline-block;margin-bottom:4px}
+.callout.green{border-left:3px solid var(--green);background:rgba(74,222,128,.06)}
+.callout.red{border-left:3px solid var(--red);background:rgba(248,113,113,.06)}
+.callout.orange{border-left:3px solid var(--orange);background:rgba(251,146,60,.06)}
+.callout.blue{border-left:3px solid var(--blue);background:rgba(96,165,250,.06)}
+.callout.purple{border-left:3px solid var(--purple);background:rgba(167,139,250,.06)}
+.callout.yellow{border-left:3px solid var(--yellow);background:rgba(251,191,36,.06)}
+.epiphany{
+  display:block;margin-top:12px;padding:12px 14px;border-left:3px solid var(--yellow);
+  background:rgba(251,191,36,.07);border-radius:10px;color:var(--text);font-size:14px
+}
+.formula{
+  background:#121722;border:1px solid var(--border);border-radius:16px;padding:18px 20px;margin:16px 0;
+  overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:14px;line-height:1.9;
+}
+.comment{color:var(--text3);font-size:12px}
+.g{color:var(--green)} .b{color:var(--blue)} .o{color:var(--orange)} .r{color:var(--red)} .p{color:var(--purple)} .y{color:var(--yellow)} .t{color:var(--teal)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.badges{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.badge{
+  font-size:12px;border:1px solid var(--border);border-radius:999px;padding:5px 10px;background:rgba(255,255,255,.03);color:var(--text2)
+}
+.flow{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:16px 0;
+}
+.flow .box{
+  background:#121822;border:1px solid var(--border);border-radius:14px;padding:12px;text-align:center
+}
+.flow .box .top{font-size:12px;color:var(--text3);margin-bottom:5px}
+.flow .box .main{font-size:14px;font-weight:700}
+.flow .box .sub{font-size:12px;color:var(--text3);margin-top:4px}
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+.compare-card{
+  background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:16px;padding:16px
+}
+.compare-card h4{font-size:15px;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.05);font-size:14px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);text-align:left}
+td:first-child{color:var(--text)}
+.list-tight{padding-left:20px;color:var(--text2)}
+.list-tight li{margin:6px 0}
+.footer-tip{
+  margin-top:18px;font-size:13px;color:var(--text3)
+}
+@media (max-width:840px){
+  .grid-2,.grid-3,.compare-grid,.flow{grid-template-columns:1fr}
+  nav a{display:none}
+}
+</style>
+</head>
+<body>
+<nav>
+  <div class="logo">ML · 第一性原理 · 修订版</div>
+  <a href="#linear">线性回归</a>
+  <a href="#problem">为何不能分类</a>
+  <a href="#sigmoid">x→z→p</a>
+  <a href="#logistic">逻辑回归</a>
+  <a href="#compare">对比总结</a>
+</nav>
+
+<div class="page">
+  <div class="hero">
+    <h1>从<span class="g">线性回归</span>到<span class="g">逻辑回归</span></h1>
+    <p>这版不是简单修修补补，而是把最容易让初学者混淆的几个地方重新“拆层重建”：
+      把 <strong>x 空间、z 空间、p 空间</strong> 分开讲，把 <strong>概率误差 p−y</strong> 和 <strong>参数梯度贡献 (p−y)x</strong> 分开讲，
+      同时把“线性回归为什么不适合分类”的三条理由，改成各自对应的可视化或文字说明。🌱</p>
+    <div class="tags">
+      <span class="tag">设计者视角</span>
+      <span class="tag">第一性原理</span>
+      <span class="tag">交互可视化</span>
+      <span class="tag">严格区分坐标系</span>
+      <span class="tag">修复歧义版</span>
+    </div>
+    <div class="tip">💡 双击任意滑块可恢复默认值</div>
+  </div>
+
+  <div class="section" id="linear">
+    <div class="section-label">第一章</div>
+    <h2>线性回归：先理解“连续数值拟合”这件事</h2>
+    <p>线性回归的原始任务，是用一条直线去拟合<strong>连续数值</strong>。模型本体非常简单：</p>
+
+    <div class="formula">
+      <span class="g">ŷ</span> = <span class="b">w</span>x + <span class="o">b</span><br>
+      <span class="comment">// ŷ：预测的连续值，w：斜率，b：截距</span>
+    </div>
+
+    <p>训练的真正问题不是“画条线”，而是：<strong>什么叫画得好？</strong> 一旦定义了损失函数，训练就变成了调 w 和 b，让损失下降。</p>
+
+    <div class="canvas-card">
+      <div class="canvas-title">交互 · 弹簧直觉：误差越大，平方误差越会放大它</div>
+      <canvas id="springCanvas" style="height:290px"></canvas>
+      <div class="controls">
+        <div class="ctrl-row"><label>斜率 w</label><input type="range" id="sw" min="-1.5" max="3" step="0.05" value="0.55"><span class="ctrl-val" id="swv">0.55</span></div>
+        <div class="ctrl-row"><label>截距 b</label><input type="range" id="sb" min="-2" max="2" step="0.05" value="0"><span class="ctrl-val" id="sbv">0.00</span></div>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><div class="s-label">MSE</div><div class="s-val y" id="mseVal">—</div></div>
+        <div class="stat"><div class="s-label">MAE</div><div class="s-val b" id="maeVal">—</div></div>
+        <div class="stat"><div class="s-label">样本平均梯度 ∂J/∂w</div><div class="s-val r" id="springGrad">—</div></div>
+      </div>
+      <div class="note">🔵 蓝点 = 样本；🟢 绿线 = 当前回归线；🟠 竖直线段 = 预测误差</div>
+      <span class="epiphany">🎯 <strong>核心顿悟：</strong>在线性回归里，真正直接进入梯度的是 <strong>(ŷ−y)</strong>。再乘上 <strong>x</strong> 之后，才变成某个样本对参数 w 的实际推动量。也就是说：<strong>对输出的误差</strong> 和 <strong>样本所在的位置</strong>，两者共同决定更新。</span>
+    </div>
+
+    <div class="callout.orange">
+      <strong>先把链式法则记牢：</strong><br>
+      对单个样本，线性回归里对权重的梯度是
+      <strong>∂L/∂w = (∂L/∂ŷ) · (∂ŷ/∂w)</strong>。<br>
+      若用平方误差，<strong>∂L/∂ŷ = 2(ŷ−y)</strong>；而 <strong>∂ŷ/∂w = x</strong>。<br>
+      所以最终真正作用到参数上的，是 <strong>2(ŷ−y)x</strong>，而不是只有“几何距离”这一个量。
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section" id="problem">
+    <div class="section-label">第二章</div>
+    <h2>为什么线性回归不适合做分类？</h2>
+    <p>这里要特别小心：<strong>“线性回归不适合分类”不是只因为异常值</strong>。它至少有三层原因，而且三层原因不应该被一张图混着解释。</p>
+
+    <div class="canvas-card">
+      <div class="canvas-title">拆开看：左边说明“输出越界”，右边说明“异常值会拖偏阈值”</div>
+      <canvas id="badCanvas" style="height:330px"></canvas>
+      <div class="controls">
+        <div class="ctrl-row"><label>极端点强度</label><input type="range" id="outlier" min="0" max="1" step="0.01" value="0"><span class="ctrl-val" id="outv">0.00</span></div>
+      </div>
+      <span class="epiphany">🎯 <strong>读图方式：</strong>左半图不是在说异常值，而是在说明 <strong>ŷ=wx+b</strong> 本体就是无界实数，所以它会自然跑出概率区间 [0,1]；右半图才是在说明：如果你硬把线性回归用于分类，再额外规定 <strong>ŷ=0.5</strong> 当阈值，那么远处极端点会强烈拖偏这条“人为阈值”。</span>
+    </div>
+
+    <div class="callout.red">
+      <strong>线性回归不适合分类，原因分三层：</strong><br>
+      1. <strong>输出层面：</strong><span class="g">ŷ=wx+b</span> 是任意实数，可能小于 0 或大于 1，不能天然解释成概率。<br>
+      2. <strong>优化/鲁棒性层面：</strong>平方误差会放大远点，极少数异常样本可能主导更新。<br>
+      3. <strong>建模目标层面：</strong>分类真正在乎的是“给真实类别多大概率”，而不是把 0/1 当普通连续数值去逼近。
+    </div>
+
+    <div class="callout.green">
+      <strong>设计者接下来的问题：</strong><br>
+      有没有一个函数，能把任意实数先变成 <strong>(0,1)</strong> 内的概率；并且还能给出一个天然阈值，让“分类边界”不是后加规则，而是模型结构的自然结果？——这就是 Sigmoid 的出场理由。
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section" id="sigmoid">
+    <div class="section-label">第三章</div>
+    <h2>从特征 x 到线性得分 z，再到概率 p 的完整因果链</h2>
+    <p>这一章专门修复最容易混的地方：<strong>sigmoid 图上的 z=0</strong>，和特征空间里的 <strong>wx+b=0</strong>，并不是两条互相竞争的解释，而是同一件事在不同空间中的投影。</p>
+
+    <div class="formula">
+      <span class="comment">// 第一步：先做线性组合</span><br>
+      <span class="b">z</span> = <span class="b">w</span>x + <span class="o">b</span><br><br>
+      <span class="comment">// 第二步：再把 z 送入 sigmoid 得到概率</span><br>
+      <span class="g">p</span> = σ(z) = 1 / (1 + e<sup>−z</sup>)<br><br>
+      <span class="comment">// 第三步：若用 p=0.5 作为分类阈值</span><br>
+      p = 0.5 ⇔ z = 0 ⇔ wx + b = 0
+    </div>
+
+    <div class="canvas-card">
+      <div class="canvas-title">交互 · 三层因果图：x 空间 → z 空间 → p 空间</div>
+      <canvas id="chainCanvas" style="height:360px"></canvas>
+      <div class="controls">
+        <div class="ctrl-row"><label>当前样本 x</label><input type="range" id="cx" min="-3" max="3" step="0.05" value="0.5"><span class="ctrl-val" id="cxv">0.50</span></div>
+        <div class="ctrl-row"><label>权重 w</label><input type="range" id="cw" min="-3" max="3" step="0.05" value="1.5"><span class="ctrl-val" id="cwv">1.50</span></div>
+        <div class="ctrl-row"><label>偏置 b</label><input type="range" id="cb" min="-2.5" max="2.5" step="0.05" value="-0.5"><span class="ctrl-val" id="cbv">-0.50</span></div>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><div class="s-label">z = wx+b</div><div class="s-val b" id="zVal">—</div></div>
+        <div class="stat"><div class="s-label">p = σ(z)</div><div class="s-val g" id="pVal">—</div></div>
+        <div class="stat"><div class="s-label">边界 x* = −b/w</div><div class="s-val o" id="xStar">—</div></div>
+        <div class="stat"><div class="s-label">分类</div><div class="s-val" id="judgeVal">—</div></div>
+      </div>
+      <span class="epiphany">🎯 <strong>核心顿悟：</strong>真正先发生的，是<strong>在特征空间里把 x 映射成 z</strong>；sigmoid 只是把这个 z 翻译成概率。<strong>决策边界不是“从 sigmoid 曲线里长出来”的</strong>，而是条件 <strong>z=0</strong> 投回特征空间后得到的 <strong>wx+b=0</strong>。</span>
+    </div>
+
+    <div class="callout.blue">
+      <strong>必须严格区分两个函数：</strong><br>
+      · 若横轴是 <strong>z</strong>，你画的是 <strong>p = σ(z)</strong>。这条 sigmoid 曲线本身<strong>不会</strong>因为 w、b 改变。<br>
+      · 若横轴是 <strong>x</strong>，你画的是 <strong>p(x) = σ(wx+b)</strong>。这时 w、b 会改变整条曲线的形状与位置。<br><br>
+      所以“改变 w 会让 sigmoid 更陡”这句话，只有在你说的是 <strong>p(x)=σ(wx+b)</strong> 的 x-空间图像时才成立；如果横轴是 z，那条 sigmoid 根本没变。
+    </div>
+
+    <div class="callout.purple">
+      <strong>改变 w 和 b 分别在做什么？</strong><br>
+      · <strong>改变 w：</strong>先改变 x 映射到 z 的缩放和方向；在 x-空间里表现为 <strong>p(x)=σ(wx+b)</strong> 更陡、更缓，甚至左右翻转。<br>
+      · <strong>改变 b：</strong>改变整体的 z 偏移；在 x-空间里表现为整条概率曲线左右平移。<br>
+      · <strong>决策边界始终由 wx+b=0 决定</strong>；一维时就是一个点 <strong>x*=−b/w</strong>，画在数轴上是竖线，不是 sigmoid 图里随意挑出来的点。
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section" id="logistic">
+    <div class="section-label">第四章</div>
+    <h2>逻辑回归：把几块零件拼成一个完整模型</h2>
+    <p>到了这里，逻辑回归已经不该再被理解成“线性回归外面套了个 sigmoid”。更准确地说，它是在做这样一件事：<strong>先用线性组合得到证据强度 z，再用 sigmoid 把它解释成概率，然后用交叉熵去衡量这个概率与真实标签的匹配程度。</strong></p>
+
+    <div class="flow">
+      <div class="box"><div class="top">输入</div><div class="main b">x</div><div class="sub">特征</div></div>
+      <div class="box"><div class="top">线性组合</div><div class="main p">z = wx+b</div><div class="sub">证据强度</div></div>
+      <div class="box"><div class="top">激活</div><div class="main g">p = σ(z)</div><div class="sub">类别1概率</div></div>
+      <div class="box"><div class="top">损失</div><div class="main o">L(p,y)</div><div class="sub">交叉熵</div></div>
+      <div class="box"><div class="top">更新</div><div class="main r">w,b</div><div class="sub">梯度下降</div></div>
+    </div>
+
+    <h3>交叉熵损失：惩罚的是“错误概率态度”</h3>
+    <div class="formula">
+      L = −[<span class="o">y</span>·log(<span class="g">p</span>) + (1−<span class="o">y</span>)·log(1−<span class="g">p</span>)]<br>
+      <span class="comment">// y=1 时：L = −log(p)</span><br>
+      <span class="comment">// y=0 时：L = −log(1−p)</span>
+    </div>
+
+    <div class="callout.red">
+      <strong>这里一定要说完整：</strong><br>
+      “−log(p)” 只在 <strong>y=1</strong> 时成立；“−log(1−p)” 只在 <strong>y=0</strong> 时成立。<br>
+      完整写法必须是上面的统一形式，因为逻辑回归要同时处理正类和负类。
+    </div>
+
+    <h3>链式法则：概率误差和参数梯度不是一回事</h3>
+    <div class="formula">
+      \[
+      \frac{\partial L}{\partial w}
+      =
+      \frac{\partial L}{\partial p}
+      \cdot
+      \frac{\partial p}{\partial z}
+      \cdot
+      \frac{\partial z}{\partial w}
+      \]
+      <br>
+      <span class="comment">在逻辑回归里，这三层最后会化简成：</span><br>
+      ∂L/∂w = (<span class="g">p</span> − <span class="o">y</span>) · <span class="p">x</span>
+    </div>
+
+    <div class="callout.orange">
+      <strong>术语要分开：</strong><br>
+      · <strong>概率误差</strong>：<span class="g">p−y</span> —— 表示模型给类别1的概率，和真实标签之间差了多少。<br>
+      · <strong>样本对参数 w 的梯度贡献</strong>：<span class="g">(p−y)x</span> —— 这才是某个样本最终把权重往哪个方向推、推多大的量。<br><br>
+      所以，“影响大小”绝不能只说成由代价函数对预测值的导数决定；它还必须继续乘上 <strong>预测值对参数的导数</strong>，也就是链式法则的后半段。
+    </div>
+
+    <h3>比喻图：逻辑回归像“看概率态度”的考官</h3>
+    <p>这只是<strong>直觉比喻，不是数学定义</strong>。它的目的，是帮助你把“几何距离”和“概率态度”这两件事分清楚。</p>
+
+    <div class="canvas-card">
+      <div class="canvas-title">交互 · 样本对权重的贡献：方向 = sign((p−y)x)，长度 = |(p−y)x|</div>
+      <canvas id="forceCanvas" style="height:315px"></canvas>
+      <div class="controls">
+        <div class="ctrl-row"><label>权重 w</label><input type="range" id="fw" min="0.2" max="5" step="0.1" value="1.7"><span class="ctrl-val" id="fwv">1.7</span></div>
+        <div class="ctrl-row"><label>偏置 b</label><input type="range" id="fb" min="-3" max="3" step="0.1" value="0"><span class="ctrl-val" id="fbv">0.0</span></div>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><div class="s-label">平均概率误差</div><div class="s-val g" id="probErr">—</div></div>
+        <div class="stat"><div class="s-label">平均 ∂J/∂w</div><div class="s-val y" id="fGrad">—</div></div>
+        <div class="stat"><div class="s-label">平均交叉熵</div><div class="s-val r" id="fLoss">—</div></div>
+        <div class="stat"><div class="s-label">边界 x*</div><div class="s-val o" id="fBound">—</div></div>
+      </div>
+      <div class="note">颜色语义固定：🔴 错分；原本类别颜色表示真实标签。箭头方向表示梯度符号；箭头长度表示 |(p−y)x|。</div>
+      <span class="epiphany">🎯 <strong>核心顿悟：</strong>这里不能说“力度只取决于 p−y”。更准确地说：<strong>p−y 决定概率层面的错得多不多</strong>，再乘上 <strong>x</strong>，才变成对参数 w 的真实贡献。也就是说，<strong>概率误差</strong> 和 <strong>样本所处位置</strong>，两者共同决定更新。</span>
+    </div>
+
+    <div class="callout.blue">
+      <strong>和线性回归“按距离拉”的根本区别：</strong><br>
+      · 在线性回归里，若用平方误差，<strong>∂L/∂ŷ</strong> 直接随着数值误差放大。<br>
+      · 在逻辑回归里，真正作用到参数上的量是 <strong>(p−y)x</strong>。<br>
+      · 因此它不是由“几何距离”直接线性决定的，而是由“<strong>概率错多少</strong> × <strong>这个样本所在的位置</strong>”共同决定。<br>
+      · 几何距离可能间接影响 z 和 p，但它不再像线性回归里那样，直接就是惩罚本体。
+    </div>
+
+    <h3>L 关于 w 的真实训练路径</h3>
+    <p>初学逻辑回归时，大家常被 <strong>L 关于 p 的曲线</strong> 吸住，但梯度下降真正走的路，是 <strong>J(w)</strong> 这条关于参数的曲线。</p>
+
+    <div class="canvas-card">
+      <div class="canvas-title">交互 · J(w) 曲线与梯度下降路径（固定 b=0）</div>
+      <canvas id="lossWCanvas" style="height:310px"></canvas>
+      <div class="controls">
+        <div class="ctrl-row"><label>初始 w</label><input type="range" id="lw0" min="-4" max="4" step="0.1" value="3"><span class="ctrl-val" id="lw0v">3.0</span></div>
+        <div class="ctrl-row"><label>学习率 α</label><input type="range" id="llr" min="0.02" max="1" step="0.01" value="0.28"><span class="ctrl-val" id="llrv">0.28</span></div>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><div class="s-label">当前 w</div><div class="s-val b" id="curW">—</div></div>
+        <div class="stat"><div class="s-label">J(w)</div><div class="s-val y" id="curJ">—</div></div>
+        <div class="stat"><div class="s-label">∂J/∂w</div><div class="s-val r" id="curG">—</div></div>
+        <div class="stat"><div class="s-label">步数</div><div class="s-val" id="curStep">0</div></div>
+      </div>
+      <div class="badges">
+        <button class="badge" onclick="startLossTrain()">▶ 开始训练</button>
+        <button class="badge" onclick="resetLossTrain()">↺ 重置</button>
+      </div>
+      <span class="epiphany">🎯 <strong>核心顿悟：</strong>你平时看到的 “y=1 时的 −log(p)” 或 “y=0 时的 −log(1−p)” 只是中间层行为；真正训练参数时，优化器沿着的是 <strong>J(w)</strong> 的坡面，而不是直接沿 p 轴走。</span>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section" id="compare">
+    <div class="section-label">第五章</div>
+    <h2>对比总结：把两个模型放在一张桌子上看</h2>
+
+    <div class="compare-grid">
+      <div class="compare-card">
+        <h4 style="color:var(--green)">线性回归</h4>
+        <table>
+          <tr><th>项目</th><th>内容</th></tr>
+          <tr><td>任务</td><td>预测连续值</td></tr>
+          <tr><td>输出</td><td>ŷ = wx+b，任意实数</td></tr>
+          <tr><td>常见损失</td><td>MSE / MAE</td></tr>
+          <tr><td>单样本梯度</td><td>(∂L/∂ŷ)·x；若 MSE，则 ∝ (ŷ−y)x</td></tr>
+          <tr><td>直觉比喻</td><td>按数值误差被“弹簧拉”</td></tr>
+          <tr><td>适合</td><td>房价、温度、销量等连续量</td></tr>
+        </table>
+      </div>
+      <div class="compare-card">
+        <h4 style="color:var(--blue)">逻辑回归</h4>
+        <table>
+          <tr><th>项目</th><th>内容</th></tr>
+          <tr><td>任务</td><td>预测类别概率</td></tr>
+          <tr><td>输出</td><td>p = σ(wx+b)，位于 (0,1)</td></tr>
+          <tr><td>常见损失</td><td>交叉熵</td></tr>
+          <tr><td>单样本梯度</td><td>(p−y)x</td></tr>
+          <tr><td>直觉比喻</td><td>按“概率错得多不多”来更新</td></tr>
+          <tr><td>适合</td><td>垃圾邮件、是否违约、是否患病等二分类</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="callout.purple">
+      <strong>最后用一句话收束：</strong><br>
+      线性回归关心的是“这个数值差了多少”；逻辑回归关心的是“我给真实类别分配了多大概率”。<br>
+      两者表面上都写成 <strong>wx+b</strong>，但因为后面的激活与损失不同，整个模型的意义、梯度和学习行为都变了。
+    </div>
+
+    <div class="footer-tip">你现在这版 HTML，已经把最容易出错的 5 个点都拆开修正了：图 1 只讲异常值敏感；图 2 严格分开 x/z/p 三个空间；“改变 w 和 b”严格区分 z 轴和 x 轴语境；“智能法官”明确标成比喻；“力度”改写为链式法则下对参数的真实贡献。</div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+function setupCanvas(canvas){
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const w = Math.max(320, Math.floor(rect.width));
+  const h = Math.max(220, Math.floor(rect.height));
+  if(canvas.width !== Math.floor(w*dpr) || canvas.height !== Math.floor(h*dpr)){
+    canvas.width = Math.floor(w*dpr);
+    canvas.height = Math.floor(h*dpr);
+  }
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  return {ctx, W:w, H:h};
+}
+function sigmoid(z){ return 1/(1+Math.exp(-z)); }
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+function lerp(a,b,t){ return a + (b-a)*t; }
+
+function tc(x,y,W,H,xmin,xmax,ymin,ymax,pad=28){
+  const px = pad + (x-xmin)/(xmax-xmin)*(W-pad*2);
+  const py = H-pad - (y-ymin)/(ymax-ymin)*(H-pad*2);
+  return [px,py];
+}
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+function axes(ctx,W,H,xmin,xmax,ymin,ymax,xLabel,yLabel,pad=28){
+  ctx.strokeStyle='rgba(255,255,255,.13)';
+  ctx.lineWidth=1;
+  const [x0,y0]=tc(0,0,W,H,xmin,xmax,ymin,ymax,pad);
+  if(0>=xmin && 0<=xmax){
+    ctx.beginPath();ctx.moveTo(x0,pad*0.5);ctx.lineTo(x0,H-pad*0.5);ctx.stroke();
+  }
+  if(0>=ymin && 0<=ymax){
+    ctx.beginPath();ctx.moveTo(pad*0.5,y0);ctx.lineTo(W-pad*0.5,y0);ctx.stroke();
+  }
+  ctx.fillStyle='rgba(255,255,255,.28)';
+  ctx.font='11px sans-serif';
+  if(xLabel){ ctx.fillText(xLabel, W-20, H-8); }
+  if(yLabel){ ctx.save(); ctx.translate(12,18); ctx.fillText(yLabel,0,0); ctx.restore(); }
+}
+function gridX(ctx,W,H,xmin,xmax,ymin,ymax,vals,pad=28){
+  ctx.strokeStyle='rgba(255,255,255,.06)';
+  ctx.lineWidth=1;
+  vals.forEach(v=>{
+    const [x]=tc(v,0,W,H,xmin,xmax,ymin,ymax,pad);
+    ctx.beginPath();ctx.moveTo(x,pad);ctx.lineTo(x,H-pad);ctx.stroke();
+  });
+}
+function arrow(ctx,x1,y1,x2,y2,color='#fff',width=2){
+  const ang = Math.atan2(y2-y1,x2-x1);
+  ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=width;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  const size = 7 + width*0.8;
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-size*Math.cos(ang-Math.PI/6), y2-size*Math.sin(ang-Math.PI/6));
+  ctx.lineTo(x2-size*Math.cos(ang+Math.PI/6), y2-size*Math.sin(ang+Math.PI/6));
+  ctx.closePath();ctx.fill();
+}
+function addDoubleReset(slider, value){
+  slider.dataset.defaultValue = String(value);
+  slider.addEventListener('dblclick', ()=>{
+    slider.value = slider.dataset.defaultValue;
+    slider.dispatchEvent(new Event('input'));
+  });
+}
+function fillCanvasBG(ctx,W,H){
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#111723');
+  g.addColorStop(.65,'#0f141d');
+  g.addColorStop(1,'#0d121a');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,W,H);
+}
+
+const linearPts = [[-2.4,-1.7],[-1.9,-1.1],[-1.3,-0.55],[-0.7,-0.1],[-0.2,0.2],[0.5,0.56],[1.1,1.08],[1.7,1.42],[2.3,2.05]];
+function drawSpring(){
+  const c=$('springCanvas'); const {ctx,W,H}=setupCanvas(c);
+  fillCanvasBG(ctx,W,H);
+  const w=parseFloat($('sw').value), b=parseFloat($('sb').value);
+  $('swv').textContent=w.toFixed(2);
+  $('sbv').textContent=b.toFixed(2);
+  const xmin=-3,xmax=3,ymin=-2.6,ymax=2.8;
+  gridX(ctx,W,H,xmin,xmax,ymin,ymax,[-2,-1,0,1,2]);
+  axes(ctx,W,H,xmin,xmax,ymin,ymax,'x','y');
+  let mse=0, mae=0, grad=0;
+  linearPts.forEach(([x,y])=>{
+    const yhat = w*x+b;
+    const [px,py]=tc(x,y,W,H,xmin,xmax,ymin,ymax);
+    const [,ph]=tc(x,yhat,W,H,xmin,xmax,ymin,ymax);
+    ctx.strokeStyle='rgba(251,146,60,.8)';
+    ctx.lineWidth=1.4;
+    ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(px,ph); ctx.stroke();
+    ctx.fillStyle='#60a5fa';
+    ctx.beginPath(); ctx.arc(px,py,5,0,Math.PI*2); ctx.fill();
+    const err = yhat-y;
+    mse += err*err;
+    mae += Math.abs(err);
+    grad += 2*err*x;
+  });
+  mse/=linearPts.length; mae/=linearPts.length; grad/=linearPts.length;
+  const [x1,y1]=tc(xmin,w*xmin+b,W,H,xmin,xmax,ymin,ymax);
+  const [x2,y2]=tc(xmax,w*xmax+b,W,H,xmin,xmax,ymin,ymax);
+  ctx.strokeStyle='#4ade80';ctx.lineWidth=2.6;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  $('mseVal').textContent=mse.toFixed(3);
+  $('maeVal').textContent=mae.toFixed(3);
+  $('springGrad').textContent=grad.toFixed(3);
+}
+
+const class0 = [[-2.2,0],[-1.8,0],[-1.4,0],[-1.0,0],[-0.6,0],[-0.2,0],[0.2,0]];
+const class1 = [[0.55,1],[0.95,1],[1.25,1],[1.65,1],[2.1,1]];
+function fitLine(points){
+  const n=points.length;
+  const xs=points.map(p=>p[0]), ys=points.map(p=>p[1]);
+  const xm=xs.reduce((a,v)=>a+v,0)/n, ym=ys.reduce((a,v)=>a+v,0)/n;
+  const num=xs.reduce((a,v,i)=>a+(v-xm)*(ys[i]-ym),0);
+  const den=xs.reduce((a,v)=>a+(v-xm)*(v-xm),0) || 1e-8;
+  const w=num/den, b=ym-w*xm;
+  return {w,b};
+}
+function drawBad(){
+  const c=$('badCanvas'); const {ctx,W,H}=setupCanvas(c);
+  fillCanvasBG(ctx,W,H);
+  const ov=parseFloat($('outlier').value);
+  $('outv').textContent=ov.toFixed(2);
+  const mid = Math.floor(W/2);
+  const leftW = mid-8, rightW = W-mid-8;
+  // left panel: output out of range
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0,0,leftW,H); ctx.clip();
+  const xmin=-3,xmax=3,ymin=-1.2,ymax=2.1;
+  gridX(ctx,leftW,H,xmin,xmax,ymin,ymax,[-2,-1,0,1,2]);
+  axes(ctx,leftW,H,xmin,xmax,ymin,ymax,'x','ŷ');
+  const w1=0.38,b1=0.62;
+  const [l1x,l1y]=tc(xmin,w1*xmin+b1,leftW,H,xmin,xmax,ymin,ymax);
+  const [l2x,l2y]=tc(xmax,w1*xmax+b1,leftW,H,xmin,xmax,ymin,ymax);
+  // probability band [0,1]
+  const [_,yTop]=tc(0,1,leftW,H,xmin,xmax,ymin,ymax);
+  const [__,yBot]=tc(0,0,leftW,H,xmin,xmax,ymin,ymax);
+  ctx.fillStyle='rgba(74,222,128,.05)';
+  ctx.fillRect(18,yTop,leftW-36,yBot-yTop);
+  ctx.strokeStyle='rgba(74,222,128,.25)';
+  ctx.setLineDash([5,4]);
+  ctx.beginPath(); ctx.moveTo(18,yTop); ctx.lineTo(leftW-18,yTop); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(18,yBot); ctx.lineTo(leftW-18,yBot); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(74,222,128,.75)';
+  ctx.font='11px sans-serif';
+  ctx.fillText('合法概率区间 [0,1]',24,yTop-8);
+  ctx.strokeStyle='#4ade80'; ctx.lineWidth=2.2;
+  ctx.beginPath(); ctx.moveTo(l1x,l1y); ctx.lineTo(l2x,l2y); ctx.stroke();
+  [-2.5,-1.2,0.8,2.5].forEach(x=>{
+    const yhat=w1*x+b1;
+    const [px,py]=tc(x,yhat,leftW,H,xmin,xmax,ymin,ymax);
+    ctx.fillStyle='#60a5fa'; ctx.beginPath(); ctx.arc(px,py,4.6,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.75)';
+    ctx.font='10px monospace'; ctx.textAlign='center';
+    ctx.fillText(`ŷ=${yhat.toFixed(1)}`,px,py-10);
+  });
+  ctx.fillStyle='rgba(255,255,255,.3)';
+  ctx.font='11px sans-serif'; ctx.textAlign='left';
+  ctx.fillText('左：结构性问题——输出天然无界',18,20);
+  ctx.restore();
+
+  // separator
+  ctx.strokeStyle='rgba(255,255,255,.08)';
+  ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(mid,10); ctx.lineTo(mid,H-10); ctx.stroke();
+
+  // right panel: outlier sensitivity
+  ctx.save();
+  ctx.translate(mid+8,0);
+  ctx.beginPath(); ctx.rect(0,0,rightW,H); ctx.clip();
+  const rxmin=-3,rxmax=5.3,rymin=-0.45,rymax=1.7;
+  gridX(ctx,rightW,H,rxmin,rxmax,rymin,rymax,[-2,-1,0,1,2,3,4]);
+  axes(ctx,rightW,H,rxmin,rxmax,rymin,rymax,'x','y');
+  const outX = 2.2 + ov*2.7;
+  const pts = [...class0,...class1,...(ov>0.03?[[outX,1]]:[])];
+  const {w,b}=fitLine(pts);
+  const [rx1,ry1]=tc(rxmin,w*rxmin+b,rightW,H,rxmin,rxmax,rymin,rymax);
+  const [rx2,ry2]=tc(rxmax,w*rxmax+b,rightW,H,rxmin,rxmax,rymin,rymax);
+  ctx.strokeStyle='#4ade80';ctx.lineWidth=2.1;
+  ctx.beginPath();ctx.moveTo(rx1,ry1);ctx.lineTo(rx2,ry2);ctx.stroke();
+
+  const xStar = (0.5-b)/(w || 1e-8);
+  if(isFinite(xStar) && xStar>rxmin && xStar<rxmax){
+    const [bx]=tc(xStar,0,rightW,H,rxmin,rxmax,rymin,rymax);
+    ctx.setLineDash([4,3]);ctx.strokeStyle='rgba(255,255,255,.35)';
+    ctx.beginPath();ctx.moveTo(bx,16);ctx.lineTo(bx,H-16);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='rgba(255,255,255,.62)';ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText('人为阈值 ŷ=0.5',bx,18);
+  }
+  const drawPt=(x,y,cls)=>{
+    const [px,py]=tc(x,y,rightW,H,rxmin,rxmax,rymin,rymax);
+    if(cls===1){
+      ctx.fillStyle='#60a5fa';ctx.beginPath();ctx.arc(px,py,5.2,0,Math.PI*2);ctx.fill();
+    }else{
+      ctx.strokeStyle='#fb923c';ctx.lineWidth=2;ctx.beginPath();ctx.arc(px,py,5.2,0,Math.PI*2);ctx.stroke();
+    }
+  };
+  class0.forEach(([x,y])=>drawPt(x,y,0));
+  class1.forEach(([x,y])=>drawPt(x,y,1));
+  if(ov>0.03){
+    const [px,py]=tc(outX,1,rightW,H,rxmin,rxmax,rymin,rymax);
+    ctx.fillStyle='#f87171';ctx.beginPath();ctx.arc(px,py,6.7,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('极端点',px,py-10);
+  }
+  ctx.fillStyle='rgba(255,255,255,.3)';
+  ctx.font='11px sans-serif'; ctx.textAlign='left';
+  ctx.fillText('右：异常值会强烈拖偏人为阈值',18,20);
+  ctx.restore();
+}
+
+function drawChain(){
+  const c=$('chainCanvas'); const {ctx,W,H}=setupCanvas(c);
+  fillCanvasBG(ctx,W,H);
+  const x=parseFloat($('cx').value);
+  const w=parseFloat($('cw').value);
+  const b=parseFloat($('cb').value);
+  $('cxv').textContent=x.toFixed(2);
+  $('cwv').textContent=w.toFixed(2);
+  $('cbv').textContent=b.toFixed(2);
+  const z=w*x+b;
+  const p=sigmoid(z);
+  const xstar = Math.abs(w)<1e-8 ? Infinity : -b/w;
+
+  const topH = Math.floor(H*0.28), midH = Math.floor(H*0.24), botH = H-topH-midH-2;
+  const xmin=-3.2,xmax=3.2;
+  const zmin=-6,zmax=6;
+  // top: x space
+  ctx.save();
+  ctx.beginPath();ctx.rect(0,0,W,topH);ctx.clip();
+  ctx.fillStyle='rgba(248,113,113,.035)';
+  if(isFinite(xstar)){
+    const [bx]=tc(clamp(xstar,xmin,xmax),0,W,topH,xmin,xmax,-1,1);
+    ctx.fillRect(0,0,bx,topH);
+    ctx.fillStyle='rgba(74,222,128,.035)';
+    ctx.fillRect(bx,0,W-bx,topH);
+  }
+  gridX(ctx,W,topH,xmin,xmax,-1,1,[-3,-2,-1,0,1,2,3],34);
+  axes(ctx,W,topH,xmin,xmax,-1,1,'x','特征空间',34);
+  const [xAxisX,xAxisY]=tc(0,0,W,topH,xmin,xmax,-1,1,34);
+  // boundary
+  if(isFinite(xstar) && xstar>xmin && xstar<xmax){
+    const [bx]=tc(xstar,0,W,topH,xmin,xmax,-1,1,34);
+    ctx.setLineDash([4,3]);ctx.strokeStyle='rgba(251,146,60,.9)';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(bx,14);ctx.lineTo(bx,topH-16);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='rgba(251,146,60,.92)';ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`x* = ${xstar.toFixed(2)}`,bx,topH-4);
+  }
+  const [px1,py1]=tc(x,0,W,topH,xmin,xmax,-1,1,34);
+  ctx.strokeStyle='rgba(251,191,36,.5)';ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(px1,12);ctx.lineTo(px1,topH-16);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(px1,xAxisY,6,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.35)';ctx.font='11px sans-serif';ctx.textAlign='left';
+  ctx.fillText('上层：这里谈的是“样本在特征轴上的位置”和边界 x*',14,18);
+  ctx.restore();
+
+  // middle: z space
+  ctx.save();ctx.translate(0,topH+1);ctx.beginPath();ctx.rect(0,0,W,midH);ctx.clip();
+  gridX(ctx,W,midH,zmin,zmax,-1,1,[-6,-4,-2,0,2,4,6],34);
+  axes(ctx,W,midH,zmin,zmax,-1,1,'z','线性得分',34);
+  const [zAxisX,zAxisY]=tc(0,0,W,midH,zmin,zmax,-1,1,34);
+  const [z0x]=tc(0,0,W,midH,zmin,zmax,-1,1,34);
+  ctx.setLineDash([4,3]);ctx.strokeStyle='rgba(251,146,60,.9)';ctx.lineWidth=1.4;
+  ctx.beginPath();ctx.moveTo(z0x,14);ctx.lineTo(z0x,midH-16);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(251,146,60,.92)';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('z = 0',z0x,midH-4);
+
+  const [pz,pzy]=tc(z,0,W,midH,zmin,zmax,-1,1,34);
+  ctx.strokeStyle='rgba(96,165,250,.55)';ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(pz,12);ctx.lineTo(pz,midH-16);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#60a5fa';ctx.beginPath();ctx.arc(pz,zAxisY,6,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.35)';ctx.font='11px sans-serif';ctx.textAlign='left';
+  ctx.fillText('中层：这里谈的是 x 经过 wx+b 之后变成的线性得分 z',14,18);
+  ctx.restore();
+
+  // bottom: p space via sigmoid over z
+  ctx.save();ctx.translate(0,topH+midH+2);ctx.beginPath();ctx.rect(0,0,W,botH);ctx.clip();
+  axes(ctx,W,botH,zmin,zmax,-0.05,1.05,'z','概率 p',34);
+  const [zeroX]=tc(0,0,W,botH,zmin,zmax,-0.05,1.05,34);
+  const [_,halfY]=tc(0,0.5,W,botH,zmin,zmax,-0.05,1.05,34);
+  ctx.setLineDash([4,3]);ctx.strokeStyle='rgba(251,146,60,.3)';
+  ctx.beginPath();ctx.moveTo(zeroX,10);ctx.lineTo(zeroX,botH-14);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(20,halfY);ctx.lineTo(W-20,halfY);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(251,146,60,.82)';ctx.font='11px sans-serif';
+  ctx.fillText('p = 0.5',18,halfY-6);
+  ctx.beginPath();
+  ctx.strokeStyle='#4ade80';ctx.lineWidth=2.6;
+  let first=true;
+  for(let t=0;t<=W-1;t++){
+    const zz = zmin + (t/(W-1))*(zmax-zmin);
+    const pp = sigmoid(zz);
+    const [gx,gy]=tc(zz,pp,W,botH,zmin,zmax,-0.05,1.05,34);
+    if(first){ctx.moveTo(gx,gy); first=false;} else ctx.lineTo(gx,gy);
+  }
+  ctx.stroke();
+  const [cpx,cpy]=tc(z,p,W,botH,zmin,zmax,-0.05,1.05,34);
+  ctx.strokeStyle='rgba(251,191,36,.5)';ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(cpx,botH-18);ctx.lineTo(cpx,cpy);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(18,cpy);ctx.lineTo(cpx,cpy);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(cpx,cpy,6.5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fbbf24';ctx.font='bold 12px sans-serif';ctx.textAlign='left';
+  ctx.fillText(`z=${z.toFixed(2)}, p=${p.toFixed(3)}`,cpx+10,cpy-6);
+  ctx.fillStyle='rgba(255,255,255,.35)';ctx.font='11px sans-serif';ctx.textAlign='left';
+  ctx.fillText('下层：这里才是“固定 sigmoid 曲线”把 z 翻译成概率 p',14,18);
+  ctx.restore();
+
+  // arrows between layers
+  ctx.strokeStyle='rgba(251,191,36,.24)';
+  ctx.setLineDash([2,3]);
+  ctx.beginPath();ctx.moveTo(px1,topH-6);ctx.lineTo(pz,topH+midH*0.5);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(pz,topH+midH-6);ctx.lineTo(cpx,topH+midH+botH*0.55);ctx.stroke();
+  ctx.setLineDash([]);
+
+  $('zVal').textContent=z.toFixed(3);
+  $('pVal').textContent=p.toFixed(4);
+  $('xStar').textContent=isFinite(xstar)?xstar.toFixed(3):'∞';
+  $('judgeVal').textContent = p>=0.5 ? '→ 类别 1' : '→ 类别 0';
+  $('judgeVal').style.color = p>=0.5 ? 'var(--green)' : 'var(--red)';
+}
+
+const logPts = [[-2.1,0],[-1.6,0],[-1.1,0],[-0.5,0],[0.45,1],[0.9,1],[1.35,1],[1.8,1],[2.15,1],[-0.25,1],[1.95,0]];
+function drawForce(){
+  const c=$('forceCanvas'); const {ctx,W,H}=setupCanvas(c);
+  fillCanvasBG(ctx,W,H);
+  const w=parseFloat($('fw').value), b=parseFloat($('fb').value);
+  $('fwv').textContent=w.toFixed(1);
+  $('fbv').textContent=b.toFixed(1);
+
+  const xmin=-3,xmax=3;
+  const axisY=Math.floor(H*0.58);
+  ctx.strokeStyle='rgba(255,255,255,.18)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(28,axisY);ctx.lineTo(W-28,axisY);ctx.stroke();
+  for(let v=-2; v<=2; v++){
+    const [tx]=tc(v,0,W,H,xmin,xmax,-1,1,28);
+    ctx.strokeStyle='rgba(255,255,255,.1)';
+    ctx.beginPath();ctx.moveTo(tx,40);ctx.lineTo(tx,H-26);ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,.28)';ctx.font='11px monospace';ctx.textAlign='center';
+    ctx.fillText(v,tx,axisY+16);
+  }
+
+  const xBound = Math.abs(w)<1e-8 ? Infinity : -b/w;
+  if(isFinite(xBound) && xBound>xmin && xBound<xmax){
+    const [bx]=tc(xBound,0,W,H,xmin,xmax,-1,1,28);
+    ctx.setLineDash([4,3]);ctx.strokeStyle='rgba(251,146,60,.95)';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(bx,18);ctx.lineTo(bx,H-18);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='rgba(251,146,60,.92)';ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`x*=${xBound.toFixed(2)}`,bx,H-6);
+  }
+
+  let totalGrad=0, totalLoss=0, totalProbErr=0;
+  logPts.forEach(([x,y])=>{
+    const z=w*x+b, p=sigmoid(z);
+    const probErr = p-y;
+    const contrib = probErr*x;
+    totalGrad += contrib;
+    totalProbErr += probErr;
+    totalLoss += -(y*Math.log(p+1e-9) + (1-y)*Math.log(1-p+1e-9));
+
+    const pred = p>=0.5 ? 1 : 0;
+    const wrong = pred !== y;
+    const [px]=tc(x,0,W,H,xmin,xmax,-1,1,28);
+    const len = Math.min(axisY-46, Math.abs(contrib)*70);
+    const dirDown = contrib>0;
+    const py2 = dirDown ? axisY+len : axisY-len;
+    const arrColor = wrong ? 'rgba(248,113,113,.92)' : 'rgba(148,163,184,.58)';
+    if(len>3){ arrow(ctx,px,axisY,px,py2,arrColor, wrong?2.2:1.4); }
+
+    if(y===1){
+      ctx.fillStyle = wrong ? '#f87171' : '#60a5fa';
+      ctx.beginPath(); ctx.arc(px,axisY,5.6,0,Math.PI*2); ctx.fill();
+    }else{
+      ctx.strokeStyle = wrong ? '#f87171' : '#fb923c';
+      ctx.lineWidth=2; ctx.beginPath(); ctx.arc(px,axisY,5.6,0,Math.PI*2); ctx.stroke();
+    }
+
+    // only annotate a few or wrong points
+    if(wrong || Math.abs(x)<0.35){
+      ctx.fillStyle='rgba(255,255,255,.55)';
+      ctx.font='10px monospace';
+      ctx.textAlign='center';
+      ctx.fillText(`p=${p.toFixed(2)}`,px,axisY+28);
+    }
+  });
+
+  totalGrad /= logPts.length;
+  totalLoss /= logPts.length;
+  totalProbErr /= logPts.length;
+
+  ctx.fillStyle='rgba(255,255,255,.35)';
+  ctx.font='11px sans-serif';
+  ctx.textAlign='left';
+  ctx.fillText('↑ 箭头向上：该样本让 ∂J/∂w < 0（倾向增大 w）',16,18);
+  ctx.fillText('↓ 箭头向下：该样本让 ∂J/∂w > 0（倾向减小 w）',16,34);
+
+  $('probErr').textContent=totalProbErr.toFixed(3);
+  $('fGrad').textContent=totalGrad.toFixed(4);
+  $('fLoss').textContent=totalLoss.toFixed(3);
+  $('fBound').textContent=isFinite(xBound)?xBound.toFixed(3):'∞';
+}
+
+let lossState = {w:3, hist:[], running:false, step:0, raf:0, last:0};
+function lossW(w){
+  let s=0;
+  for(const [x,y] of logPts){
+    const p=sigmoid(w*x);
+    s += -(y*Math.log(p+1e-9)+(1-y)*Math.log(1-p+1e-9));
+  }
+  return s/logPts.length;
+}
+function gradW(w){
+  let s=0;
+  for(const [x,y] of logPts){
+    const p=sigmoid(w*x);
+    s += (p-y)*x;
+  }
+  return s/logPts.length;
+}
+function drawLossW(){
+  const c=$('lossWCanvas'); const {ctx,W,H}=setupCanvas(c);
+  fillCanvasBG(ctx,W,H);
+  const wmin=-5, wmax=5, jmin=0, jmax=2.6;
+  axes(ctx,W,H,wmin,wmax,jmin,jmax,'w','J(w)');
+  gridX(ctx,W,H,wmin,wmax,jmin,jmax,[-4,-2,0,2,4]);
+
+  ctx.strokeStyle='rgba(96,165,250,.95)';ctx.lineWidth=2.6;
+  ctx.beginPath();
+  let first=true;
+  for(let w=wmin; w<=wmax; w+=0.04){
+    const j=lossW(w);
+    const [px,py]=tc(w,j,W,H,wmin,wmax,jmin,jmax);
+    if(first){ctx.moveTo(px,py); first=false;} else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+
+  // history path
+  if(lossState.hist.length>1){
+    ctx.strokeStyle='rgba(251,191,36,.65)';
+    ctx.lineWidth=1.7;
+    ctx.beginPath();
+    lossState.hist.forEach((pt,i)=>{
+      const [px,py]=tc(pt.w,pt.j,W,H,wmin,wmax,jmin,jmax);
+      if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    });
+    ctx.stroke();
+    lossState.hist.forEach((pt,i)=>{
+      const [px,py]=tc(pt.w,pt.j,W,H,wmin,wmax,jmin,jmax);
+      ctx.fillStyle = i===lossState.hist.length-1 ? '#fbbf24' : 'rgba(251,191,36,.45)';
+      ctx.beginPath();ctx.arc(px,py,i===lossState.hist.length-1?5.5:3.5,0,Math.PI*2);ctx.fill();
+    });
+  }
+
+  const w = lossState.w;
+  const j = lossW(w);
+  const g = gradW(w);
+  const [px,py]=tc(w,j,W,H,wmin,wmax,jmin,jmax);
+  ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(px,py,6,0,Math.PI*2);ctx.fill();
+
+  // tangent
+  const scale=0.6;
+  const xA = w-scale, xB = w+scale;
+  const yA = j + g*(xA-w);
+  const yB = j + g*(xB-w);
+  const [tx1,ty1]=tc(xA,yA,W,H,wmin,wmax,jmin,jmax);
+  const [tx2,ty2]=tc(xB,yB,W,H,wmin,wmax,jmin,jmax);
+  ctx.strokeStyle='rgba(248,113,113,.85)';ctx.lineWidth=1.8;
+  ctx.beginPath();ctx.moveTo(tx1,ty1);ctx.lineTo(tx2,ty2);ctx.stroke();
+
+  ctx.fillStyle='rgba(255,255,255,.4)';
+  ctx.font='11px sans-serif';
+  ctx.fillText('红线：当前位置的局部切线，负梯度方向就是更下坡的方向',16,18);
+
+  $('curW').textContent=w.toFixed(3);
+  $('curJ').textContent=j.toFixed(4);
+  $('curG').textContent=g.toFixed(4);
+  $('curStep').textContent=String(lossState.step);
+}
+function stepLossTrain(){
+  const lr=parseFloat($('llr').value);
+  const g=gradW(lossState.w);
+  lossState.w -= lr*g;
+  lossState.step += 1;
+  lossState.hist.push({w:lossState.w, j:lossW(lossState.w)});
+  drawLossW();
+  if(Math.abs(g)<0.0006 || lossState.step>260 || Math.abs(lossState.w)>12){
+    lossState.running=false;
+    cancelAnimationFrame(lossState.raf);
+  }
+}
+function lossLoop(ts){
+  if(!lossState.running) return;
+  if(ts-lossState.last>55){
+    stepLossTrain();
+    lossState.last = ts;
+  }
+  if(lossState.running) lossState.raf = requestAnimationFrame(lossLoop);
+}
+function startLossTrain(){
+  if(lossState.running) return;
+  lossState.running = true;
+  lossState.last = performance.now();
+  lossState.raf = requestAnimationFrame(lossLoop);
+}
+function resetLossTrain(){
+  lossState.running=false;
+  cancelAnimationFrame(lossState.raf);
+  lossState.w=parseFloat($('lw0').value);
+  lossState.step=0;
+  lossState.hist=[{w:lossState.w, j:lossW(lossState.w)}];
+  drawLossW();
+}
+
+function bindSlider(id, drawFn, digits=2){
+  const el=$(id);
+  addDoubleReset(el, el.value);
+  el.addEventListener('input', ()=>{
+    const out=$(id+'v');
+    if(out) out.textContent = parseFloat(el.value).toFixed(digits);
+    drawFn();
+  });
+}
+bindSlider('sw', drawSpring, 2);
+bindSlider('sb', drawSpring, 2);
+bindSlider('outlier', drawBad, 2);
+bindSlider('cx', drawChain, 2);
+bindSlider('cw', drawChain, 2);
+bindSlider('cb', drawChain, 2);
+bindSlider('fw', drawForce, 1);
+bindSlider('fb', drawForce, 1);
+bindSlider('lw0', ()=>{
+  $('lw0v').textContent=parseFloat($('lw0').value).toFixed(1);
+  resetLossTrain();
+}, 1);
+bindSlider('llr', ()=>{
+  $('llrv').textContent=parseFloat($('llr').value).toFixed(2);
+  drawLossW();
+}, 2);
+
+window.startLossTrain = startLossTrain;
+window.resetLossTrain = resetLossTrain;
+
+function init(){
+  $('swv').textContent=parseFloat($('sw').value).toFixed(2);
+  $('sbv').textContent=parseFloat($('sb').value).toFixed(2);
+  $('outv').textContent=parseFloat($('outlier').value).toFixed(2);
+  $('cxv').textContent=parseFloat($('cx').value).toFixed(2);
+  $('cwv').textContent=parseFloat($('cw').value).toFixed(2);
+  $('cbv').textContent=parseFloat($('cb').value).toFixed(2);
+  $('fwv').textContent=parseFloat($('fw').value).toFixed(1);
+  $('fbv').textContent=parseFloat($('fb').value).toFixed(1);
+  $('lw0v').textContent=parseFloat($('lw0').value).toFixed(1);
+  $('llrv').textContent=parseFloat($('llr').value).toFixed(2);
+
+  drawSpring();
+  drawBad();
+  drawChain();
+  drawForce();
+  lossState.w = parseFloat($('lw0').value);
+  lossState.hist = [{w:lossState.w, j:lossW(lossState.w)}];
+  drawLossW();
+}
+window.addEventListener('resize', ()=>{
+  drawSpring(); drawBad(); drawChain(); drawForce(); drawLossW();
+});
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

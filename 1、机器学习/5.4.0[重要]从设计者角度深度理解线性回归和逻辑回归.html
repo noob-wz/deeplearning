@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从线性回归到逻辑回归 · 第一性原理交互教程</title>
+<style>
+:root{--bg:#0f0f10;--bg2:#17171a;--bg3:#1e1e22;--border:rgba(255,255,255,0.08);--text:#e8e6de;--text2:#9a9890;--text3:#5e5d5a;--green:#4ade80;--blue:#60a5fa;--orange:#fb923c;--red:#f87171;--purple:#a78bfa;--yellow:#fbbf24;--teal:#2dd4bf;--accent:#4ade80}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'BlinkMacSystemFont','Segoe UI','Roboto','Helvetica Neue',sans-serif;font-size:16px;line-height:1.75}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(15,15,16,0.93);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;height:52px;gap:4px}
+nav .logo{font-size:13px;font-weight:700;color:var(--green);margin-right:24px;letter-spacing:.04em;white-space:nowrap}
+nav a{font-size:12px;color:var(--text2);text-decoration:none;padding:4px 10px;border-radius:6px;transition:all .15s;white-space:nowrap}
+nav a:hover{color:var(--text);background:rgba(255,255,255,0.06)}
+.page{max-width:880px;margin:0 auto;padding:72px 20px 120px}
+.hero{text-align:center;padding:72px 0 56px}
+.hero h1{font-size:clamp(26px,5vw,46px);font-weight:700;letter-spacing:-.02em;line-height:1.1;margin-bottom:18px}
+.hero h1 span{color:var(--green)}
+.hero p{font-size:16px;color:var(--text2);max-width:540px;margin:0 auto 28px}
+.tags{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
+.tag{font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid var(--border);color:var(--text3)}
+.tip-banner{display:inline-block;background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:12px;padding:6px 16px;border-radius:20px;letter-spacing:0.02em}
+.section{margin-bottom:72px}
+.section-label{font-size:11px;font-weight:600;letter-spacing:.12em;color:var(--text3);text-transform:uppercase;margin-bottom:6px}
+h2{font-size:26px;font-weight:700;letter-spacing:-.02em;margin-bottom:10px}
+h3{font-size:18px;font-weight:600;margin:28px 0 8px;color:var(--text)}
+p{color:var(--text2);margin-bottom:12px}
+strong{color:var(--text);font-weight:600}
+.callout{border-left:3px solid var(--green);background:rgba(74,222,128,0.05);border-radius:0 8px 8px 0;padding:12px 16px;margin:16px 0;font-size:14px;color:var(--text)}
+.callout.orange{border-color:var(--orange);background:rgba(251,146,60,0.05)}
+.callout.blue{border-color:var(--blue);background:rgba(96,165,250,0.05)}
+.callout.red{border-color:var(--red);background:rgba(248,113,113,0.05)}
+.callout.purple{border-color:var(--purple);background:rgba(167,139,250,0.05)}
+.callout.yellow{border-color:var(--yellow);background:rgba(251,191,36,0.05)}
+.formula-block{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin:16px 0;font-family:'SF Mono','Fira Code',monospace;font-size:14px;color:var(--text);line-height:2;overflow-x:auto}
+.formula-block .comment{color:var(--text3);font-size:12px}
+.hl-green{color:var(--green)}.hl-blue{color:var(--blue)}.hl-orange{color:var(--orange)}.hl-red{color:var(--red)}.hl-purple{color:var(--purple)}.hl-yellow{color:var(--yellow)}.hl-teal{color:var(--teal)}
+.canvas-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px;margin:20px 0;position:relative}
+.canvas-card canvas{display:block;border-radius:6px;cursor:crosshair}
+.canvas-title{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:12px}
+.controls{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.ctrl-row{display:flex;align-items:center;gap:10px;font-size:13px}
+.ctrl-row label{min-width:90px;color:var(--text2)}
+.ctrl-row input[type=range]{flex:1;-webkit-appearance:none;height:4px;background:var(--bg3);border-radius:2px;outline:none;transition:background 0.2s}
+.ctrl-row input[type=range]:hover{background:rgba(255,255,255,0.1)}
+.ctrl-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 0 2px var(--bg2)}
+.ctrl-val{min-width:44px;text-align:right;font-family:monospace;font-size:13px;color:var(--text)}
+.stat-row{display:flex;gap:12px;margin-top:10px;flex-wrap:wrap}
+.stat{background:var(--bg3);border-radius:8px;padding:8px 14px}
+.stat .s-label{font-size:11px;color:var(--text3);margin-bottom:1px}
+.stat .s-val{font-size:17px;font-weight:700}
+.stepper{display:flex;align-items:center;margin:20px 0 14px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.step-btn{padding:9px 16px;font-size:13px;cursor:pointer;color:var(--text2);border:none;background:none;border-bottom:2px solid transparent;transition:all .15s;font-family:inherit}
+.step-btn.active{color:var(--green);border-bottom-color:var(--green);font-weight:600}
+.step-panel{display:none;animation:fadeIn 0.3s ease-out}.step-panel.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--bg3);color:var(--text);transition:all .15s;font-family:inherit}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--green);color:#000;border-color:var(--green)}
+.btn.primary:hover{opacity:.85}
+.btn-row{display:flex;gap:10px;margin:10px 0;flex-wrap:wrap}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
+th{text-align:left;color:var(--text3);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:7px 10px;border-bottom:1px solid var(--border)}
+td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--text2)}
+td:first-child{color:var(--text);font-weight:500}
+.divider{height:1px;background:var(--border);margin:56px 0}
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+.compare-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;transition:transform 0.2s}
+.compare-card:hover{transform:translateY(-2px)}
+.compare-card h4{font-size:14px;font-weight:600;margin-bottom:8px}
+code{font-family:'SF Mono','Fira Code',monospace;font-size:12px;background:var(--bg3);padding:2px 5px;border-radius:4px;color:var(--teal)}
+.note{font-size:13px;color:var(--text3);margin-top:8px}
+.epiphany{display:block;margin-top:8px;padding:10px 14px;background:rgba(251,191,36,0.06);border-left:3px solid var(--yellow);border-radius:4px;color:var(--text);font-size:13.5px;line-height:1.6}
+.chain-box{display:flex;align-items:center;gap:0;flex-wrap:wrap;margin:16px 0;background:var(--bg3);border-radius:12px;padding:16px;gap:8px}
+.chain-item{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:monospace;font-size:13px;text-align:center;min-width:120px}
+.chain-item .ci-top{font-size:11px;color:var(--text3);margin-bottom:4px}
+.chain-arrow{font-size:18px;color:var(--text3)}
+@media(max-width:600px){.compare-grid{grid-template-columns:1fr}nav a{display:none}.chain-box{flex-direction:column}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">ML · 第一性原理</div>
+  <a href="#linear">线性回归</a>
+  <a href="#problem">为何不能分类</a>
+  <a href="#sigmoid">Sigmoid</a>
+  <a href="#logistic">逻辑回归</a>
+  <a href="#compare">对比总结</a>
+</nav>
+
+<div class="page">
+
+<div class="hero">
+  <h1>从<span> 线性回归 </span>到<span> 逻辑回归</span></h1>
+  <p>不是背公式，而是理解设计者为什么这样设计——每一个符号背后都有它出现的理由。</p>
+  <div class="tags"><span class="tag">设计者视角</span><span class="tag">第一性原理</span><span class="tag">交互可视化</span><span class="tag">直觉教学法终极版</span></div>
+  <div class="tip-banner">💡 交互提示：双击任意滑块，即可瞬间恢复默认值</div>
+</div>
+
+<!-- ══════════════════════════════════════
+     第一章：线性回归
+══════════════════════════════════════ -->
+<div class="section" id="linear">
+  <div class="section-label">第一章</div>
+  <h2>线性回归：用一根木棍拟合散点</h2>
+
+  <p>想象你收集了一批数据：房子面积和对应价格。把这些点画在坐标系里，你会发现它们大致沿着一条斜线分布。<strong>线性回归的任务，就是找到那根"最合适"的线。</strong></p>
+  <div class="callout"><strong>设计者的第一个问题：</strong>什么叫"最合适"？必须先定义一个衡量标准，才能谈"最优"。这个标准就是<strong>损失函数</strong>。</div>
+
+  <h3>模型长什么样</h3>
+  <p>线性回归的预测非常直白，就是一条直线方程：</p>
+
+  <div class="formula-block">
+    <span class="hl-green">ŷ</span> = <span class="hl-blue">w</span> · x + <span class="hl-orange">b</span>
+    <br><span class="comment">// ŷ = 预测值，x = 输入特征，w = 权重（斜率），b = 偏置（截距）</span>
+  </div>
+
+  <p>这里只有两个参数需要学习：<strong>w（斜率，决定直线倾斜角度）</strong> 和 <strong>b（截距，决定直线上下位置）</strong>。整个训练过程就是找到最好的 w 和 b。</p>
+
+  <h3>🪤 弹簧比喻：直觉理解损失函数</h3>
+  <div class="canvas-card">
+    <div class="canvas-title">交互 · 弹簧模型 — 拖动滑块感受"拉力"</div>
+    <canvas id="springCanvas" style="width:100%;height:280px"></canvas>
+    <div class="controls">
+      <div class="ctrl-row"><label>斜率 w</label><input type="range" id="sw" min="-2" max="3" step="0.05" value="0.5"><span class="ctrl-val" id="swv">0.50</span></div>
+      <div class="ctrl-row"><label>截距 b</label><input type="range" id="sb" min="-2" max="2" step="0.05" value="0"><span class="ctrl-val" id="sbv">0.00</span></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><div class="s-label">MSE 损失</div><div class="s-val hl-yellow" id="mseLoss">—</div></div>
+      <div class="stat"><div class="s-label">MAE 损失</div><div class="s-val hl-blue" id="maeLoss">—</div></div>
+      <div class="stat"><div class="s-label">最优 w（解析解）</div><div class="s-val" style="color:var(--text2)" id="optW">—</div></div>
+    </div>
+    <p class="note">🔵 蓝色点 = 样本 &nbsp; 🟢 绿线 = 当前直线（木棍）&nbsp; 🟠 橙色线段 = 弹簧（误差） · 越长拉力越大</p>
+    <span class="epiphany">🎯 <strong>核心顿悟：</strong>请尝试疯狂拖动斜率 w，你会发现离直线越远的"弹簧"（误差），为了把木棍拉回来，产生的破坏力极大！这也是为什么线性回归极度害怕极端异常值。</span>
+  </div>
+
+  <p><strong>比喻解释：</strong>把每个样本点当作钉在木板上的图钉，直线是一根木棍，每个图钉和木棍之间用弹簧相连。弹簧越长（误差越大），拉力越大。木棍会在所有弹簧的合力下自动旋转、平移，直到"所有弹力之和最小"——这就是模型训练的本质。</p>
+
+  <div class="callout orange">
+    <strong>MSE vs MAE 的区别：</strong><br><br>
+    · MSE（均方误差）下：<strong>弹力的大小（模型对单个样本的敏感度） = Loss对预测值的导数 = 2(预测值-真实值)</strong> ，离得远的点惩罚急剧增大，对异常值非常敏感。<br><br>
+    · MAE（平均绝对误差）下：<strong></strong>弹力的大小（模型对单个样本的敏感度） = Loss对预测值的导数 = 正负1</strong>，所有样本点对模型的拉力一致，对异常点的抗干扰能力强<br><br>
+    工程上默认用 MSE，因为它处处可导，梯度下降更顺畅。
+  </div>
+
+  <div class="formula-block">
+    <span class="comment">// MSE 损失函数</span><br>
+    <span class="hl-yellow">L</span> = <span class="hl-blue">(1/n)</span> · Σ (<span class="hl-green">ŷᵢ</span> − <span class="hl-orange">yᵢ</span>)²
+    <br><br>
+    <span class="comment">// 展开：预测值 ŷ = wx + b</span><br>
+    <span class="hl-yellow">L</span> = <span class="hl-blue">(1/n)</span> · Σ (<span class="hl-green">wxᵢ+b</span> - <span class="hl-orange">yᵢ</span>)²
+  </div>
+
+  <h3>🎯 梯度下降：怎么调整木棍</h3>
+  <p>有了损失函数，下一个问题是：<strong>如何系统地调整 w 和 b 让损失变小？</strong></p>
+  <p>答案是对损失函数求导。导数告诉我们：当前 w 和 b 在"损失地形"的哪个方向上是下坡方向。沿着下坡方向走，损失就会减小——这就是梯度下降。</p>
+
+  <div class="formula-block">
+    <span class="comment">// 对 w 求偏导（"敏感度 × 力矩" 的直觉）</span><br>
+    ∂L/∂<span class="hl-blue">w</span> = <span class="hl-blue">(2/n)</span> · Σ (<span class="hl-green">ŷᵢ</span> - <span class="hl-orange">yᵢ</span>) · <span class="hl-purple">xᵢ</span>
+    <br><br>
+    <span class="comment">// 对 b 求偏导（只是敏感度之和）</span><br>
+    ∂L/∂<span class="hl-blue">b</span> = <span class="hl-blue">(2/n)</span> · Σ (<span class="hl-green">ŷᵢ</span> - <span class="hl-orange">yᵢ</span>)
+    <br><br>
+    <span class="comment">// 更新规则（α = 学习率）</span><br>
+    <span class="hl-blue">w</span> ← <span class="hl-blue">w</span> - α · ∂L/∂<span class="hl-blue">w</span><br>
+    <span class="hl-blue">b</span> ← <span class="hl-blue">b</span> - α · ∂L/∂<span class="hl-blue">b</span>
+  </div>
+
+  <div class="callout blue">
+    根据链式法则（针对所有模型）<br><br>
+    <strong>关于 w 的导数 = "L 关于 ŷ 的导数" 乘以 "ŷ 关于 w 的导数"。所以在线性回归模型下：</strong></strong> <br>
+    <ul>
+        <li>L 关于 ŷ 的导数 → 就是弹力的大小（模型对单个样本点的敏感度）</li>
+        <li>ŷ 关于 w 的导数 → 就是特征 x（力矩）</li>
+    </ul><br>
+
+    所以，单个样本对模型最终的影响（真实破坏力） = 对权重的导数 = 弹簧弹力大小(L 关于 ŷ 的导数) * 力矩(x)。<br><br>
+    总结就是：<strong>一个样本点对模型的最终影响，不仅取决于它错得有多离谱（弹簧拉力），还取决于它站在什么位置（杠杆有多长）！></strong>
+  </div>
+
+  <h3>🏔️ 梯度下降动画</h3>
+  <div class="canvas-card">
+    <div class="canvas-title">交互 · 在损失曲面上滚球（尝试超大步长！）</div>
+    <canvas id="gdCanvas" style="width:100%;height:300px"></canvas>
+    <div class="btn-row">
+      <button class="btn primary" onclick="startGD()">▶ 开始训练</button>
+      <button class="btn" onclick="resetGD()">↺ 重置</button>
+    </div>
+    <div class="ctrl-row"><label>学习率 α</label><input type="range" id="lr" min="0.01" max="1.0" step="0.01" value="0.1"><span class="ctrl-val" id="lrv">0.10</span></div>
+    <div class="stat-row">
+      <div class="stat"><div class="s-label">迭代步数</div><div class="s-val" id="gdStep">0</div></div>
+      <div class="stat"><div class="s-label">当前 w</div><div class="s-val hl-blue" id="gdW">2.00</div></div>
+      <div class="stat"><div class="s-label">当前损失</div><div class="s-val hl-yellow" id="gdLoss">—</div></div>
+    </div>
+    <span class="epiphany">🎯 <strong>核心顿悟：</strong>尝试把学习率 α 调到 <strong>0.8</strong> 以上，然后点击开始训练。你会观察到"步子太大"导致的来回震荡，甚至发散飞出峡谷的经典灾难现场！</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     第二章：线性回归为何不能做分类
+══════════════════════════════════════ -->
+<div class="divider"></div>
+<div class="section" id="problem">
+  <div class="section-label">第二章</div>
+  <h2>为什么线性回归不能做分类？</h2>
+
+  <p>假设我们要判断一封邮件是否是垃圾邮件（是=1，否=0）。如果直接用线性回归 ŷ = wx + b 来预测标签 y，会遇到三个致命问题。下面的交互演示将同时体现这三个问题：</p>
+
+  <div class="callout red">
+    <strong>致命问题一：输出没有边界</strong><br>
+    概率必须在 [0, 1] 之间，但线性回归的输出 ŷ = wx + b 可以是任意实数——它可能输出 −0.5 或 1.3，这在"概率"语境下毫无意义。<strong>图中红色区域标出了 ŷ 超出 [0,1] 的无意义地带。</strong>
+  </div>
+  <div class="callout red">
+    <strong>致命问题二：对异常值极度敏感</strong><br>
+    MSE 损失下，一个极远的点产生的梯度 = 敏感度 2(ŷ−y) × 力矩 x，两者都随距离增大。这个巨大的梯度会强行把整条直线拉偏，导致原本分好类的样本全部阵亡。<strong>拖动滑块加入极端点，观察分界线如何被"绑架"。</strong>
+  </div>
+  <div class="callout red">
+    <strong>致命问题三：损失函数不匹配</strong><br>
+    分类问题是"对了就是对了，错了就是错了"，不适合用数值大小来惩罚。MSE 无法区分"差一点分对"和"完全分错"在分类意义上的天壤之别 ———— 它只看数值差距，不看分类结果。
+  </div>
+
+  <div class="canvas-card">
+    <div class="canvas-title">演示 · 三个致命问题的同时体现</div>
+    <canvas id="failCanvas" style="width:100%;height:320px"></canvas>
+    <div class="ctrl-row"><label>极端值距离</label><input type="range" id="outlier" min="0" max="1" step="0.01" value="0"><span class="ctrl-val" id="outv">0.00</span></div>
+    <div class="stat-row">
+      <div class="stat"><div class="s-label">ŷ(最左样本)</div><div class="s-val" id="failYhatMin">—</div></div>
+      <div class="stat"><div class="s-label">ŷ(极端点)</div><div class="s-val" id="failYhatMax">—</div></div>
+      <div class="stat"><div class="s-label">分界点 x*</div><div class="s-val hl-orange" id="failBound">—</div></div>
+      <div class="stat"><div class="s-label">误判数</div><div class="s-val hl-red" id="failWrong">0</div></div>
+    </div>
+    <p class="note">🔵 实心=类别1(y=1) &nbsp;⭕ 空心=类别0(y=0) &nbsp;🔴 红点=极端点 &nbsp;🟢 绿线=回归线 ŷ=wx+b &nbsp;⬜ 虚线=ŷ=0.5 分界 &nbsp;🔴 红色区域=ŷ 超出[0,1]（无意义）</p>
+    <span class="epiphany">🎯 <strong>核心顿悟：</strong>向右拖动滑块加入极端点后，观察三件事同时发生：<br>
+    ❶ <strong>致命问题一</strong>：底部统计中，最左样本的 ŷ 变成了<strong>负数</strong>——输出超出 [0,1]，毫无概率意义<br>
+    ❷ <strong>致命问题二</strong>：分界线被极端点"绑架"，疯狂右移，导致左边原本正确的分类全部阵亡（误判数飙升）<br>
+    ❸ <strong>致命问题三</strong>：MSE 只看数值差距，无法告诉模型"这些误判在分类意义上是灾难性的"</span>
+  </div>
+
+  <div class="callout">
+    <strong>设计者的思路：</strong>我们需要一个函数，能把任意实数 z 压缩到 (0,1) 范围内，而且在 z=0 处有一个自然的分界点。有没有这样的函数？——有，它叫 Sigmoid。
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     第三章：Sigmoid + 决策边界联动
+══════════════════════════════════════ -->
+<div class="divider"></div>
+<div class="section" id="sigmoid">
+  <div class="section-label">第三章</div>
+  <h2>Sigmoid：把任意数值压缩成概率</h2>
+
+  <p>这一章要回答最容易困惑的问题：<strong>决策边界是 sigmoid 图上的一个点（z=0），但在分类图里却变成了一条线（wx+b=0）。它们怎么关联？</strong></p>
+
+  <div class="formula-block">
+    σ(z) = <span class="hl-green">1</span> / (<span class="hl-blue">1</span> + e<sup>-z</sup>)
+    <br><br>
+    <span class="comment">// z 可以是任意实数：-∞ 到 +∞</span><br>
+    <span class="comment">// σ(z) 的输出：永远在 (0, 1) 之间</span><br>
+    <span class="comment">// σ(0) = 0.5  ← 这是关键：z=0 是自然分界点</span>
+  </div>
+
+  <h3>🔗 联动演示：从特征 x 到概率 p 的完整因果链</h3>
+
+  <div class="callout blue">
+    <strong>⚠️ 阅读本图前，务必先理解这条因果链：</strong><br><br>
+    ① σ(z) 这条 S 型曲线本身<strong>永远不变</strong>——它只是一张固定的"z→概率"查分表（下方图横轴是 z）<br>
+    ② 改变 w 和 b，改变的是映射规则 z = wx+b："同一个特征值 x，被映射到不同的 z 值"<br>
+    ③ 决策边界永远在 <strong>z = 0</strong>（因为 σ(0)=0.5），但满足 z=0 的那个<strong>特征值 x* = −b/w</strong> 会随 w、b 变化<br>
+    ④ 所以拖动 w、b 时，你看到的是：上方特征空间的橙色分界线在移动，而下方 S 曲线纹丝不动<br><br>
+    <strong>移动的不是 sigmoid 曲线，而是"哪个特征值 x 会被映射到 z=0"。</strong>
+  </div>
+
+  <div class="canvas-card">
+    <div class="canvas-title">交互 · 上方=特征空间(横轴x) &nbsp;下方=σ(z)曲线(横轴z，形状不变)</div>
+    <canvas id="linkCanvas" style="width:100%;height:320px"></canvas>
+    <div class="controls">
+      <div class="ctrl-row"><label>当前 x</label><input type="range" id="linkX" min="-3" max="3" step="0.05" value="0.5"><span class="ctrl-val" id="linkXv">0.50</span></div>
+      <div class="ctrl-row"><label>权重 w</label><input type="range" id="linkW" min="0.5" max="3" step="0.1" value="1.5"><span class="ctrl-val" id="linkWv">1.50</span></div>
+      <div class="ctrl-row"><label>偏置 b</label><input type="range" id="linkB" min="-2" max="2" step="0.1" value="-0.5"><span class="ctrl-val" id="linkBv">-0.50</span></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><div class="s-label">z = wx+b</div><div class="s-val hl-blue" id="linkZ">—</div></div>
+      <div class="stat"><div class="s-label">p = σ(z)</div><div class="s-val hl-green" id="linkP">—</div></div>
+      <div class="stat"><div class="s-label">x*=−b/w（z=0处）</div><div class="s-val hl-orange" id="linkBound">—</div></div>
+      <div class="stat"><div class="s-label">判断</div><div class="s-val" id="linkJudge">—</div></div>
+    </div>
+    <span class="epiphany">🎯 <strong>核心顿悟：</strong>拖动 w 或 b 时，下方的 S 曲线<strong>始终不变</strong>。变化的是上方的橙色分界线 x*=−b/w：w 和 b 改变了映射规则 z=wx+b，使得满足 z=0 的那个特征值 x* 发生了位移。<strong>sigmoid 不动，动的是"谁会被映射到 z=0"。</strong></span>
+  </div>
+
+  <div class="callout purple">
+    <strong>因果顺序（一定要记住这个方向）：</strong><br>
+    ① 我们用 sigmoid 做概率输出 → ② 用 p=0.5 作为分类阈值 → ③ p=0.5 对应 σ(z)=0.5 → ④ z=0 → ⑤ wx+b=0<br><br>
+    <strong>所以：</strong><br>
+    · z=0 是 sigmoid 图上的一个<strong>永恒不变的及格分</strong>——无论 w、b 怎么变，σ(0)=0.5 永远成立<br>
+    · wx+b=0 是这个及格分投射回现实特征空间里，划出的一道<strong>楚河汉界</strong>——满足"z=0"的所有 x 构成的集合<br>
+    · 一维时（只有一个特征 x），这道界限是一个点 x=−b/w<br>
+    · 二维时（两个特征 x₁, x₂），w₁x₁+w₂x₂+b=0 是平面上的一条线<br><br>
+    <strong>wx+b=0 不是我们主观规定的，它是选用 sigmoid 并以 p=0.5 为阈值的自然结果。逻辑回归的训练，本质就是寻找最好的 w 和 b，使得 z=wx+b=0 这条分界线恰好把两类样本分开。</strong>
+  </div>
+
+  <div class="callout blue">
+    <strong>改变 w 和 b 分别在做什么（精确表述）：</strong><br>
+    · 改变 <strong>w</strong> → 改变映射 z=wx+b 中 x 的"放大倍率"。注意区分两个坐标系：<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;· 以 <strong>z 为横轴</strong>画 σ(z)：曲线形状<strong>永远不变</strong>，因为 σ 函数本身不含 w<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;· 以 <strong>特征 x 为横轴</strong>画 σ(wx+b)：|w| 越大，过渡带越窄、曲线越陡——因为 x 的微小变化被 w 放大后，z 变化剧烈，分类越"非黑即白"<br>
+    · 改变 <strong>b</strong> → 整体平移 z 值，等价于把决策边界 x*=−b/w 向左或向右移动<br>
+    · w 和 b 是模型训练学到的，一旦确定，映射 z=wx+b 就定死了，决策边界也随之锁死
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     第四章：逻辑回归完整拼图
+══════════════════════════════════════ -->
+<div class="divider"></div>
+<div class="section" id="logistic">
+  <div class="section-label">第四章</div>
+  <h2>逻辑回归：完整拼图</h2>
+  <p>我们有了把实数变成概率的 Sigmoid，也有了分类的楚河汉界。现在，让我们把前三章的零件全部组装起来，这就是逻辑回归的真面目。</p>
+
+  <h3>🗺️ 完整流程图</h3>
+  <div class="canvas-card">
+    <div class="canvas-title">逻辑回归 · 前向传播 + 反向传播</div>
+    <canvas id="flowCanvas" style="width:100%;height:130px"></canvas>
+  </div>
+
+  <div class="stepper">
+    <button class="step-btn active" onclick="switchStep('s1',this)">1 · 线性组合</button>
+    <button class="step-btn" onclick="switchStep('s2',this)">2 · 概率输出</button>
+    <button class="step-btn" onclick="switchStep('s3',this)">3 · 损失函数</button>
+    <button class="step-btn" onclick="switchStep('s4',this)">4 · 链式法则</button>
+    <button class="step-btn" onclick="switchStep('s5',this)">5 · 梯度更新</button>
+  </div>
+
+  <div id="s1" class="step-panel active">
+    <div class="formula-block">
+      z = <span class="hl-blue">w₁</span>x₁ + <span class="hl-blue">w₂</span>x₂ + ··· + <span class="hl-blue">wₙ</span>xₙ + <span class="hl-orange">b</span>
+      <br><span class="comment">// 向量形式：z = wᵀx + b</span>
+      <br><span class="comment">// z 是"证据强度"：越大越倾向类别1，越小越倾向类别0，z=0是中立</span>
+    </div>
+    <p>z 是任意实数，它是所有特征的"加权投票"结果。每个 wᵢ 代表特征 xᵢ 在判断中的重要程度和方向。</p>
+  </div>
+
+  <div id="s2" class="step-panel">
+    <div class="formula-block">
+      p = σ(z) = <span class="hl-green">1 / (1 + e⁻ᶻ)</span>
+      <br><span class="comment">// p = 样本属于类别1的概率</span>
+      <br><span class="comment">// 决策：p ≥ 0.5 → 类别1 · p &lt; 0.5 → 类别0</span>
+    </div>
+    <p>Sigmoid 把"证据强度"z 转换成"概率"p。这不只是为了把数字强行塞进 0~1 的凑公式技巧——在统计学里，当我们想用抛硬币（非黑即白）的逻辑来拟合现实规律时，数学推导出的终极自然公式，刚好就是 Sigmoid。</p>
+  </div>
+
+  <div id="s3" class="step-panel">
+    <div class="formula-block">
+      <span class="comment">// 交叉熵损失（单个样本）</span><br>
+      L = −[<span class="hl-orange">y</span>·log(<span class="hl-green">p</span>) + (<span class="hl-blue">1−y</span>)·log(<span class="hl-red">1−p</span>)]
+      <br><br>
+      <span class="comment">// y=1 时：L = −log(p)    p→0 时 L→∞</span><br>
+      <span class="comment">// y=0 时：L = −log(1−p)  p→1 时 L→∞</span>
+    </div>
+    <div class="canvas-card" style="margin:10px 0">
+      <div class="canvas-title">交叉熵损失的行为</div>
+      <canvas id="lossCanvas" style="width:100%;height:200px"></canvas>
+    </div>
+    <div class="callout red">
+      <strong>⚠️ 你之前只写了 −log(p)，这只对 y=1 成立！</strong><br>
+      完整形式用 y 自动"切换"：y=1时只留第一项，y=0时只留第二项。<br>
+      两种错误都会被无穷大惩罚，这正是交叉熵的核心设计。
+    </div>
+    <div class="callout">
+      <strong>为什么不用 MSE？</strong>逻辑回归用 MSE 会导致损失曲面非凸（有很多局部最小），梯度下降容易卡住。交叉熵在 sigmoid 输出下保证损失曲面是凸的，有唯一全局最小值。
+    </div>
+  </div>
+
+  <div id="s4" class="step-panel">
+    <p>真实的梯度下降不是直接操作 p，而是操作 w 和 b。我们需要 ∂L/∂w，这要通过三层链式法则展开：</p>
+    <div class="chain-box">
+      <div class="chain-item">
+        <div class="ci-top">损失→概率的敏感度</div>
+        <span class="hl-yellow">∂L/∂p</span>
+      </div>
+      <span class="chain-arrow">×</span>
+      <div class="chain-item">
+        <div class="ci-top">Sigmoid 传导率</div>
+        <span class="hl-green">∂p/∂z</span>
+      </div>
+      <span class="chain-arrow">×</span>
+      <div class="chain-item">
+        <div class="ci-top">z→w 的力矩</div>
+        <span class="hl-purple">∂z/∂w = x</span>
+      </div>
+    </div>
+    <div class="formula-block">
+      <span class="comment">// 第一层：损失对概率的敏感度</span><br>
+      <span class="hl-yellow">∂L/∂p</span> = −y/p + (1−y)/(1−p)
+      <br><br>
+      <span class="comment">// 第二层：Sigmoid 对 z 的导数（自带的漂亮性质）</span><br>
+      <span class="hl-green">∂p/∂z</span> = p · (1−p)
+      <br><br>
+      <span class="comment">// 第三层：z 对 w 的导数（力矩）</span><br>
+      <span class="hl-purple">∂z/∂w</span> = x
+      <br><br>
+      <span class="comment">// 三层相乘，神奇地化简！（过程需要代数展开）</span><br>
+      ∂L/∂<span class="hl-blue">w</span> = (<span class="hl-green">p</span> − <span class="hl-orange">y</span>) · <span class="hl-purple">x</span>
+    </div>
+    <div class="callout purple">
+      <strong>化简结果惊人地优雅：</strong>三层链式法则的乘积 [−y/p+(1−y)/(1−p)] × [p(1−p)] × x，化简后就是 (p−y)·x。这不是巧合，是 sigmoid + 交叉熵"天生一对"的数学体现——两者搭配会消去复杂项。
+    </div>
+  </div>
+
+  <div id="s5" class="step-panel">
+    <div class="formula-block">
+      <span class="comment">// 全数据集平均梯度（和线性回归形式惊人一致！）</span><br>
+      ∂J/∂<span class="hl-blue">w</span> = <span class="hl-blue">(1/n)</span> · Σ (<span class="hl-green">pᵢ</span> − <span class="hl-orange">yᵢ</span>) · <span class="hl-purple">xᵢ</span>
+      <br>∂J/∂<span class="hl-blue">b</span> = <span class="hl-blue">(1/n)</span> · Σ (<span class="hl-green">pᵢ</span> − <span class="hl-orange">yᵢ</span>)
+      <br><br>
+      <span class="hl-blue">w</span> ← <span class="hl-blue">w</span> − α · ∂J/∂w
+      <br><span class="hl-blue">b</span> ← <span class="hl-blue">b</span> − α · ∂J/∂b
+    </div>
+    <div class="callout blue">
+      <strong>线性回归 vs 逻辑回归梯度对比：</strong><br>
+      线性回归：∂L/∂w = (<strong>ŷ</strong>−y)·x &nbsp;← 敏感度 2(ŷ−y) × 力矩 x（省略常数2）<br>
+      逻辑回归：∂L/∂w = (<strong>p</strong>−y)·x &nbsp;← 三层链式法则化简后的结果<br>
+      形式完全一样，只是"误差"的来源不同。这是广义线性模型 (GLM) 的统一结构。
+    </div>
+  </div>
+
+  <!-- 逻辑回归直觉比喻 -->
+  <h3>⚖️ 比喻：逻辑回归的"态度考官"vs 线性回归的"无脑弹簧"</h3>
+
+  <div class="callout blue">
+    <strong>用链式法则精确对比两种模型的"力度"：</strong><br><br>
+    <strong>线性回归（无脑弹簧）：</strong><br>
+    · 敏感度 ∂L/∂ŷ = 2(ŷ−y)：损失对预测值的导数——离真值越远，惩罚越大，与<strong>几何距离</strong>成正比<br>
+    · 最终影响 ∂L/∂w = ∂L/∂ŷ × ∂ŷ/∂w = 2(ŷ−y) · x：敏感度 × 力矩<br><br>
+    <strong>逻辑回归（态度考官）：</strong><br>
+    · 敏感度 ∂L/∂p = −y/p + (1−y)/(1−p)：损失对概率的导数——错得越自信，惩罚越剧烈<br>
+    · 经 sigmoid 传导后，最终影响 ∂L/∂w = ∂L/∂p × ∂p/∂z × ∂z/∂w = (p−y) · x：化简后的优雅结果<br><br>
+    <strong>根本差异：</strong>线性回归的敏感度 ∝ 几何距离；逻辑回归的敏感度 ∝ 概率错误程度。
+  </div>
+
+  <p>下面的交互图以比喻方式展示逻辑回归的梯度驱动力。每个箭头代表单个样本对 ∂J/∂w 的贡献，箭头长度 ∝ |p−y|×|x|（即最终影响 = 概率错误程度 × 力矩）。</p>
+
+  <div class="canvas-card">
+    <div class="canvas-title">比喻 · "态度考官"的判罚力度 — 箭头 = 单个样本对 ∂J/∂w 的贡献</div>
+    <canvas id="forceCanvas" style="width:100%;height:340px"></canvas>
+    <div class="controls">
+      <div class="ctrl-row"><label>权重 w</label><input type="range" id="fw" min="0.2" max="5" step="0.1" value="2"><span class="ctrl-val" id="fwv">2.0</span></div>
+      <div class="ctrl-row"><label>偏置 b</label><input type="range" id="fb" min="-3" max="3" step="0.1" value="0"><span class="ctrl-val" id="fbv">0.0</span></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><div class="s-label">∂J/∂w（总梯度）</div><div class="s-val hl-yellow" id="fGrad">—</div></div>
+      <div class="stat"><div class="s-label">交叉熵损失 J</div><div class="s-val hl-red" id="fLoss">—</div></div>
+      <div class="stat"><div class="s-label">决策边界 x*</div><div class="s-val hl-orange" id="fBound">—</div></div>
+    </div>
+    <p class="note">🔵 实心=类别1 &nbsp;⭕ 空心=类别0 &nbsp;↕ 箭头=|(p−y)·x|（红=分错，绿=分对）&nbsp;橙线=x*=−b/w</p>
+    <span class="epiphany">🎯 <strong>核心顿悟：</strong>考官看的是"态度"而非"距离"。做错且极其自信（p≈0.99 但 y=0）→ 敏感度 ∂L/∂p 极大 → 传导到 ∂L/∂w 产生巨长红箭头；做对且自信（p≈0.99 且 y=1）→ (p−y)≈0 → 箭头消失。</span>
+  </div>
+
+  <div class="callout orange">
+    <strong>精确对比——两种"敏感度"的根本差异：</strong><br>
+    · <strong>线性回归</strong>：敏感度 ∂L/∂ŷ = 2(ŷ−y)，与<strong>预测值和真值的几何差距</strong>成正比<br>
+    · <strong>逻辑回归</strong>：敏感度 ∂L/∂p = −y/p+(1−y)/(1−p)，取决于<strong>概率的错误自信程度</strong><br>
+    · 两者的<strong>最终影响</strong>（∂L/∂w）都要再乘以力矩（∂ŷ/∂w 或 ∂z/∂w），但敏感度的来源本质不同<br><br>
+    · 一个点在决策边界旁（几何距离近），若被错误分类且模型极其自信（p≈1，y=0），(p−y)≈1，惩罚极大<br>
+    · 一个点离决策边界很远，但已被正确分类且很自信（p≈1，y=1），(p−y)≈0，梯度接近 0——不再更新
+  </div>
+  
+  <div class="callout purple">
+    <strong>💡 进阶认知：不仅要在乎"对不对"，还要在乎"有多确定"</strong><br>
+    如果一个样本被正确分类，但模型只给出了 0.51 的概率，此时 (p−y) 依然有近 0.49 的误差，梯度依然会产生拉力！这会推动模型继续调整，直到它敢于给出 0.99 的极高置信度为止。这就是交叉熵的魅力——它追求的是<strong>"极其自信地做对"</strong>。
+  </div>
+
+  <!-- L vs w 损失曲面 -->
+  <h3>📉 L 关于权重 w 的完整路径</h3>
+  <p>逻辑回归始终在讨论 L→p→z→w 的关系链。但梯度下降真正发生的地方，是 <strong>J(w) 这条曲线</strong>——我们调整的始终是 w，而不是 p 或 z。</p>
+
+  <div class="canvas-card">
+    <div class="canvas-title">交互 · J(w) 损失曲面（固定 b=0）· 梯度下降路径</div>
+    <canvas id="lsurfCanvas" style="width:100%;height:300px"></canvas>
+    <div class="btn-row">
+      <button class="btn primary" onclick="startLS()">▶ 开始训练</button>
+      <button class="btn" onclick="resetLS()">↺ 重置</button>
+    </div>
+    <div class="ctrl-row"><label>初始 w</label><input type="range" id="lsInitW" min="-4" max="4" step="0.1" value="3"><span class="ctrl-val" id="lsInitWv">3.0</span></div>
+    <div class="ctrl-row"><label>学习率 α</label><input type="range" id="lsLr" min="0.01" max="1" step="0.01" value="0.3"><span class="ctrl-val" id="lsLrv">0.30</span></div>
+    <div class="stat-row">
+      <div class="stat"><div class="s-label">当前 w</div><div class="s-val hl-blue" id="lsW">3.00</div></div>
+      <div class="stat"><div class="s-label">J(w)</div><div class="s-val hl-yellow" id="lsL">—</div></div>
+      <div class="stat"><div class="s-label">∂J/∂w</div><div class="s-val hl-red" id="lsG">—</div></div>
+      <div class="stat"><div class="s-label">步数</div><div class="s-val" id="lsStep">0</div></div>
+    </div>
+    <span class="epiphany">🎯 <strong>核心顿悟：</strong>无论初始 w 设在多远，只要沿着红切线（负梯度）方向走，最终总能落回唯一的最低谷。交叉熵与 Sigmoid 的绝妙配合，保证了这座山谷永远是完美的"碗状"（凸函数）！</span>
+  </div>
+
+  <!-- 完整演示 -->
+  <h3>🎬 逻辑回归完整演示（特征空间 + 梯度驱动力 + Sigmoid）</h3>
+  <div class="canvas-card">
+    <div class="canvas-title">交互 · 三联视图 — 拖动滑块，观察三个视图的联动</div>
+    <canvas id="triCanvas" style="width:100%;height:340px"></canvas>
+    <div class="controls">
+      <div class="ctrl-row"><label>权重 w</label><input type="range" id="trw" min="-4" max="4" step="0.1" value="2"><span class="ctrl-val" id="trwv">2.0</span></div>
+      <div class="ctrl-row"><label>偏置 b</label><input type="range" id="trb" min="-3" max="3" step="0.1" value="0"><span class="ctrl-val" id="trbv">0.0</span></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><div class="s-label">交叉熵损失 J</div><div class="s-val hl-yellow" id="triLoss">—</div></div>
+      <div class="stat"><div class="s-label">∂J/∂w</div><div class="s-val hl-red" id="triGrad">—</div></div>
+      <div class="stat"><div class="s-label">准确率</div><div class="s-val hl-green" id="triAcc">—</div></div>
+      <div class="stat"><div class="s-label">决策边界 x*</div><div class="s-val hl-orange" id="triBound">—</div></div>
+    </div>
+    <span class="epiphany">🎯 <strong>核心顿悟：</strong>仔细看，这三个视图是完全等价的！左边是现实世界的分类，右边是数学空间的概率映射，而中间的箭头，正是连接现实与数学的"学习驱动力"。</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     第五章：对比总结
+══════════════════════════════════════ -->
+<div class="divider"></div>
+<div class="section" id="compare">
+  <div class="section-label">第五章</div>
+  <h2>对比总结</h2>
+
+  <div class="compare-grid">
+    <div class="compare-card" style="border-color:rgba(74,222,128,0.3)">
+      <h4 style="color:var(--green)">线性回归</h4>
+      <table>
+        <tr><th>项目</th><th>内容</th></tr>
+        <tr><td>任务</td><td>预测连续数值</td></tr>
+        <tr><td>输出</td><td>任意实数 ŷ</td></tr>
+        <tr><td>损失函数</td><td>MSE: (ŷ−y)²</td></tr>
+        <tr><td>敏感度 ∂L/∂ŷ</td><td>2(ŷ−y) ← 与几何距离成正比</td></tr>
+        <tr><td>最终影响 ∂L/∂w</td><td>(ŷ−y)·x ← 敏感度 × 力矩</td></tr>
+        <tr><td>激活函数</td><td>无（恒等函数）</td></tr>
+        <tr><td>比喻</td><td>无脑弹簧：力∝几何距离</td></tr>
+      </table>
+    </div>
+    <div class="compare-card" style="border-color:rgba(96,165,250,0.3)">
+      <h4 style="color:var(--blue)">逻辑回归</h4>
+      <table>
+        <tr><th>项目</th><th>内容</th></tr>
+        <tr><td>任务</td><td>预测类别（分类）</td></tr>
+        <tr><td>输出</td><td>概率 p ∈ (0,1)</td></tr>
+        <tr><td>损失函数</td><td>交叉熵: −[y·log(p)+…]</td></tr>
+        <tr><td>敏感度 ∂L/∂p</td><td>−y/p+(1−y)/(1−p) ← 与概率错误自信程度相关</td></tr>
+        <tr><td>最终影响 ∂L/∂w</td><td>(p−y)·x ← 三层链式法则化简</td></tr>
+        <tr><td>激活函数</td><td>Sigmoid σ(z)</td></tr>
+        <tr><td>比喻</td><td>态度考官：力∝概率错误程度</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="callout purple">
+    <strong>统一视角：广义线性模型 (GLM)</strong><br>
+    核心都是 z = wx+b，区别只是套了什么"激活函数"：<br>
+    · 线性回归 → 恒等激活 → 预测连续值<br>
+    · 逻辑回归 → Sigmoid 激活 → 预测概率<br>
+    · 神经网络 → ReLU/tanh/… 激活 → 学习更复杂的映射<br>
+    <strong>神经网络就是把这个思路堆叠多层。</strong>
+  </div>
+
+  <h3>梯度公式的对称美</h3>
+
+  <div class="formula-block">
+    <span class="comment">// 线性回归</span><br>
+    ∂L/∂w = <span class="hl-blue">(1/n)</span> · Σ (<span class="hl-orange">ŷᵢ - yᵢ</span>) · <span class="hl-purple">xᵢ</span><br><br>
+    <span class="comment">// 逻辑回归（形式完全一样！只是误差定义不同）</span><br>
+    ∂J/∂w = <span class="hl-blue">(1/n)</span> · Σ (<span class="hl-green">pᵢ - yᵢ</span>) · <span class="hl-purple">xᵢ</span><br><br>
+    <span class="comment">// 统一形式：梯度 = 误差 × 特征，这是最重要的直觉</span>
+  </div>
+  <div class="callout"><strong>🎯 记住这一句话：</strong>训练 = 找让损失 J(w,b) 最小的 w 和 b。梯度下降 = 算下坡方向，迈一小步。不管模型多复杂，本质都是这一件事。</div>
+</div>
+
+</div><!-- end .page -->
+
+<script>
+// ═══════ UTILS ═══════
+const $=id=>document.getElementById(id);
+const sigmoid=z=>1/(1+Math.exp(-z));
+function dpr(){return window.devicePixelRatio||1}
+function setupCanvas(c){
+  const W=c.clientWidth,H=c.clientHeight,r=dpr();
+  c.width=W*r;c.height=H*r;
+  const ctx=c.getContext('2d');ctx.scale(r,r);
+  return{ctx,W,H};
+}
+function tc(x,y,W,H,xmin,xmax,ymin,ymax){
+  return[(x-xmin)/(xmax-xmin)*W,H-(y-ymin)/(ymax-ymin)*H];
+}
+function axes(ctx,W,H,xmin,xmax,ymin,ymax,xlbl,ylbl){
+  ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=0.5;
+  for(let v=Math.ceil(xmin);v<=xmax;v++){
+    const[cx]=tc(v,0,W,H,xmin,xmax,ymin,ymax);
+    ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,H);ctx.stroke();
+  }
+  for(let v=Math.ceil(ymin);v<=ymax;v++){
+    const[,cy]=tc(0,v,W,H,xmin,xmax,ymin,ymax);
+    ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(W,cy);ctx.stroke();
+  }
+  ctx.strokeStyle='rgba(255,255,255,0.18)';ctx.lineWidth=1;
+  const[ax]=tc(0,0,W,H,xmin,xmax,ymin,ymax);
+  const[,ay]=tc(0,0,W,H,xmin,xmax,ymin,ymax);
+  if(ax>=0&&ax<=W){ctx.beginPath();ctx.moveTo(ax,0);ctx.lineTo(ax,H);ctx.stroke();}
+  if(ay>=0&&ay<=H){ctx.beginPath();ctx.moveTo(0,ay);ctx.lineTo(W,ay);ctx.stroke();}
+  ctx.fillStyle='rgba(255,255,255,0.25)';ctx.font='11px monospace';
+  if(xlbl){ctx.textAlign='center';ctx.fillText(xlbl,W-12,ay>H-18?H-6:ay+14);}
+  if(ylbl){ctx.textAlign='left';ctx.fillText(ylbl,ax>W-30?ax-30:ax+4,14);}
+}
+function arrow(ctx,x1,y1,x2,y2,color,lw=1.5){
+  const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+  if(len<2)return;
+  const ux=dx/len,uy=dy/len,hs=6;
+  ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.fillStyle=color;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2-ux*hs,y2-uy*hs);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-ux*hs-uy*hs*0.5,y2-uy*hs+ux*hs*0.5);ctx.lineTo(x2-ux*hs+uy*hs*0.5,y2-uy*hs-ux*hs*0.5);ctx.closePath();ctx.fill();
+}
+
+document.querySelectorAll('input[type=range]').forEach(el=>{
+  el.setAttribute('data-default', el.value);
+  el.addEventListener('dblclick', (e)=>{
+    e.target.value = e.target.getAttribute('data-default');
+    e.target.dispatchEvent(new Event('input'));
+  });
+});
+
+// ═══════ SPRING ═══════
+const linPts=[[-2.1,-1.6],[-1.7,-1.2],[-1.2,-0.8],[-0.8,-0.3],[-0.4,0.1],[0,0.3],[0.5,0.7],[1,1.1],[1.4,1.4],[1.8,1.9],[2.1,2.2]];
+function drawSpring(){
+  const c=$('springCanvas');const{ctx,W,H}=setupCanvas(c);
+  const w=parseFloat($('sw').value),b=parseFloat($('sb').value);
+  const xmin=-3,xmax=3,ymin=-3,ymax=3;
+  ctx.fillStyle='#17171a';ctx.fillRect(0,0,W,H);
+  axes(ctx,W,H,xmin,xmax,ymin,ymax,'x','y');
+  let mse=0,mae=0;
+  linPts.forEach(([x,y])=>{
+    const yh=w*x+b,err=yh-y;
+    mse+=err*err;mae+=Math.abs(err);
+    const[cx,cy]=tc(x,y,W,H,xmin,xmax,ymin,ymax);
+    const[,cy2]=tc(x,yh,W,H,xmin,xmax,ymin,ymax);
+    const al=Math.min(1,Math.abs(err)*0.5+0.25);
+    ctx.strokeStyle=`rgba(251,146,60,${al})`;ctx.lineWidth=1.5;ctx.setLineDash([3,2]);
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx,cy2);ctx.stroke();ctx.setLineDash([]);
+  });
+  mse/=linPts.length;mae/=linPts.length;
+  const[lx,ly]=tc(xmin,w*xmin+b,W,H,xmin,xmax,ymin,ymax);
+  const[rx,ry]=tc(xmax,w*xmax+b,W,H,xmin,xmax,ymin,ymax);
+  ctx.strokeStyle='#4ade80';ctx.lineWidth=2;ctx.setLineDash([]);
+  ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(rx,ry);ctx.stroke();
+  linPts.forEach(([x,y])=>{
+    const[cx,cy]=tc(x,y,W,H,xmin,xmax,ymin,ymax);
+    ctx.fillStyle='#60a5fa';ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=0.5;
+    ctx.beginPath();ctx.arc(cx,cy,4.5,0,Math.PI*2);ctx.fill();ctx.stroke();
+  });
+  const xs=linPts.map(p=>p[0]),ys=linPts.map(p=>p[1]),n=linPts.length;
+  const xm=xs.reduce((a,v)=>a+v)/n,ym=ys.reduce((a,v)=>a+v)/n;
+  const optW=xs.reduce((a,v,i)=>a+(v-xm)*(ys[i]-ym),0)/xs.reduce((a,v)=>a+(v-xm)**2,0);
+  $('mseLoss').textContent=mse.toFixed(4);$('maeLoss').textContent=mae.toFixed(4);$('optW').textContent=optW.toFixed(3);
+}
+$('sw').addEventListener('input',()=>{$('swv').textContent=parseFloat($('sw').value).toFixed(2);drawSpring();});
+$('sb').addEventListener('input',()=>{$('sbv').textContent=parseFloat($('sb').value).toFixed(2);drawSpring();});
+
+// ═══════ GD ═══════
+let gd={w:2,step:0,run:false,hist:[],lastT:0,reqId:null};
+function gdLoss(w){return linPts.reduce((s,[x,y])=>{const e=w*x-y;return s+e*e;},0)/linPts.length;}
+function gdGrad(w){return linPts.reduce((s,[x,y])=>s+2*(w*x-y)*x,0)/linPts.length;}
+function drawGD(){
+  const c=$('gdCanvas');const{ctx,W,H}=setupCanvas(c);
+  const hW=Math.floor(W/2);
+  ctx.fillStyle='#17171a';ctx.fillRect(0,0,W,H);
+  ctx.save();ctx.beginPath();ctx.rect(0,0,hW,H);ctx.clip();
+  const wmin=-4,wmax=5,lmin=0,lmax=30;
+  axes(ctx,hW,H,wmin,wmax,lmin,lmax,'w','J(w)');
+  ctx.strokeStyle='rgba(251,146,60,0.7)';ctx.lineWidth=2;ctx.beginPath();let f=true;
+  for(let wi=wmin;wi<=wmax;wi+=0.04){
+    const l=gdLoss(wi);if(l>lmax){f=true;continue;}
+    const[cx,cy]=tc(wi,l,hW,H,wmin,wmax,lmin,lmax);
+    f?(ctx.moveTo(cx,cy),f=false):ctx.lineTo(cx,cy);
+  }ctx.stroke();
+  if(gd.hist.length>1){
+    for(let i=1;i<gd.hist.length;i++){
+      if(gd.hist[i-1].l > lmax * 2 || gd.hist[i].l > lmax * 2) continue;
+      const[ax,ay]=tc(gd.hist[i-1].w,gd.hist[i-1].l,hW,H,wmin,wmax,lmin,lmax);
+      const[bx,by]=tc(gd.hist[i].w,gd.hist[i].l,hW,H,wmin,wmax,lmin,lmax);
+      ctx.strokeStyle=`rgba(74,222,128,${0.2+0.7*(i/gd.hist.length)})`;ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke();
+    }
+  }
+  const cl=gdLoss(gd.w);
+  if(cl <= lmax * 1.5){
+    const[px,py]=tc(gd.w,cl,hW,H,wmin,wmax,lmin,lmax);
+    ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(px,py,6,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();
+  ctx.save();ctx.translate(hW,0);ctx.beginPath();ctx.rect(0,0,hW,H);ctx.clip();
+  const xmin=-3,xmax=3,ymin=-3,ymax=3;
+  axes(ctx,hW,H,xmin,xmax,ymin,ymax,'x','y');
+  const[l0,l1]=tc(xmin,gd.w*xmin,hW,H,xmin,xmax,ymin,ymax);
+  const[r0,r1]=tc(xmax,gd.w*xmax,hW,H,xmin,xmax,ymin,ymax);
+  ctx.strokeStyle='#4ade80';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(l0,l1);ctx.lineTo(r0,r1);ctx.stroke();
+  linPts.forEach(([x,y])=>{const[cx,cy]=tc(x,y,hW,H,xmin,xmax,ymin,ymax);ctx.fillStyle='#60a5fa';ctx.beginPath();ctx.arc(cx,cy,4,0,Math.PI*2);ctx.fill();});
+  ctx.restore();
+  $('gdStep').textContent=gd.step;
+  $('gdW').textContent=Math.abs(gd.w)>99?'发散':gd.w.toFixed(4);
+  $('gdLoss').textContent=cl>999?'爆炸':cl.toFixed(4);
+}
+function stepGD(){
+  const lr=parseFloat($('lr').value);
+  const g=gdGrad(gd.w);gd.w-=lr*g;gd.step++;
+  gd.hist.push({w:gd.w,l:gdLoss(gd.w)});drawGD();
+  if(Math.abs(g)<0.0005||gd.step>300||Math.abs(gd.w)>20){gd.run=false;}
+}
+function loopGD(t){if(!gd.run)return;if(t-gd.lastT>50){stepGD();gd.lastT=t;}if(gd.run)gd.reqId=requestAnimationFrame(loopGD);}
+function startGD(){if(gd.run)return;gd.run=true;gd.lastT=performance.now();gd.reqId=requestAnimationFrame(loopGD);}
+function resetGD(){gd.run=false;cancelAnimationFrame(gd.reqId);gd.w=2;gd.step=0;gd.hist=[];drawGD();}
+$('lr').addEventListener('input',()=>{$('lrv').textContent=parseFloat($('lr').value).toFixed(2);});
+
+// ═══════ FAIL (Issue 1: enhanced to show all 3 problems) ═══════
+const failPts0=[[-2.2,0],[-1.8,0],[-1.5,0],[-1.1,0],[-0.7,0],[-0.4,0],[0.1,0]];
+const failPts1=[[0.3,1],[0.7,1],[1,1],[1.4,1],[1.8,1],[2.1,1]];
+function drawFail(){
+  const c=$('failCanvas');const{ctx,W,H}=setupCanvas(c);
+  const ov=parseFloat($('outlier').value);$('outv').textContent=ov.toFixed(2);
+  const outlierX=ov*5;
+  const all=[...failPts0,...failPts1,...(ov>0.05?[[outlierX,1]]:[])];
+  const n=all.length,xs=all.map(p=>p[0]),ys=all.map(p=>p[1]);
+  const xm=xs.reduce((a,v)=>a+v)/n,ym=ys.reduce((a,v)=>a+v)/n;
+  const rw=xs.reduce((a,v,i)=>a+(v-xm)*(ys[i]-ym),0)/xs.reduce((a,v)=>a+(v-xm)**2,0);
+  const rb=ym-rw*xm;
+  const xmin=-3,xmax=6,ymin=-0.8,ymax=1.8;
+  ctx.fillStyle='#17171a';ctx.fillRect(0,0,W,H);
+  axes(ctx,W,H,xmin,xmax,ymin,ymax,'特征x','ŷ');
+  
+  // y=0, y=1 reference lines
+  const[,y1cy]=tc(0,1,W,H,xmin,xmax,ymin,ymax);
+  const[,y0cy]=tc(0,0,W,H,xmin,xmax,ymin,ymax);
+  ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=0.5;ctx.setLineDash([5,4]);
+  ctx.beginPath();ctx.moveTo(0,y1cy);ctx.lineTo(W,y1cy);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,y0cy);ctx.lineTo(W,y0cy);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,255,255,0.25)';ctx.font='11px sans-serif';ctx.textAlign='right';
+  ctx.fillText('y=1',W-4,y1cy-4);ctx.fillText('y=0',W-4,y0cy-4);
+
+  // shade [0,1] valid zone
+  ctx.fillStyle='rgba(74,222,128,0.03)';
+  ctx.fillRect(0,y1cy,W,y0cy-y1cy);
+  // shade invalid zones (ŷ>1 and ŷ<0)
+  ctx.fillStyle='rgba(248,113,113,0.06)';
+  ctx.fillRect(0,0,W,y1cy);
+  ctx.fillRect(0,y0cy,W,H-y0cy);
+  // labels for invalid zones
+  ctx.fillStyle='rgba(248,113,113,0.5)';ctx.font='10px sans-serif';ctx.textAlign='left';
+  ctx.fillText('⚠ ŷ > 1（概率无意义）',4,Math.max(14,y1cy-6));
+  ctx.fillText('⚠ ŷ < 0（概率无意义）',4,Math.min(H-6,y0cy+14));
+
+  // ŷ=0.5 decision boundary
+  const xt=(0.5-rb)/rw;
+  if(isFinite(xt)&&xt>xmin&&xt<xmax){
+    const[cx]=tc(xt,0,W,H,xmin,xmax,ymin,ymax);
+    ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,H);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='rgba(255,255,255,0.45)';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText('ŷ=0.5 分界',cx,13);
+  }
+
+  // regression line
+  const[lx,ly]=tc(xmin,rw*xmin+rb,W,H,xmin,xmax,ymin,ymax);
+  const[rx,ry]=tc(xmax,rw*xmax+rb,W,H,xmin,xmax,ymin,ymax);
+  ctx.strokeStyle='#4ade80';ctx.lineWidth=1.5;ctx.setLineDash([]);
+  ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(rx,ry);ctx.stroke();
+
+  // count misclassifications
+  let wrongCount=0;
+
+  // sample points + predicted ŷ markers
+  all.forEach(([x,y])=>{
+    const yh=rw*x+rb;
+    const predicted=yh>=0.5?1:0;
+    if(predicted!==y)wrongCount++;
+    // diamond marker for ŷ on the line
+    const[cx2,cy2]=tc(x,yh,W,H,xmin,xmax,ymin,ymax);
+    ctx.fillStyle=(yh>1||yh<0)?'rgba(248,113,113,0.7)':'rgba(74,222,128,0.4)';
+    ctx.beginPath();
+    ctx.moveTo(cx2,cy2-3);ctx.lineTo(cx2+3,cy2);ctx.lineTo(cx2,cy2+3);ctx.lineTo(cx2-3,cy2);ctx.closePath();
+    ctx.fill();
+  });
+
+  // draw actual points
+  const dp=(x,y,cls)=>{
+    const[cx,cy]=tc(x,y,W,H,xmin,xmax,ymin,ymax);
+    if(cls===1){ctx.fillStyle='#60a5fa';ctx.strokeStyle='rgba(96,165,250,0.4)';}
+    else{ctx.fillStyle='transparent';ctx.strokeStyle='#fb923c';}
+    ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,5,0,Math.PI*2);
+    cls===1?ctx.fill():ctx.stroke();
+  };
+  failPts0.forEach(([x,y])=>dp(x,y,0));failPts1.forEach(([x,y])=>dp(x,y,1));
+  if(ov>0.05){
+    const[cx,cy]=tc(outlierX,1,W,H,xmin,xmax,ymin,ymax);
+    ctx.fillStyle='#f87171';ctx.beginPath();ctx.arc(cx,cy,7,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('极端点',cx,cy-11);
+  }
+
+  // stats
+  const yhatMin=rw*(-2.2)+rb;
+  const yhatMax=ov>0.05?rw*outlierX+rb:rw*2.1+rb;
+  $('failYhatMin').textContent=yhatMin.toFixed(3);
+  $('failYhatMin').style.color=yhatMin<0?'var(--red)':'var(--text2)';
+  $('failYhatMax').textContent=ov>0.05?yhatMax.toFixed(3):'—';
+  $('failBound').textContent=isFinite(xt)?xt.toFixed(3):'—';
+  $('failWrong').textContent=wrongCount;
+  $('failWrong').style.color=wrongCount>0?'var(--red)':'var(--green)';
+}
+$('outlier').addEventListener('input',drawFail);
+
+// ═══════ LINK CANVAS (Issue 2: clarified causal chain) ═══════
+function drawLink(){
+  const c=$('linkCanvas');const{ctx,W,H}=setupCanvas(c);
+  const x=parseFloat($('linkX').value);
+  const w=parseFloat($('linkW').value);
+  const b=parseFloat($('linkB').value);
+  $('linkXv').textContent=x.toFixed(2);
+  const z=w*x+b,p=sigmoid(z);
+  const xBound=-b/w;
+  ctx.fillStyle='#17171a';ctx.fillRect(0,0,W,H);
+  const topH=Math.floor(H*0.38);
+  const botH=H-topH-1;
+
+  // ── TOP: Feature space (x axis) ──
+  ctx.save();ctx.beginPath();ctx.rect(0,0,W,topH);ctx.clip();
+  const xmin=-3.5,xmax=3.5;
+  const[,ayT]=tc(0,0,W,topH,xmin,xmax,-1,1);
+  ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=0.5;
+  ctx.beginPath();ctx.moveTo(0,ayT);ctx.lineTo(W,ayT);ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.2)';ctx.font='11px monospace';
+  for(let v=-3;v<=3;v++){const[cx]=tc(v,0,W,topH,xmin,xmax,-1,1);ctx.textAlign='center';ctx.fillText(v,cx,ayT+14);}
+  // decision boundary
+  if(xBound>=xmin&&xBound<=xmax){
+    const[bx]=tc(xBound,0,W,topH,xmin,xmax,-1,1);
+    ctx.strokeStyle='rgba(251,146,60,0.8)';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(bx,6);ctx.lineTo(bx,topH-6);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='var(--orange)';ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`x*=${xBound.toFixed(2)}（此处 z=wx+b=0）`,bx,topH-4);
+  }
+  if(xBound>=xmin&&xBound<=xmax){
+    const[bx]=tc(xBound,0,W,topH,xmin,xmax,-1,1);
+    ctx.fillStyle='rgba(248,113,113,0.06)';ctx.fillRect(0,0,bx,topH);
+    ctx.fillStyle='rgba(74,222,128,0.06)';ctx.fillRect(bx,0,W-bx,topH);
+  }
+  const[cxT]=tc(x,0,W,topH,xmin,xmax,-1,1);
+  ctx.strokeStyle='#fbbf24';ctx.lineWidth=1.5;ctx.setLineDash([3,2]);
+  ctx.beginPath();ctx.moveTo(cxT,6);ctx.lineTo(cxT,topH-6);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(cxT,ayT,6,0,Math.PI*2);ctx.fill();
+  ctx.font='12px sans-serif';ctx.textAlign='left';
+  ctx.fillStyle='rgba(74,222,128,0.7)';ctx.fillText('→ 类别1（z>0, p>0.5）',xBound>=xmin?tc(Math.max(xBound+0.1,xmin+0.1),0,W,topH,xmin,xmax,-1,1)[0]:W*0.6,22);
+  ctx.fillStyle='rgba(248,113,113,0.7)';ctx.textAlign='right';
+  ctx.fillText('类别0（z<0, p<0.5） ←',xBound>=xmin?tc(Math.min(xBound-0.1,xmax-0.1),0,W,topH,xmin,xmax,-1,1)[0]:W*0.4,22);
+  ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='11px sans-serif';ctx.textAlign='left';ctx.fillText('特征空间（横轴=特征 x）',6,14);
+  ctx.restore();
+
+  ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(0,topH);ctx.lineTo(W,topH);ctx.stroke();
+
+  // ── BOTTOM: Sigmoid (z axis — shape NEVER changes) ──
+  ctx.save();ctx.translate(0,topH+1);ctx.beginPath();ctx.rect(0,0,W,botH);ctx.clip();
+  const zmin=-6,zmax=6,pmin=-0.05,pmax=1.05;
+  axes(ctx,W,botH,zmin,zmax,pmin,pmax,'z','σ(z)');
+  const[,py05]=tc(0,0.5,W,botH,zmin,zmax,pmin,pmax);
+  ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=0.8;ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(0,py05);ctx.lineTo(W,py05);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='10px monospace';ctx.textAlign='left';ctx.fillText('p=0.5',4,py05-4);
+  const[zx]=tc(0,0,W,botH,zmin,zmax,pmin,pmax);
+  ctx.strokeStyle='rgba(251,146,60,0.4)';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(zx,0);ctx.lineTo(zx,botH);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(251,146,60,0.6)';ctx.font='10px monospace';ctx.textAlign='center';ctx.fillText('z=0（永远的决策点）',zx,botH-4);
+  ctx.strokeStyle='#4ade80';ctx.lineWidth=2.5;ctx.beginPath();let fst=true;
+  for(let px2=0;px2<W;px2++){
+    const zv=zmin+(px2/W)*(zmax-zmin),pv=sigmoid(zv);
+    const[cx,cy]=tc(zv,pv,W,botH,zmin,zmax,pmin,pmax);
+    fst?(ctx.moveTo(cx,cy),fst=false):ctx.lineTo(cx,cy);
+  }ctx.stroke();
+  const[cpx,cpy]=tc(z,p,W,botH,zmin,zmax,pmin,pmax);
+  ctx.strokeStyle='rgba(251,191,36,0.4)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+  const[,axY2]=tc(0,p,W,botH,zmin,zmax,pmin,pmax);
+  const[axX2]=tc(z,0,W,botH,zmin,zmax,pmin,pmax);
+  ctx.beginPath();ctx.moveTo(0,axY2);ctx.lineTo(cpx,axY2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(axX2,botH);ctx.lineTo(axX2,cpy);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(cpx,cpy,7,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#17171a';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='#fbbf24';ctx.font='bold 12px sans-serif';ctx.textAlign='left';
+  ctx.fillText(`z=${z.toFixed(2)}, p=${p.toFixed(3)}`,cpx+10,cpy-4);
+  ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='11px sans-serif';ctx.textAlign='left';ctx.fillText('σ(z) 曲线（横轴=z，形状永远不变）',6,14);
+  ctx.restore();
+
+  const[cxTop2]=tc(x,0,W,topH,xmin,xmax,-1,1);
+  const[cpxBot2]=tc(z,p,W,botH,zmin,zmax,pmin,pmax);
+  ctx.strokeStyle='rgba(251,191,36,0.25)';ctx.lineWidth=1;ctx.setLineDash([2,3]);
+  ctx.beginPath();ctx.moveTo(cxTop2,topH-6);ctx.lineTo(cpxBot2,topH+7);ctx.stroke();ctx.setLineDash([]);
+
+  $('linkZ').textContent=z.toFixed(3);$('linkP').textContent=p.toFixed(4);
+  $('linkBound').textContent=isFinite(xBound)?xBound.toFixed(3):'∞';
+  $('linkJudge').textContent=p>=0.5?'→ 类别 1':'→ 类别 0';
+  $('linkJudge').style.color=p>=0.5?'var(--green)':'var(--red)';
+}['linkX','linkW','linkB'].forEach(id=>{
+  $(id).addEventListener('input',()=>{
+    $('linkXv').textContent=parseFloat($('linkX').value).toFixed(2);
+    $('linkWv').textContent=parseFloat($('linkW').value).toFixed(2);
+    $('linkBv').textContent=parseFloat($('linkB').value).toFixed(2);
+    drawLink();
+  });
+});
+
+// ═══════ FLOW CANVAS ═══════
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);
+  ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();
+}
+function drawFlow(){
+  const c=$('flowCanvas');const{ctx,W,H}=setupCanvas(c);
+  ctx.fillStyle='#17171a';ctx.fillRect(0,0,W,H);
+  const pad=12,boxes=[
+    {label:'输入特征',sub:'x₁,x₂,…,xₙ',color:'#60a5fa'},
+    {label:'线性组合',sub:'z = wx + b',color:'#a78bfa'},
+    {label:'Sigmoid',sub:'p = σ(z)',color:'#4ade80'},
+    {label:'交叉熵',sub:'L(p, y)',color:'#fb923c'},
+    {label:'梯度更新',sub:'w ← w−α∂J/∂w',color:'#f87171'},
+  ];
+  const bn=boxes.length;
+  const bW=Math.floor((W-pad*(bn+1))/bn);
+  const bH=Math.floor(H*0.62);
+  const cy=Math.floor(H*0.42);
+  boxes.forEach(({label,sub,color},i)=>{
+    const x=pad+i*(bW+pad);
+    const y=cy-bH/2;
+    ctx.fillStyle='rgba(255,255,255,0.04)';ctx.strokeStyle=color+'66';ctx.lineWidth=1;
+    roundRect(ctx,x,y,bW,bH,7);ctx.fill();ctx.stroke();
+    ctx.fillStyle=color;ctx.font=`bold ${Math.min(13,bW/8)}px sans-serif`;ctx.textAlign='center';
+    ctx.fillText(label,x+bW/2,cy-4);
+    ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font=`${Math.min(11,bW/10)}px monospace`;
+    ctx.fillText(sub,x+bW/2,cy+13);
+    if(i<bn-1){
+      const ax=x+bW+2,ax2=x+bW+pad-2;
+      ctx.strokeStyle='rgba(255,255,255,0.25)';ctx.fillStyle='rgba(255,255,255,0.25)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(ax,cy);ctx.lineTo(ax2-6,cy);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(ax2,cy);ctx.lineTo(ax2-6,cy-4);ctx.lineTo(ax2-6,cy+4);ctx.closePath();ctx.fill();
+    }
+  });
+  const bY=cy+bH/2;
+  ctx.strokeStyle='rgba(251,146,60,0.35)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+  ctx.beginPath();
+  const x0=pad+1*(bW+pad)+bW/2,x1=pad+4*(bW+pad)+bW/2;
+  ctx.moveTo(x1,bY);ctx.lineTo(x1,bY+16);ctx.lineTo(x0,bY+16);ctx.lineTo(x0,bY);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(251,146,60,0.45)';ctx.font='10px sans-serif';ctx.textAlign='center';
+  ctx.fillText('←  反向传播 / 梯度下降  →',(x0+x1)/2,bY+28);
+}
+
+// ═══════ LOSS CANVAS ═══════
+function drawLossCanvas(){
+  const c=$('lossCanvas');if(!c)return;
+  const{ctx,W,H}=setupCanvas(c);
+  ctx.fillStyle='#17171a';ctx.fillRect(0,0,W,H);
+  const hW=Math.floor(W/2);
+  const draw=(offX,y_true,color,title)=>{
+    ctx.save();ctx.translate(offX,0);ctx.beginPath();ctx.rect(0,0,hW,H);ctx.clip();
+    const pmin=0.001,pmax=0.999,lmin=0,lmax=7;
+    axes(ctx,hW,H,pmin,pmax,lmin,lmax,'p','L');
+    ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();let fst2=true;
+    for(let px2=0;px2<hW;px2++){
+      const pp=pmin+(px2/hW)*(pmax-pmin);
+      const L=y_true===1?-Math.log(pp):-Math.log(1-pp);
+      if(L>lmax){fst2=true;continue;}
+      const[cx,cy]=tc(pp,L,hW,H,pmin,pmax,lmin,lmax);
+      fst2?(ctx.moveTo(cx,cy),fst2=false):ctx.lineTo(cx,cy);
+    }ctx.stroke();
+    ctx.fillStyle=color;ctx.font='12px sans-serif';ctx.textAlign='left';ctx.fillText(title,6,16);
+    ctx.fillStyle='rgba(255,255,255,0.2)';ctx.font='10px sans-serif';
+    ctx.fillText(y_true===1?'p→1时 L→0（对了，无惩罚）':'p→0时 L→0（对了，无惩罚）',6,H-22);
+    ctx.fillText(y_true===1?'p→0时 L→∞（自信地错了）':'p→1时 L→∞（自信地错了）',6,H-8);
+    ctx.restore();
+  };
+  draw(0,1,'#4ade80','y=1：L = −log(p)');
+  draw(hW,0,'#60a5fa','y=0：L = −log(1−p)');
+  ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(hW,0);ctx.lineTo(hW,H);ctx.stroke();
+}
+
+// ═══════ FORCE CANVAS (Issue 4: title clarified, spacing improved) ═══════
+const logPts=[[-2.2,0],[-1.8,0],[-1.5,0],[-1,0],[-0.6,0],[-0.2,0],[0.3,1],[0.7,1],[1.1,1],[1.5,1],[1.9,1],[2.2,1],[-0.3,1],[1.8,0]];
+function drawForce(){
+  const c=$('forceCanvas');const{ctx,W,H}=setupCanvas(c);
+  const w=parseFloat($('fw').value),b=parseFloat($('fb').value);
+  const xBound=w!==0?-b/w:Infinity;
+  const xmin=-3,xmax=3;
+  const axisY=Math.floor(H*0.5);
+  ctx.fillStyle='#17171a';ctx.fillRect(0,0,W,H);
+
+  ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(0,axisY);ctx.lineTo(W,axisY);ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.2)';ctx.font='11px monospace';ctx.textAlign='center';
+  for(let v=-2;v<=2;v++){const cx=(v-xmin)/(xmax-xmin)*W;ctx.beginPath();ctx.moveTo(cx,axisY-4);ctx.lineTo(cx,axisY+4);ctx.stroke();ctx.fillText(v,cx,axisY+16);}
+  if(isFinite(xBound)&&xBound>xmin&&xBound<xmax){
+    const bx=(xBound-xmin)/(xmax-xmin)*W;
+    ctx.strokeStyle='rgba(251,146,60,0.8)';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(bx,24);ctx.lineTo(bx,H-30);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='var(--orange)';ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`x*=${xBound.toFixed(2)}`,bx,H-14);
+  }
+  if(isFinite(xBound)){
+    const bx=(xBound-xmin)/(xmax-xmin)*W;
+    ctx.fillStyle='rgba(74,222,128,0.04)';ctx.fillRect(bx,0,W-bx,H);
+    ctx.fillStyle='rgba(248,113,113,0.04)';ctx.fillRect(0,0,bx,H);
+  }
+
+  let totalGrad=0,totalLoss=0;
+  const maxArrow=axisY-40;
+
+  const ptData=logPts.map(([x,y])=>{
+    const z2=w*x+b,p2=sigmoid(z2);
+    const err=p2-y,contrib=err*x;
+    const isWrong=(p2>=0.5?1:0)!==y;
+    totalGrad+=contrib;
+    totalLoss+=-(y*Math.log(p2+1e-10)+(1-y)*Math.log(1-p2+1e-10));
+    return{x,y,p:p2,contrib,isWrong};
+  });
+
+  ptData.forEach(({x,y,p:pp,contrib,isWrong})=>{
+    const cx=(x-xmin)/(xmax-xmin)*W;
+    const arrowLen=Math.min(maxArrow,Math.abs(contrib)*40);
+    const arrowDir=contrib<0?-1:1;
+    const arrowColor=isWrong?'rgba(248,113,113,0.85)':'rgba(74,222,128,0.5)';
+    if(arrowLen>2){arrow(ctx,cx,axisY,cx,axisY-arrowDir*arrowLen,arrowColor,isWrong?2:1);}
+    if(y===1){ctx.fillStyle=isWrong?'#f87171':'#60a5fa';ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1;ctx.beginPath();ctx.arc(cx,axisY,5,0,Math.PI*2);ctx.fill();ctx.stroke();}
+    else{ctx.strokeStyle=isWrong?'#f87171':'#fb923c';ctx.lineWidth=2;ctx.fillStyle='transparent';ctx.beginPath();ctx.arc(cx,axisY,5,0,Math.PI*2);ctx.stroke();}
+    // p label with more vertical space
+    ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='9px monospace';ctx.textAlign='center';
+    ctx.fillText(`p=${pp.toFixed(2)}`,cx,axisY+30);
+  });
+  totalGrad/=logPts.length;totalLoss/=logPts.length;
+
+  ctx.fillStyle='rgba(255,255,255,0.25)';ctx.font='11px sans-serif';ctx.textAlign='left';
+  ctx.fillText('特征 x 轴  ·  箭头长度 ∝ |(p−y)·x|',6,16);
+
+  $('fGrad').textContent=totalGrad.toFixed(4);
+  $('fLoss').textContent=totalLoss.toFixed(3);
+  $('fBound').textContent=isFinite(xBound)?xBound.toFixed(3):'∞';
+}
+$('fw').addEventListener('input',()=>{$('fwv').textContent=parseFloat($('fw').value).toFixed(1);drawForce();});
+$('fb').addEventListener('input',()=>{$('fbv').textContent=parseFloat($('fb').value).toFixed(1);drawForce();});
+
+// ═══════ LOSS SURFACE (J vs w) ═══════
+let ls={w:3,step:0,run:false,hist:[],lastT:0,reqId:null};
+function lsLoss(w){
+  return logPts.reduce((s,[x,y])=>{const p2=sigmoid(w*x);return s-(y*Math.log(p2+1e-10)+(1-y)*Math.log(1-p2+1e-10));},0)/logPts.length;
+}
+function lsGrad(w){
+  return logPts.reduce((s,[x,y])=>{const p2=sigmoid(w*x);return s+(p2-y)*x;},0)/logPts.length;
+}
+function drawLS(){
+  const c=$('lsurfCanvas');const{ctx,W,H}=setupCanvas(c);
+  ctx.fillStyle='#17171a';ctx.fillRect(0,0,W,H);
+  const wmin=-5,wmax=5,lmin=0,lmax=2.5;
+  axes(ctx,W,H,wmin,wmax,lmin,lmax,'w','J(w)');
+  ctx.strokeStyle='rgba(96,165,250,0.8)';ctx.lineWidth=2.5;ctx.beginPath();let fst3=true;
+  for(let wi=wmin;wi<=wmax;wi+=0.05){
+    const l=lsLoss(wi);if(l>lmax){fst3=true;continue;}
+    const[cx,cy]=tc(wi,l,W,H,wmin,wmax,lmin,lmax);
+    fst3?(ctx.moveTo(cx,cy),fst3=false):ctx.lineTo(cx,cy);
+  }ctx.stroke();
+  if(ls.hist.length>1){
+    for(let i=1;i<ls.hist.length;i++){
+      const[ax,ay]=tc(ls.hist[i-1].w,ls.hist[i-1].l,W,H,wmin,wmax,lmin,lmax);
+      const[bx,by]=tc(ls.hist[i].w,ls.hist[i].l,W,H,wmin,wmax,lmin,lmax);
+      ctx.strokeStyle=`rgba(74,222,128,${0.2+0.6*(i/ls.hist.length)})`;ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke();
+    }
+  }
+  const cw=ls.w,cl=lsLoss(cw),cg=lsGrad(cw);
+  const tLen=1.2;
+  const[tx0,ty0]=tc(cw-tLen,cl-cg*tLen,W,H,wmin,wmax,lmin,lmax);
+  const[tx1,ty1]=tc(cw+tLen,cl+cg*tLen,W,H,wmin,wmax,lmin,lmax);
+  ctx.strokeStyle='rgba(248,113,113,0.6)';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(tx0,ty0);ctx.lineTo(tx1,ty1);ctx.stroke();ctx.setLineDash([]);
+  const[px,py]=tc(cw,cl,W,H,wmin,wmax,lmin,lmax);
+  ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(px,py,7,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#17171a';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='rgba(248,113,113,0.7)';ctx.font='11px sans-serif';ctx.textAlign='left';
+  ctx.fillText(`∂J/∂w=${cg.toFixed(3)}（红色切线斜率）`,8,18);
+  $('lsW').textContent=cw.toFixed(3);$('lsL').textContent=cl.toFixed(4);$('lsG').textContent=cg.toFixed(4);$('lsStep').textContent=ls.step;
+}
+function stepLS(){const lr=parseFloat($('lsLr').value);const g=lsGrad(ls.w);ls.w-=lr*g;ls.step++;ls.hist.push({w:ls.w,l:lsLoss(ls.w)});drawLS();if(Math.abs(g)<0.001||ls.step>500||Math.abs(ls.w)>10){ls.run=false;}}
+function loopLS(t){if(!ls.run)return;if(t-ls.lastT>50){stepLS();ls.lastT=t;}if(ls.run)ls.reqId=requestAnimationFrame(loopLS);}
+function startLS(){if(ls.run)return;ls.run=true;ls.lastT=performance.now();ls.reqId=requestAnimationFrame(loopLS);}
+function resetLS(){ls.run=false;cancelAnimationFrame(ls.reqId);ls.w=parseFloat($('lsInitW').value);ls.step=0;ls.hist=[];drawLS();}
+$('lsInitW').addEventListener('input',()=>{$('lsInitWv').textContent=parseFloat($('lsInitW').value).toFixed(1);resetLS();});
+$('lsLr').addEventListener('input',()=>{$('lsLrv').textContent=parseFloat($('lsLr').value).toFixed(2);});
+
+// ═══════ TRI CANVAS ═══════
+function drawTri(){
+  const c=$('triCanvas');const{ctx,W,H}=setupCanvas(c);
+  const w=parseFloat($('trw').value),b=parseFloat($('trb').value);
+  ctx.fillStyle='#17171a';ctx.fillRect(0,0,W,H);
+  const colW=Math.floor(W/3);
+  const xBound=w!==0?-b/w:Infinity;
+
+  ctx.save();ctx.beginPath();ctx.rect(0,0,colW,H);ctx.clip();
+  const fxmin=-3,fxmax=3;
+  const faxY=Math.floor(H*0.55);
+  ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(0,faxY);ctx.lineTo(colW,faxY);ctx.stroke();
+  for(let v=-2;v<=2;v++){const cx=(v-fxmin)/(fxmax-fxmin)*colW;ctx.beginPath();ctx.moveTo(cx,faxY-3);ctx.lineTo(cx,faxY+3);ctx.stroke();}
+  if(isFinite(xBound)&&xBound>fxmin&&xBound<fxmax){
+    const bx=(xBound-fxmin)/(fxmax-fxmin)*colW;
+    ctx.strokeStyle='rgba(251,146,60,0.85)';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(bx,18);ctx.lineTo(bx,H-18);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='var(--orange)';ctx.font='10px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`x*=${xBound.toFixed(2)}`,bx,H-6);
+    ctx.fillStyle='rgba(74,222,128,0.05)';ctx.fillRect(bx,0,colW-bx,H);
+    ctx.fillStyle='rgba(248,113,113,0.05)';ctx.fillRect(0,0,bx,H);
+  }
+  logPts.forEach(([x,y])=>{
+    const p2=sigmoid(w*x+b),isWrong=(p2>=0.5?1:0)!==y;
+    const cx=(x-fxmin)/(fxmax-fxmin)*colW;
+    if(isWrong){ctx.fillStyle='rgba(248,113,113,0.2)';ctx.beginPath();ctx.arc(cx,faxY,12,0,Math.PI*2);ctx.fill();}
+    if(y===1){ctx.fillStyle=isWrong?'#f87171':'#60a5fa';ctx.beginPath();ctx.arc(cx,faxY,5,0,Math.PI*2);ctx.fill();}
+    else{ctx.strokeStyle=isWrong?'#f87171':'#fb923c';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,faxY,5,0,Math.PI*2);ctx.stroke();}
+  });
+  ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('特征空间 (x轴)',colW/2,14);
+  ctx.restore();
+
+  ctx.save();ctx.translate(colW,0);ctx.beginPath();ctx.rect(0,0,colW,H);ctx.clip();
+  const zmin=-6,zmax=6,maxArrH=Math.floor(H*0.38);
+  const zaxY=Math.floor(H*0.58);
+  ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(0,zaxY);ctx.lineTo(colW,zaxY);ctx.stroke();
+  for(let v=-4;v<=4;v+=2){const cx=(v-zmin)/(zmax-zmin)*colW;ctx.beginPath();ctx.moveTo(cx,zaxY-3);ctx.lineTo(cx,zaxY+3);ctx.stroke();}
+  const zeroX=(0-zmin)/(zmax-zmin)*colW;
+  ctx.strokeStyle='rgba(251,146,60,0.5)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(zeroX,8);ctx.lineTo(zeroX,H-8);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(251,146,60,0.6)';ctx.font='10px monospace';ctx.textAlign='center';ctx.fillText('z=0',zeroX,H-6);
+  logPts.forEach(([x,y])=>{
+    const z2=w*x+b,p2=sigmoid(z2),err=p2-y,contrib=err*x;
+    const isWrong=(p2>=0.5?1:0)!==y;
+    const cx=(z2-zmin)/(zmax-zmin)*colW;
+    const arrowLen=Math.min(maxArrH,Math.abs(contrib)*35);
+    const arrowDir=contrib<0?-1:1;
+    if(arrowLen>3){
+      const col=isWrong?'rgba(248,113,113,0.8)':'rgba(74,222,128,0.45)';
+      arrow(ctx,cx,zaxY,cx,zaxY-arrowDir*arrowLen,col,isWrong?2:1);
+    }
+    if(y===1){ctx.fillStyle=isWrong?'#f87171':'#60a5fa';ctx.beginPath();ctx.arc(cx,zaxY,4,0,Math.PI*2);ctx.fill();}
+    else{ctx.strokeStyle=isWrong?'#f87171':'#fb923c';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,zaxY,4,0,Math.PI*2);ctx.stroke();}
+    ctx.fillStyle='rgba(255,255,255,0.35)';ctx.font='9px monospace';ctx.textAlign='center';
+    ctx.fillText(p2.toFixed(2),cx,zaxY+22);
+  });
+  ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('z 轴 + ∂L/∂w贡献',colW/2,14);
+  ctx.restore();
+
+  ctx.save();ctx.translate(colW*2,0);ctx.beginPath();ctx.rect(0,0,colW,H);ctx.clip();
+  const pmin=-0.05,pmax=1.05;
+  axes(ctx,colW,H,zmin,zmax,pmin,pmax,'z','p');
+  const[,py05]=tc(0,0.5,colW,H,zmin,zmax,pmin,pmax);
+  ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=0.8;ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(0,py05);ctx.lineTo(colW,py05);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='9px monospace';ctx.textAlign='left';ctx.fillText('p=0.5',2,py05-3);
+  ctx.strokeStyle='#4ade80';ctx.lineWidth=2;ctx.beginPath();let fst4=true;
+  for(let px2=0;px2<colW;px2++){
+    const zv=zmin+(px2/colW)*(zmax-zmin),pv=sigmoid(zv);
+    const[cx,cy]=tc(zv,pv,colW,H,zmin,zmax,pmin,pmax);
+    fst4?(ctx.moveTo(cx,cy),fst4=false):ctx.lineTo(cx,cy);
+  }ctx.stroke();
+  logPts.forEach(([x,y])=>{
+    const z2=w*x+b,p2=sigmoid(z2),isWrong=(p2>=0.5?1:0)!==y;
+    const[cx,cy]=tc(z2,p2,colW,H,zmin,zmax,pmin,pmax);
+    ctx.fillStyle=isWrong?'#f87171':y===1?'#60a5fa':'#fb923c';
+    ctx.beginPath();ctx.arc(cx,cy,3.5,0,Math.PI*2);ctx.fill();
+  });
+  ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText('Sigmoid p=σ(z)',colW/2,14);
+  ctx.restore();
+
+  ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(colW,0);ctx.lineTo(colW,H);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(colW*2,0);ctx.lineTo(colW*2,H);ctx.stroke();
+
+  let loss=0,grad=0,wrong=0;
+  logPts.forEach(([x,y])=>{
+    const p2=sigmoid(w*x+b);
+    loss-=y*Math.log(p2+1e-10)+(1-y)*Math.log(1-p2+1e-10);
+    grad+=(p2-y)*x;
+    if((p2>=0.5?1:0)!==y)wrong++;
+  });
+  const nn=logPts.length;
+  $('triLoss').textContent=(loss/nn).toFixed(4);
+  $('triGrad').textContent=(grad/nn).toFixed(4);
+  $('triAcc').textContent=((nn-wrong)/nn*100).toFixed(0)+'%';
+  $('triBound').textContent=isFinite(xBound)?xBound.toFixed(3):'∞';
+}
+$('trw').addEventListener('input',()=>{$('trwv').textContent=parseFloat($('trw').value).toFixed(1);drawTri();});
+$('trb').addEventListener('input',()=>{$('trbv').textContent=parseFloat($('trb').value).toFixed(1);drawTri();});
+
+// ═══════ STEP SWITCH ═══════
+function switchStep(id,btn){
+  document.querySelectorAll('.step-panel').forEach(p2=>p2.classList.remove('active'));
+  document.querySelectorAll('.step-btn').forEach(b2=>b2.classList.remove('active'));
+  $(id).classList.add('active');btn.classList.add('active');
+  if(id==='s3')setTimeout(drawLossCanvas,40);
+}
+
+// ═══════ RESIZE ═══════
+let rt;
+window.addEventListener('resize',()=>{
+  clearTimeout(rt);rt=setTimeout(()=>{
+    drawSpring();drawGD();drawFail();drawLink();drawFlow();drawForce();drawLS();drawTri();
+    if($('lossCanvas'))drawLossCanvas();
+  },120);
+});
+
+// ═══════ INIT ═══════
+window.addEventListener('load',()=>{
+  drawSpring();drawGD();drawFail();drawLink();drawFlow();drawForce();drawLS();drawTri();
+});
+</script>
+</body>
+</html>

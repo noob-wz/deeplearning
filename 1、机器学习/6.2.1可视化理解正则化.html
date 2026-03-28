@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>正则化直觉实验室</title>
+  <style>
+    :root{
+      --bg:#0a1020;
+      --panel:#121a34;
+      --panel2:#0f1730;
+      --panel3:#162247;
+      --line:#2b3d71;
+      --text:#eff4ff;
+      --muted:#aab8df;
+      --soft:#7e90c7;
+      --blue:#6fb0ff;
+      --cyan:#57e2d7;
+      --green:#7fe4a0;
+      --gold:#f6d165;
+      --orange:#ffb071;
+      --red:#ff7f89;
+      --purple:#bf9fff;
+      --shadow:0 14px 36px rgba(0,0,0,.28);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+      color:var(--text);
+      background:linear-gradient(180deg,#08101d 0%, #0b1122 100%);
+      line-height:1.55;
+    }
+    .wrap{max-width:1160px;margin:0 auto;padding:20px 16px 64px}
+    .hero,.panel,.card,.mini,.chart-card,.status-card,.coach,.summary,.ledger{
+      background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.015));
+      border:1px solid rgba(255,255,255,.07);
+      border-radius:20px;
+      box-shadow:var(--shadow);
+    }
+    .hero{padding:24px 22px;margin-bottom:16px}
+    .tag{
+      display:inline-block;padding:6px 12px;border-radius:999px;font-size:12px;letter-spacing:.06em;
+      background:rgba(103,168,255,.10);border:1px solid rgba(103,168,255,.26);color:var(--blue);margin-bottom:12px;
+    }
+    h1{margin:0 0 10px;font-size:clamp(26px,4vw,40px);line-height:1.14}
+    .hero p{margin:0;color:var(--muted);max-width:900px}
+
+    .status-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:12px;margin-bottom:14px}
+    .status-card{padding:14px 16px}
+    .status-label{font-size:12px;color:var(--muted);margin-bottom:6px}
+    .status-big{font-size:18px;font-weight:800}
+    .status-big small{font-size:13px;color:var(--soft);font-weight:600}
+
+    .lesson-strip{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+    .lesson-step{
+      padding:8px 12px;border-radius:999px;font-size:13px;color:var(--muted);
+      background:var(--panel2);border:1px solid var(--line)
+    }
+    .lesson-step.active{background:rgba(87,226,215,.10);color:var(--text);border-color:rgba(87,226,215,.34)}
+
+    .coach{padding:16px 18px;margin-bottom:14px}
+    .coach-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:8px}
+    .coach h2{margin:0;font-size:18px;color:var(--cyan)}
+    .coach p{margin:0;color:var(--text)}
+    .coach .sub{color:var(--muted);margin-top:6px}
+    .focus-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+    .mini{padding:14px}
+    .mini strong{display:block;font-size:14px;margin-bottom:6px}
+    .mini p{margin:0;color:var(--muted);font-size:14px}
+
+    .controls{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:stretch;margin-bottom:14px}
+    .panel{padding:15px}
+    .control{background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:14px}
+    .control label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px}
+    .control .value{font-size:22px;font-weight:800;margin-bottom:8px}
+    .tiny{font-size:12px;color:var(--soft)}
+    input[type="range"]{width:100%}
+    .buttons{display:flex;flex-direction:column;gap:10px;justify-content:center}
+    button{
+      border:none;cursor:pointer;padding:12px 14px;border-radius:14px;font-size:14px;font-weight:700;
+      background:var(--panel3);color:var(--text);border:1px solid var(--line);transition:.15s ease;
+    }
+    button:hover{transform:translateY(-1px);border-color:rgba(103,168,255,.35)}
+    .primary{background:rgba(103,168,255,.12);border:1px solid rgba(103,168,255,.36)}
+
+    .workspace{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+    .chart-card{padding:14px}
+    .chart-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:10px}
+    .chart-head h3{margin:0;font-size:17px}
+    .chart-note{font-size:13px;color:var(--muted);max-width:540px}
+    .legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+    .legend span{display:inline-flex;align-items:center;gap:7px;color:var(--muted);font-size:12px}
+    .dot{width:10px;height:10px;border-radius:999px;display:inline-block}
+    .line-demo{width:18px;height:0;border-top:3px solid currentColor;display:inline-block;border-radius:999px}
+    .line-dash{border-top-style:dashed}
+    .chart-shell{background:linear-gradient(180deg,#0d1631,#0c142b);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:8px}
+    canvas{display:block;width:100%;height:320px}
+    .under-caption{padding-top:10px;color:var(--muted);font-size:13px}
+
+    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+    .card{padding:14px}
+    .card .label{font-size:13px;color:var(--muted);margin-bottom:7px}
+    .card .num{font-size:28px;font-weight:900;line-height:1.08}
+    .card .desc{font-size:13px;color:var(--soft);margin-top:8px}
+    .train .num{color:var(--green)} .penalty .num{color:var(--gold)} .objective .num{color:var(--blue)} .test .num{color:var(--orange)}
+
+    .ledger{padding:16px;margin-bottom:14px}
+    .ledger h3{margin:0 0 10px;font-size:18px}
+    .verdict{font-size:20px;font-weight:900;line-height:1.4;margin-bottom:14px}
+    .good{color:var(--green)} .bad{color:var(--red)} .blue{color:var(--blue)} .gold{color:var(--gold)}
+    .bars{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .barbox{background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:14px}
+    .barbox strong{display:block;margin-bottom:8px}
+    .bar-track{height:14px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden;margin-bottom:8px}
+    .bar-fill{height:100%;border-radius:999px;width:0%}
+    .barbox p{margin:0;color:var(--muted);font-size:14px}
+    .logic-note{margin-top:14px;padding:14px 16px;border-radius:16px;border:1px solid rgba(87,226,215,.18);background:rgba(87,226,215,.05);color:var(--muted);font-size:14px}
+    .logic-note strong{color:var(--text)}
+
+    .two-col{display:grid;grid-template-columns:1.05fr .95fr;gap:14px}
+    .quiz,.summary{padding:16px}
+    .quiz h3,.summary h3{margin:0 0 10px;font-size:17px}
+    .quiz p{margin:0 0 12px}
+    .quiz-btns{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+    .feedback{min-height:24px;color:var(--muted);font-size:14px}
+    .summary ul{margin:0;padding-left:20px;color:var(--muted)}
+    .summary li{margin:7px 0}
+
+    .footer{margin-top:12px;color:var(--soft);font-size:13px}
+
+    .residual-shell{margin-top:12px;padding:12px;border-radius:16px;border:1px solid rgba(255,255,255,.06);background:linear-gradient(180deg,#0d1631,#0c142b)}
+    .residual-head{font-size:13px;font-weight:800;margin-bottom:4px}
+    .residual-note{font-size:12px;color:var(--muted);margin-bottom:8px}
+    .mini-canvas{display:block;width:100%;height:116px}
+    .outline-chip{width:12px;height:12px;border-radius:3px;border:2px solid rgba(170,185,230,.72);display:inline-block;background:transparent}
+    .compare-panel{padding:16px;margin-bottom:14px}
+    .compare-panel h3{margin:0 0 8px;font-size:18px}
+    .compare-sub{color:var(--muted);font-size:14px;margin-bottom:14px}
+    .compare-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    .compare-card{background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:14px}
+    .compare-card strong{font-size:15px}
+    .compare-top{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:10px}
+    .delta-badge{font-size:12px;font-weight:800;padding:5px 8px;border-radius:999px}
+    .delta-help{background:rgba(127,228,160,.12);color:var(--green);border:1px solid rgba(127,228,160,.22)}
+    .delta-hurt{background:rgba(255,127,137,.12);color:var(--red);border:1px solid rgba(255,127,137,.22)}
+    .delta-neutral{background:rgba(170,185,230,.12);color:var(--muted);border:1px solid rgba(170,185,230,.2)}
+    .compare-track{position:relative;height:52px;border-radius:14px;background:rgba(255,255,255,.05);overflow:hidden;padding:8px 10px}
+    .compare-bar{height:12px;border-radius:999px;min-width:2px}
+    .compare-bar.prev{background:rgba(170,185,230,.55);margin-bottom:10px}
+    .compare-bar.curr.train{background:linear-gradient(90deg,rgba(127,228,160,.55),rgba(127,228,160,1))}
+    .compare-bar.curr.penalty{background:linear-gradient(90deg,rgba(246,209,101,.55),rgba(246,209,101,1))}
+    .compare-bar.curr.objective{background:linear-gradient(90deg,rgba(103,168,255,.55),rgba(103,168,255,1))}
+    .compare-values{display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:12px;margin-top:8px}
+    .compare-explain{margin-top:12px;padding:12px 14px;border-radius:16px;border:1px solid rgba(103,168,255,.16);background:rgba(103,168,255,.05);color:var(--muted);font-size:14px}
+
+    @media (max-width: 1180px){
+      .workspace,.two-col,.compare-grid{grid-template-columns:1fr}
+    }
+    @media (max-width: 1040px){
+      .status-grid,.metrics{grid-template-columns:1fr 1fr}
+      .controls{grid-template-columns:1fr 1fr}
+      .buttons{grid-column:1 / -1;flex-direction:row;flex-wrap:wrap}
+      button{flex:1 1 180px}
+    }
+    @media (max-width: 780px){
+      .workspace,.two-col,.status-grid,.metrics,.controls,.focus-row,.bars,.compare-grid{grid-template-columns:1fr}
+      .buttons{flex-direction:column}
+      button{width:100%}
+      canvas{height:280px}
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero">
+    <div class="tag">正则化直觉实验室</div>
+    <h1>别再背“复杂有代价”了。<br>我们直接把它看成一笔账 📒</h1>
+    <p>
+      页面把图、讲解和总账尽量放近，让你在普通笔记本上也能顺着看。你现在只需要跟着步骤看：
+      模型多复杂一点时，到底是 <strong>省下来的训练误差更多</strong>，还是 <strong>变化后的权重税影响更大</strong>。
+    </p>
+  </section>
+
+  <div class="status-grid">
+    <div class="status-card">
+      <div class="status-label">你现在在看什么</div>
+      <div class="status-big" id="statusStep">第 1 步 <small>先把公式翻成人话</small></div>
+    </div>
+    <div class="status-card">
+      <div class="status-label">当前模型</div>
+      <div class="status-big">degree = <span id="topDegree">1</span></div>
+    </div>
+    <div class="status-card">
+      <div class="status-label">当前收费强度</div>
+      <div class="status-big">λ = <span id="topLambda">0.000</span></div>
+    </div>
+  </div>
+
+  <div class="lesson-strip" id="lessonStrip"></div>
+
+  <section class="coach">
+    <div class="coach-head">
+      <div>
+        <h2 id="coachTitle">第 1 步：先把公式翻成人话</h2>
+        <p id="coachMain"></p>
+        <div class="sub" id="coachSub"></div>
+      </div>
+    </div>
+    <div class="focus-row">
+      <div class="mini">
+        <strong>这一刻你只看什么 👀</strong>
+        <p id="lookHint"></p>
+      </div>
+      <div class="mini">
+        <strong>你脑子里要问自己的问题</strong>
+        <p id="selfQuestion">我这次把模型弄复杂一点，到底赚到了多少，又为此多付了多少？</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="controls">
+      <div class="control">
+        <label for="degree">模型复杂度（多项式 degree）</label>
+        <div class="value"><span id="degreeValue">1</span></div>
+        <input id="degree" type="range" min="1" max="12" step="1" value="1">
+        <div class="tiny">越大，蓝线越能弯来弯去。</div>
+      </div>
+      <div class="control">
+        <label for="lambda">正则强度 λ</label>
+        <div class="value"><span id="lambdaLabel">0.000</span></div>
+        <input id="lambda" type="range" min="0" max="100" step="1" value="0">
+        <div class="tiny">越大，模型越不敢把权重拉得很夸张。</div>
+      </div>
+      <div class="buttons">
+        <button class="primary" id="nextStepBtn">下一步讲解</button>
+        <button id="prevStepBtn">上一步</button>
+        <button id="freeModeBtn">自由探索</button>
+      </div>
+    </div>
+
+    <div class="workspace">
+      <div class="chart-card">
+        <div class="chart-head">
+          <div>
+            <h3>左图：当前模型 vs 前一个更简单的模型</h3>
+            <div class="chart-note">蓝线 = 当前模型；灰虚线 = 前一个更简单的模型；黄点 = 训练样本；淡绿线 = 隐藏的真实规律。</div>
+          </div>
+        </div>
+        <div class="legend">
+          <span><i class="line-demo" style="color:rgba(103,168,255,.98)"></i> 当前模型</span>
+          <span><i class="line-demo line-dash" style="color:rgba(170,185,230,.8)"></i> 前一个更简单模型</span>
+          <span><i class="dot" style="background:rgba(255,214,106,.95)"></i> 训练样本</span>
+          <span><i class="line-demo" style="color:rgba(127,228,160,.7)"></i> 真实规律</span>
+        </div>
+        <div class="chart-shell"><canvas id="plotCanvas"></canvas></div>
+        <div class="residual-shell">
+          <div class="residual-head">训练点上的变化：当前模型比前一个更贴点了吗？</div>
+          <div class="residual-note">每根小条对应一个训练点。绿色向上 = 当前更贴近；红色向下 = 当前更远。这样你能直接看到“训练误差减少”是从哪些点来的。</div>
+          <canvas id="residualCanvas" class="mini-canvas"></canvas>
+        </div>
+        <div class="under-caption" id="plotCaption"></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-head">
+          <div>
+            <h3>右图：权重条形图（当前 vs 前一个）</h3>
+            <div class="chart-note">灰框是前一个更简单模型；紫色 / 金色是当前模型。L2 正则化主要惩罚非截距权重，不惩罚 w0。</div>
+          </div>
+        </div>
+        <div class="legend">
+          <span><i class="outline-chip"></i> 前一个模型</span>
+          <span><i class="dot" style="background:rgba(186,157,255,.8)"></i> 当前 w0（截距）</span>
+          <span><i class="dot" style="background:rgba(246,209,101,.85)"></i> 当前其余权重</span>
+        </div>
+        <div class="chart-shell"><canvas id="weightCanvas"></canvas></div>
+        <div class="under-caption" id="weightCaption"></div>
+      </div>
+    </div>
+
+    <div class="metrics">
+      <div class="card train">
+        <div class="label">训练误差</div>
+        <div class="num" id="trainLossNum">0.000</div>
+        <div class="desc">它表示：在训练集上，你贴得有多紧。</div>
+      </div>
+      <div class="card penalty">
+        <div class="label">权重税 λ·Σ<sub>j≥1</sub>w<sub>j</sub><sup>2</sup></div>
+        <div class="num" id="penaltyNum">0.000</div>
+        <div class="desc">它表示：最后学出来的非截距权重，有多“昂贵”。</div>
+      </div>
+      <div class="card objective">
+        <div class="label">总目标</div>
+        <div class="num" id="objectiveNum">0.000</div>
+        <div class="desc">真正决定“值不值”的就是它。</div>
+      </div>
+      <div class="card test">
+        <div class="label">测试误差</div>
+        <div class="num" id="testLossNum">0.000</div>
+        <div class="desc">它提醒你：贴训练点 ≠ 学到真正规律。</div>
+      </div>
+    </div>
+
+    <div class="compare-panel panel">
+      <h3>和前一个模型比，这一步到底发生了什么？</h3>
+      <div class="compare-sub">灰条是前一个模型，彩条是当前模型。你不需要凭空想象“减少了多少”，这里会把前后两次摆在一起给你看。</div>
+      <div class="compare-grid">
+        <div class="compare-card">
+          <div class="compare-top"><strong>训练误差</strong><span class="delta-badge" id="cmpTrainBadge"></span></div>
+          <div class="compare-track">
+            <div class="compare-bar prev" id="cmpTrainPrev"></div>
+            <div class="compare-bar curr train" id="cmpTrainCurr"></div>
+          </div>
+          <div class="compare-values"><span id="cmpTrainPrevText"></span><span id="cmpTrainCurrText"></span></div>
+        </div>
+        <div class="compare-card">
+          <div class="compare-top"><strong>权重税</strong><span class="delta-badge" id="cmpPenaltyBadge"></span></div>
+          <div class="compare-track">
+            <div class="compare-bar prev" id="cmpPenaltyPrev"></div>
+            <div class="compare-bar curr penalty" id="cmpPenaltyCurr"></div>
+          </div>
+          <div class="compare-values"><span id="cmpPenaltyPrevText"></span><span id="cmpPenaltyCurrText"></span></div>
+        </div>
+        <div class="compare-card">
+          <div class="compare-top"><strong>总目标</strong><span class="delta-badge" id="cmpObjectiveBadge"></span></div>
+          <div class="compare-track">
+            <div class="compare-bar prev" id="cmpObjectivePrev"></div>
+            <div class="compare-bar curr objective" id="cmpObjectiveCurr"></div>
+          </div>
+          <div class="compare-values"><span id="cmpObjectivePrevText"></span><span id="cmpObjectiveCurrText"></span></div>
+        </div>
+      </div>
+      <div class="compare-explain" id="compareExplain"></div>
+    </div>
+
+    <div class="ledger">
+      <h3>这一步的总账</h3>
+      <div class="verdict" id="worthLine"></div>
+      <div class="bars">
+        <div class="barbox">
+          <strong>训练项变化</strong>
+          <div class="bar-track"><div class="bar-fill" id="trainBenefitBar"></div></div>
+          <p id="deltaTrainText"></p>
+        </div>
+        <div class="barbox">
+          <strong>权重税变化</strong>
+          <div class="bar-track"><div class="bar-fill" id="penaltyCostBar"></div></div>
+          <p id="deltaPenaltyText"></p>
+        </div>
+      </div>
+      <div class="logic-note"><strong>提醒：</strong>L2 正则化收费的对象，是最后学出来的非截距权重，而不是单纯对 “degree 这个数字” 收费。所以 degree 增加时，权重税<strong>常常会上升，但不保证一定上升</strong>；有时模型也可能用更省权重的方式表示，税会下降。真正稳定的判断标准，是看<strong>总目标有没有更低</strong>。</div>
+    </div>
+
+    <div class="two-col">
+      <div class="quiz card">
+        <h3>小检查 🧠</h3>
+        <p id="quizPrompt"></p>
+        <div class="quiz-btns">
+          <button id="worthBtn">值得</button>
+          <button id="notWorthBtn">不值得</button>
+          <button id="tieBtn">基本打平</button>
+        </div>
+        <div class="feedback" id="quizFeedback"></div>
+      </div>
+      <div class="summary">
+        <h3>最后你要能用自己的话说出来</h3>
+        <ul>
+          <li>模型变复杂，本身不是罪过。</li>
+          <li>但复杂不是免费的，它会通过更大的权重、更大的弯折，带来复杂度税。</li>
+          <li>所以问题永远不是“复杂好不好”，而是：<strong>这次复杂化带来的收益，够不够支付它的成本？</strong></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer">说明：这里是真实计算出来的小型多项式回归 + L2 正则化实验，只是页面把它翻成了更适合建立直觉的“账本语言”。</div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const trainX = [-0.98,-0.82,-0.66,-0.53,-0.37,-0.21,-0.05,0.12,0.29,0.47,0.63,0.81,0.95];
+  const noise  = [ 0.09,-0.06, 0.08,-0.04, 0.03,-0.07, 0.11,-0.09, 0.05,-0.06, 0.08,-0.04, 0.02];
+  const f = x => 0.85*Math.sin(1.6*Math.PI*x) + 0.28*x;
+  const trainY = trainX.map((x,i)=>f(x)+noise[i]);
+  const testX = Array.from({length:140}, (_,i)=>-1 + 2*i/139);
+  const testY = testX.map(x=>f(x));
+
+  const degreeEl = document.getElementById('degree');
+  const lambdaEl = document.getElementById('lambda');
+  const degreeValue = document.getElementById('degreeValue');
+  const lambdaLabel = document.getElementById('lambdaLabel');
+  const topDegree = document.getElementById('topDegree');
+  const topLambda = document.getElementById('topLambda');
+  const statusStep = document.getElementById('statusStep');
+  const plotCanvas = document.getElementById('plotCanvas');
+  const weightCanvas = document.getElementById('weightCanvas');
+  const residualCanvas = document.getElementById('residualCanvas');
+
+  const trainLossNum = document.getElementById('trainLossNum');
+  const penaltyNum = document.getElementById('penaltyNum');
+  const objectiveNum = document.getElementById('objectiveNum');
+  const testLossNum = document.getElementById('testLossNum');
+  const worthLine = document.getElementById('worthLine');
+  const deltaTrainText = document.getElementById('deltaTrainText');
+  const deltaPenaltyText = document.getElementById('deltaPenaltyText');
+  const quizPrompt = document.getElementById('quizPrompt');
+  const quizFeedback = document.getElementById('quizFeedback');
+  const coachTitle = document.getElementById('coachTitle');
+  const coachMain = document.getElementById('coachMain');
+  const coachSub = document.getElementById('coachSub');
+  const lookHint = document.getElementById('lookHint');
+  const lessonStrip = document.getElementById('lessonStrip');
+  const plotCaption = document.getElementById('plotCaption');
+  const weightCaption = document.getElementById('weightCaption');
+  const trainBenefitBar = document.getElementById('trainBenefitBar');
+  const penaltyCostBar = document.getElementById('penaltyCostBar');
+  const tieBtn = document.getElementById('tieBtn');
+  const cmpTrainPrev = document.getElementById('cmpTrainPrev');
+  const cmpTrainCurr = document.getElementById('cmpTrainCurr');
+  const cmpPenaltyPrev = document.getElementById('cmpPenaltyPrev');
+  const cmpPenaltyCurr = document.getElementById('cmpPenaltyCurr');
+  const cmpObjectivePrev = document.getElementById('cmpObjectivePrev');
+  const cmpObjectiveCurr = document.getElementById('cmpObjectiveCurr');
+  const cmpTrainPrevText = document.getElementById('cmpTrainPrevText');
+  const cmpTrainCurrText = document.getElementById('cmpTrainCurrText');
+  const cmpPenaltyPrevText = document.getElementById('cmpPenaltyPrevText');
+  const cmpPenaltyCurrText = document.getElementById('cmpPenaltyCurrText');
+  const cmpObjectivePrevText = document.getElementById('cmpObjectivePrevText');
+  const cmpObjectiveCurrText = document.getElementById('cmpObjectiveCurrText');
+  const cmpTrainBadge = document.getElementById('cmpTrainBadge');
+  const cmpPenaltyBadge = document.getElementById('cmpPenaltyBadge');
+  const cmpObjectiveBadge = document.getElementById('cmpObjectiveBadge');
+  const compareExplain = document.getElementById('compareExplain');
+
+  const lessons = [
+    {
+      name:'① 先翻成人话', degree:1, lambdaRaw:0,
+      title:'第 1 步：先把公式翻成人话',
+      main:'先不要把自己困在公式里。你现在只需要把正则化看成一笔账：训练误差下降，是你赚到的；复杂度税上升，是你花掉的。',
+      sub:'所以真正要比较的，不是“模型更复杂了没有”，而是“这次复杂化划不划算”。',
+      hint:'先看四张数字卡里的“训练误差”和“总目标”。这一步只建立账本感觉，不着急看右图。',
+      question:'如果一个模型更复杂，但总目标反而更小，你会把它叫作坏事吗？不会。因为它虽然更复杂，但它赚得更多。'
+    },
+    {
+      name:'② 不收费时会怎样', degree:10, lambdaRaw:0,
+      title:'第 2 步：当 λ = 0，模型为什么会越学越扭',
+      main:'现在我们故意不给复杂收费。于是模型只会想一件事：怎样把训练误差压得更低。它就会拼命去穿过训练点。',
+      sub:'所以“过拟合”不是模型发疯，而是：在一个没有复杂度成本的世界里，它做出了很理性的选择。',
+      hint:'只看“左图”和“训练误差 / 测试误差”两张卡。感受一下：训练误差在继续降，但蓝线开始变得用力过猛。',
+      question:'如果没有复杂度税，模型最优先讨好的对象是谁？是训练集。'
+    },
+    {
+      name:'③ 开始收费', degree:10, lambdaRaw:48,
+      title:'第 3 步：正则化开始收费后，模型会收敛手脚',
+      main:'现在仍然让模型很复杂，但开始收税。你会看到右图里很多金色权重缩下去了，因为模型知道：权重越夸张，税越高。',
+      sub:'正则化不是简单地说“别复杂”，而是在说：“你可以复杂，但别为了贴训练点把自己拉得太夸张。”',
+      hint:'现在重点看右图条形图，以及“复杂度税”和“总目标”两张卡。',
+      question:'正则化最直接压的，不是“复杂”这个词，而是会把复杂推高的那种夸张权重。'
+    },
+    {
+      name:'④ 学会算值不值', degree:3, lambdaRaw:20,
+      title:'第 4 步：终于来到最重要的问题——这一步值不值',
+      main:'请看下面的账本条。它比较的是：从前一个更简单的模型，走到当前模型时，你到底多赚了多少训练误差下降，又多付了多少复杂度税。',
+      sub:'这一步就是你最想搞懂的句子的白话版：除非复杂真的带来足够收益，否则不值得。',
+      hint:'现在别分心。先看“训练点上的变化”那排小条，再看下面三张“和前一个模型比”的对比卡。你会直接看到：训练误差是怎么少的，税又是怎么变的。',
+      question:'你不要再问“复杂好不好”，改问“训练项和权重税加起来，总账到底有没有更划算”。'
+    },
+    {
+      name:'⑤ 自己摸出直觉', degree:null, lambdaRaw:null,
+      title:'第 5 步：轮到你自己把直觉摸出来',
+      main:'现在你可以自由拖动两个滑块。建议玩法：先固定 λ=0，看 degree 增大时曲线怎么失控；再固定较高 degree，慢慢把 λ 拉大，感受权重被压下去。',
+      sub:'你这时已经不需要背句子了，因为账本会替你说话。',
+      hint:'任何时候卡住，就只回到一个问题：这次复杂化，到底赚不赚？',
+      question:'你现在已经能用自己的语言解释正则化了。'
+    }
+  ];
+
+  let lessonIndex = 0;
+  let freeMode = false;
+  let state = null;
+
+  function lambdaFromRaw(raw){
+    return Math.pow(raw/100, 2.2) * 0.12;
+  }
+
+  function vandermonde(xs, degree){
+    return xs.map(x=>{
+      const row = [1];
+      for(let d=1; d<=degree; d++) row.push(Math.pow(x,d));
+      return row;
+    });
+  }
+  function transpose(A){ return A[0].map((_,j)=>A.map(r=>r[j])); }
+  function matMul(A,B){
+    const out = Array.from({length:A.length}, ()=>Array(B[0].length).fill(0));
+    for(let i=0;i<A.length;i++) for(let k=0;k<B.length;k++) for(let j=0;j<B[0].length;j++) out[i][j]+=A[i][k]*B[k][j];
+    return out;
+  }
+  function solveLinear(A,b){
+    const n = A.length;
+    const M = A.map((row,i)=>row.slice().concat(b[i]));
+    for(let c=0;c<n;c++){
+      let p = c;
+      for(let r=c+1;r<n;r++) if(Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+      if(Math.abs(M[p][c]) < 1e-12) continue;
+      [M[c], M[p]] = [M[p], M[c]];
+      const div = M[c][c];
+      for(let j=c;j<=n;j++) M[c][j] /= div;
+      for(let r=0;r<n;r++){
+        if(r===c) continue;
+        const f = M[r][c];
+        for(let j=c;j<=n;j++) M[r][j] -= f*M[c][j];
+      }
+    }
+    return M.map(row=>row[n]);
+  }
+  function fitRidge(xs, ys, degree, lambda){
+    const X = vandermonde(xs, degree);
+    const Xt = transpose(X);
+    const XtX = matMul(Xt, X);
+    for(let i=0;i<XtX.length;i++) XtX[i][i] += (i===0 ? 0 : lambda);
+    const Xty = Xt.map(row=>row.reduce((s,val,idx)=>s+val*ys[idx],0));
+    return solveLinear(XtX, Xty);
+  }
+  function predictCurve(weights, xs){ return xs.map(x => weights.reduce((s,w,j)=>s+w*Math.pow(x,j),0)); }
+  function mse(pred, truth){ return pred.reduce((s,v,i)=>s + Math.pow(v-truth[i],2),0) / pred.length; }
+  function penalty(weights, lambda){ return lambda * weights.slice(1).reduce((s,w)=>s+w*w,0); }
+
+  function computeModel(degree, lambda){
+    const w = fitRidge(trainX, trainY, degree, lambda);
+    const trainPred = predictCurve(w, trainX);
+    const denseX = Array.from({length:280}, (_,i)=>-1 + 2*i/279);
+    const densePred = predictCurve(w, denseX);
+    const prevDegree = Math.max(1, degree-1);
+    const prevW = fitRidge(trainX, trainY, prevDegree, lambda);
+    const prevDense = predictCurve(prevW, denseX);
+    const prevTrainPred = predictCurve(prevW, trainX);
+    const trainLoss = mse(trainPred, trainY);
+    const prevTrainLoss = mse(prevTrainPred, trainY);
+    const testPred = predictCurve(w, testX);
+    const testLoss = mse(testPred, testY);
+    const pen = penalty(w, lambda);
+    const prevPen = penalty(prevW, lambda);
+    const objective = trainLoss + pen;
+    const prevObjective = prevTrainLoss + prevPen;
+    return { degree, lambda, w, prevW, denseX, densePred, prevDense, trainPred, prevTrainPred, trainLoss, testLoss, pen, objective, prevTrainLoss, prevPen, prevObjective,
+      deltaTrain: prevTrainLoss - trainLoss,
+      deltaPenalty: pen - prevPen,
+      deltaObjective: objective - prevObjective,
+      trainContribution: prevTrainLoss - trainLoss,
+      taxContribution: prevPen - pen,
+      objectiveImprovement: prevObjective - objective
+    };
+  }
+
+  function setupCanvas(canvas){
+    const ratio = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    canvas.width = Math.round(w * ratio);
+    canvas.height = Math.round(h * ratio);
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(ratio,0,0,ratio,0,0);
+    return {ctx,w,h};
+  }
+
+  function drawPlot(){
+    const {ctx,w,h} = setupCanvas(plotCanvas);
+    ctx.clearRect(0,0,w,h);
+    const pad = {l:42,r:14,t:12,b:28};
+    const pw = w-pad.l-pad.r, ph = h-pad.t-pad.b;
+    const xmin=-1, xmax=1, ymin=-1.65, ymax=1.65;
+    const sx = x => pad.l + (x-xmin)/(xmax-xmin)*pw;
+    const sy = y => pad.t + (ymax-y)/(ymax-ymin)*ph;
+
+    ctx.strokeStyle='rgba(255,255,255,.06)';
+    ctx.lineWidth=1;
+    for(let i=0;i<=4;i++){
+      const yy = pad.t + i*ph/4;
+      ctx.beginPath(); ctx.moveTo(pad.l,yy); ctx.lineTo(w-pad.r,yy); ctx.stroke();
+    }
+    for(let i=0;i<=4;i++){
+      const xx = pad.l + i*pw/4;
+      ctx.beginPath(); ctx.moveTo(xx,pad.t); ctx.lineTo(xx,h-pad.b); ctx.stroke();
+    }
+    ctx.strokeStyle='rgba(255,255,255,.15)';
+    ctx.beginPath(); ctx.moveTo(pad.l, sy(0)); ctx.lineTo(w-pad.r, sy(0)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sx(0), pad.t); ctx.lineTo(sx(0), h-pad.b); ctx.stroke();
+
+    ctx.strokeStyle='rgba(127,228,160,.36)';
+    ctx.lineWidth=2;
+    ctx.beginPath();
+    testX.forEach((x,i)=>{ const X=sx(x), Y=sy(testY[i]); if(i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y); });
+    ctx.stroke();
+
+    ctx.setLineDash([6,5]);
+    ctx.strokeStyle='rgba(170,185,230,.72)';
+    ctx.lineWidth=2.2;
+    ctx.beginPath();
+    state.denseX.forEach((x,i)=>{ const X=sx(x), Y=sy(state.prevDense[i]); if(i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y); });
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.strokeStyle='rgba(103,168,255,.98)';
+    ctx.lineWidth=3;
+    ctx.beginPath();
+    state.denseX.forEach((x,i)=>{ const X=sx(x), Y=sy(state.densePred[i]); if(i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y); });
+    ctx.stroke();
+
+    trainX.forEach((x,i)=>{
+      ctx.beginPath();
+      ctx.fillStyle='rgba(255,214,106,.96)';
+      ctx.arc(sx(x), sy(trainY[i]), 4.2, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle='rgba(10,16,32,.8)'; ctx.lineWidth=1.2; ctx.stroke();
+    });
+  }
+
+
+  function drawResiduals(){
+    const {ctx,w,h} = setupCanvas(residualCanvas);
+    ctx.clearRect(0,0,w,h);
+    const pad = {l:12,r:12,t:10,b:20};
+    const pw = w-pad.l-pad.r, ph = h-pad.t-pad.b;
+    const zeroY = pad.t + ph/2;
+    const diffs = trainX.map((_,i)=>Math.abs(state.prevTrainPred[i]-trainY[i]) - Math.abs(state.trainPred[i]-trainY[i]));
+    const maxAbs = Math.max(0.02, ...diffs.map(v=>Math.abs(v))) * 1.15;
+    const step = pw / diffs.length;
+    const barW = Math.max(8, Math.min(22, step * 0.55));
+
+    ctx.strokeStyle='rgba(255,255,255,.12)';
+    ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(pad.l, zeroY); ctx.lineTo(w-pad.r, zeroY); ctx.stroke();
+
+    diffs.forEach((v,i)=>{
+      const x = pad.l + i*step + step/2;
+      const hh = Math.abs(v)/maxAbs * (ph/2 - 8);
+      const y = v>=0 ? zeroY-hh : zeroY;
+      ctx.fillStyle = v>=0 ? 'rgba(127,228,160,.95)' : 'rgba(255,127,137,.9)';
+      roundRect(ctx, x-barW/2, y, barW, hh || 2, 6);
+      ctx.fill();
+    });
+
+    const posCount = diffs.filter(v=>v>0).length;
+    const negCount = diffs.filter(v=>v<0).length;
+    ctx.fillStyle='rgba(170,185,230,.9)';
+    ctx.font='12px system-ui';
+    ctx.textAlign='left';
+    ctx.fillText(`更贴近 ${posCount} 个点`, pad.l, 12);
+    ctx.textAlign='right';
+    ctx.fillText(`更远 ${negCount} 个点`, w-pad.r, 12);
+    ctx.textAlign='left';
+  }
+
+  function roundRect(ctx,x,y,w,h,r){
+    if(h < 0){ y += h; h = -h; }
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+
+  function drawWeights(){
+    const {ctx,w,h} = setupCanvas(weightCanvas);
+    ctx.clearRect(0,0,w,h);
+    const pad = {l:30,r:12,t:18,b:34};
+    const pw = w-pad.l-pad.r, ph = h-pad.t-pad.b;
+    const values = state.w;
+    const prevValues = Array.from({length:values.length}, (_,i)=>i < state.prevW.length ? state.prevW[i] : 0);
+    const maxAbs = Math.max(0.25, ...values.map(v=>Math.abs(v)), ...prevValues.map(v=>Math.abs(v))) * 1.18;
+    const zeroY = pad.t + ph/2;
+    const step = pw / values.length;
+    const barW = Math.min(28, step * 0.44);
+    const prevWBar = Math.min(36, step * 0.62);
+
+    ctx.strokeStyle='rgba(255,255,255,.10)';
+    ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(pad.l, zeroY); ctx.lineTo(w-pad.r, zeroY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, h-pad.b); ctx.stroke();
+
+    prevValues.forEach((v,i)=>{
+      const x = pad.l + i*step + step/2;
+      const hh = Math.abs(v)/maxAbs * (ph/2 - 12);
+      const y = v>=0 ? zeroY-hh : zeroY;
+      ctx.strokeStyle = 'rgba(170,185,230,.78)';
+      ctx.lineWidth = 2;
+      roundRect(ctx, x-prevWBar/2, y, prevWBar, hh || 2, 8);
+      ctx.stroke();
+    });
+
+    values.forEach((v,i)=>{
+      const x = pad.l + i*step + step/2;
+      const hh = Math.abs(v)/maxAbs * (ph/2 - 12);
+      const y = v>=0 ? zeroY-hh : zeroY;
+      ctx.fillStyle = i===0 ? 'rgba(186,157,255,.78)' : 'rgba(246,209,101,.84)';
+      ctx.strokeStyle = i===0 ? 'rgba(186,157,255,1)' : 'rgba(246,209,101,1)';
+      roundRect(ctx, x-barW/2, y, barW, hh || 2, 8);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle='rgba(234,240,255,.95)';
+      ctx.font='12px system-ui';
+      ctx.textAlign='center';
+      ctx.fillText(`w${i}`, x, h-12);
+    });
+    ctx.textAlign='left';
+  }
+
+  function fmt(n){ return (Math.round(n*1000)/1000).toFixed(3); }
+  function fmtSmart(n){
+    const a = Math.abs(n);
+    if(a < 1e-6) return '≈ 0';
+    if(a < 0.001) return a.toFixed(4);
+    if(a < 0.01) return a.toFixed(4);
+    return a.toFixed(3);
+  }
+  function setBar(el, value, maxv, positiveColor, negativeColor){
+    const pct = maxv < 1e-12 ? 0 : Math.max(0, Math.min(100, Math.abs(value)/maxv*100));
+    el.style.width = `${pct}%`;
+    el.style.background = value >= 0 ? positiveColor : negativeColor;
+  }
+
+
+  function setCompareBars(prevValue, currValue, prevEl, currEl){
+    const maxv = Math.max(prevValue, currValue, 1e-9);
+    prevEl.style.width = `${Math.max(2, prevValue/maxv*100)}%`;
+    currEl.style.width = `${Math.max(2, currValue/maxv*100)}%`;
+  }
+
+  function setBadge(el, mode, text){
+    el.className = 'delta-badge ' + mode;
+    el.textContent = text;
+  }
+
+  function updateComparePanel(){
+    if(state.degree === 1){
+      setCompareBars(1, 1, cmpTrainPrev, cmpTrainCurr);
+      setCompareBars(1, 1, cmpPenaltyPrev, cmpPenaltyCurr);
+      setCompareBars(1, 1, cmpObjectivePrev, cmpObjectiveCurr);
+      cmpTrainPrevText.textContent = '起点';
+      cmpTrainCurrText.textContent = `当前 ${fmt(state.trainLoss)}`;
+      cmpPenaltyPrevText.textContent = '起点';
+      cmpPenaltyCurrText.textContent = `当前 ${fmt(state.pen)}`;
+      cmpObjectivePrevText.textContent = '起点';
+      cmpObjectiveCurrText.textContent = `当前 ${fmt(state.objective)}`;
+      setBadge(cmpTrainBadge, 'delta-neutral', '还没开始比较');
+      setBadge(cmpPenaltyBadge, 'delta-neutral', '还没开始比较');
+      setBadge(cmpObjectiveBadge, 'delta-neutral', '还没开始比较');
+      compareExplain.innerHTML = '现在只是起点。把 degree 调到 2 以上后，你会看到前一个模型和当前模型被并排摆出来。';
+      return;
+    }
+
+    setCompareBars(state.prevTrainLoss, state.trainLoss, cmpTrainPrev, cmpTrainCurr);
+    setCompareBars(state.prevPen, state.pen, cmpPenaltyPrev, cmpPenaltyCurr);
+    setCompareBars(state.prevObjective, state.objective, cmpObjectivePrev, cmpObjectiveCurr);
+
+    cmpTrainPrevText.textContent = `前一个 ${fmt(state.prevTrainLoss)}`;
+    cmpTrainCurrText.textContent = `当前 ${fmt(state.trainLoss)}`;
+    cmpPenaltyPrevText.textContent = `前一个 ${fmt(state.prevPen)}`;
+    cmpPenaltyCurrText.textContent = `当前 ${fmt(state.pen)}`;
+    cmpObjectivePrevText.textContent = `前一个 ${fmt(state.prevObjective)}`;
+    cmpObjectiveCurrText.textContent = `当前 ${fmt(state.objective)}`;
+
+    const trainDelta = state.trainContribution;
+    const taxDelta = state.taxContribution;
+    const objDelta = state.objectiveImprovement;
+    const tol = 5e-5;
+
+    setBadge(cmpTrainBadge, Math.abs(trainDelta) <= tol ? 'delta-neutral' : (trainDelta > 0 ? 'delta-help' : 'delta-hurt'),
+      Math.abs(trainDelta) <= tol ? '几乎不变' : (trainDelta > 0 ? `↓ ${fmtSmart(trainDelta)}` : `↑ ${fmtSmart(trainDelta)}`));
+    setBadge(cmpPenaltyBadge, Math.abs(taxDelta) <= tol ? 'delta-neutral' : (taxDelta > 0 ? 'delta-help' : 'delta-hurt'),
+      Math.abs(taxDelta) <= tol ? '几乎不变' : (taxDelta > 0 ? `↓ ${fmtSmart(taxDelta)}` : `↑ ${fmtSmart(taxDelta)}`));
+    setBadge(cmpObjectiveBadge, Math.abs(objDelta) <= tol ? 'delta-neutral' : (objDelta > 0 ? 'delta-help' : 'delta-hurt'),
+      Math.abs(objDelta) <= tol ? '几乎不变' : (objDelta > 0 ? `↓ ${fmtSmart(objDelta)}` : `↑ ${fmtSmart(objDelta)}`));
+
+    if(taxDelta > tol){
+      compareExplain.innerHTML = `这里有一个很值得注意的现象：虽然 degree 从 ${state.degree-1} 增加到了 ${state.degree}，但权重税反而<span class="good">更低</span>了。原因不是“正则化失效”，而是新模型找到了更省权重的表达方式。`;
+    } else if(taxDelta < -tol){
+      compareExplain.innerHTML = `这里你能直观看到“复杂有代价”这句话：当前模型虽然可能更贴训练点了，但它也让非截距权重变得更昂贵，所以权重税上去了。`;
+    } else {
+      compareExplain.innerHTML = `这一步的权重税几乎没动，所以这次值不值，主要看训练误差的变化。`;
+    }
+  }
+
+  function updateMetrics(){
+    const tol = 5e-5;
+    trainLossNum.textContent = fmt(state.trainLoss);
+    penaltyNum.innerHTML = fmt(state.pen);
+    objectiveNum.textContent = fmt(state.objective);
+    testLossNum.textContent = fmt(state.testLoss);
+
+    if(state.degree === 1){
+      worthLine.innerHTML = '当前是起点：它是最简单模型，所以还没有“再复杂一步”的比较。';
+      deltaTrainText.textContent = '先把它当作出发点。等 degree 到 2 以上，我们再讨论“值不值”。';
+      deltaPenaltyText.textContent = '之后每走复杂一步，都比较：训练项怎么变，权重税怎么变，总目标怎么变。';
+      trainBenefitBar.style.width = '0%';
+      penaltyCostBar.style.width = '0%';
+      trainBenefitBar.style.background = 'transparent';
+      penaltyCostBar.style.background = 'transparent';
+    } else {
+      const trainC = state.trainContribution;
+      const taxC = state.taxContribution;
+      const totalC = state.objectiveImprovement;
+      const maxv = Math.max(Math.abs(trainC), Math.abs(taxC), 1e-6);
+      setBar(
+        trainBenefitBar,
+        trainC,
+        maxv,
+        'linear-gradient(90deg,rgba(127,228,160,.55),rgba(127,228,160,1))',
+        'linear-gradient(90deg,rgba(255,127,137,.55),rgba(255,127,137,1))'
+      );
+      setBar(
+        penaltyCostBar,
+        taxC,
+        maxv,
+        'linear-gradient(90deg,rgba(87,226,215,.55),rgba(87,226,215,1))',
+        'linear-gradient(90deg,rgba(246,209,101,.55),rgba(246,209,101,1))'
+      );
+
+      const trainSentence = trainC >= 0
+        ? `和前一个模型比：训练误差减少 ${fmtSmart(trainC)}，这对总目标有帮助。`
+        : `和前一个模型比：训练误差增加 ${fmtSmart(trainC)}，这会拖累总目标。`;
+      const taxSentence = taxC >= 0
+        ? `和前一个模型比：权重税减少 ${fmtSmart(taxC)}，这对总目标有帮助。`
+        : `和前一个模型比：权重税增加 ${fmtSmart(taxC)}，这是你为复杂性付出的额外成本。`;
+      deltaTrainText.textContent = trainSentence;
+      deltaPenaltyText.textContent = taxSentence;
+
+      if(Math.abs(totalC) <= tol){
+        worthLine.innerHTML = `这一步<span class="blue">几乎打平</span>：训练项和权重税差不多互相抵消，总目标几乎没变。`;
+      } else if(totalC > 0) {
+        worthLine.innerHTML = `这一步<span class="good">值得</span>：总目标比前一个模型降低了 <span class="blue">${fmtSmart(totalC)}</span>。记住，决定值不值的不是某一项单独方向，而是两项合起来的总账。`;
+      } else {
+        worthLine.innerHTML = `这一步<span class="bad">不值得</span>：虽然某一项可能变好了，但合起来看，总目标反而升高了 <span class="gold">${fmtSmart(totalC)}</span>。`;
+      }
+    }
+
+    if(state.degree===1){
+      quizPrompt.textContent = '现在还是起点。把 degree 调到 2 以上，再来判断一次这一复杂化值不值。';
+    } else {
+      const trainText = state.trainContribution >= 0
+        ? `训练误差减少 ${fmtSmart(state.trainContribution)}`
+        : `训练误差增加 ${fmtSmart(state.trainContribution)}`;
+      const taxText = state.taxContribution >= 0
+        ? `权重税减少 ${fmtSmart(state.taxContribution)}`
+        : `权重税增加 ${fmtSmart(state.taxContribution)}`;
+      const totalText = Math.abs(state.objectiveImprovement) <= tol
+        ? '总目标几乎打平'
+        : (state.objectiveImprovement > 0
+          ? `总目标降低 ${fmtSmart(state.objectiveImprovement)}`
+          : `总目标升高 ${fmtSmart(state.objectiveImprovement)}`);
+      quizPrompt.textContent = `从 degree ${state.degree-1} 升到 degree ${state.degree}：${trainText}，${taxText}，最后 ${totalText}。这一步怎么判断？`;
+    }
+
+    plotCaption.textContent = state.lambda < 1e-5
+      ? '此时几乎不收费，所以蓝线会更大胆地贴训练点；下面那排小条会告诉你，它到底在哪些点上贴得更紧。'
+      : '此时开始收费，蓝线会被迫收敛，不敢为了贴点而过度扭曲；同时你也能在下方看到它在各个训练点上带来的贴合变化。';
+
+    const maxOther = state.w.slice(1).reduce((m,v)=>Math.max(m,Math.abs(v)),0);
+    weightCaption.textContent = maxOther > 2.5
+      ? '如果金色柱子明显比灰框更高，通常意味着当前模型为了拟合而付出了更重的权重税。'
+      : '如果金色柱子和灰框接近，说明当前模型没有靠大幅拉权重来换取拟合。';
+  }
+
+  function answerQuiz(choiceWorth){
+    const tol = 5e-5;
+    if(state.degree===1){
+      quizFeedback.textContent = '先把 degree 提到 2 以上，我们再判断一次 🙂';
+      return;
+    }
+    const realWorth = Math.abs(state.objectiveImprovement) <= tol ? 'tie' : (state.objectiveImprovement > 0 ? 'worth' : 'notWorth');
+    quizFeedback.innerHTML = choiceWorth===realWorth
+      ? '答对啦 ✨ 你现在是在看总账：训练项和权重税两边一起算，而不是只盯着训练误差。'
+      : '差一点点 🙂 这里最关键的是看总目标：训练项变好不代表一定值得，税项变坏也不代表一定不值得。';
+  }
+
+  function renderLessonStrip(){
+    lessonStrip.innerHTML='';
+    lessons.forEach((item, idx)=>{
+      const div = document.createElement('div');
+      div.className = 'lesson-step' + ((!freeMode && idx===lessonIndex) ? ' active' : '');
+      div.textContent = item.name;
+      lessonStrip.appendChild(div);
+    });
+  }
+
+  function applyLesson(index){
+    lessonIndex = Math.max(0, Math.min(lessons.length-1, index));
+    freeMode = false;
+    const lesson = lessons[lessonIndex];
+    if(lesson.degree !== null) degreeEl.value = lesson.degree;
+    if(lesson.lambdaRaw !== null) lambdaEl.value = lesson.lambdaRaw;
+    coachTitle.textContent = lesson.title;
+    coachMain.textContent = lesson.main;
+    coachSub.textContent = lesson.sub;
+    lookHint.textContent = lesson.hint;
+    document.getElementById('selfQuestion').textContent = lesson.question;
+    statusStep.textContent = lesson.name + ' · ' + lesson.title.split('：')[1];
+    quizFeedback.textContent = '';
+    renderLessonStrip();
+    update();
+  }
+
+  function enableFreeMode(){
+    freeMode = true;
+    coachTitle.textContent = '自由探索模式';
+    coachMain.textContent = '现在别再把自己困在“正则化公式”四个字里。你拖滑块时，只要一直做同一件事：拿收益和成本对账。';
+    coachSub.textContent = '建议顺序：先固定 λ=0 看过拟合，再固定较高 degree 拉大 λ，看权重被压下去。';
+    lookHint.textContent = '尤其盯住下面的“这一步到底值不值”账本条，它就是整件事的核心。';
+    document.getElementById('selfQuestion').textContent = '我现在做的这次复杂化，到底是让模型真的更聪明了，还是只是更会讨好训练集？';
+    statusStep.textContent = '自由探索 · 自己把直觉摸出来';
+    renderLessonStrip();
+    update();
+  }
+
+  function updateLabels(){
+    const degree = Number(degreeEl.value);
+    const lambda = lambdaFromRaw(Number(lambdaEl.value));
+    degreeValue.textContent = degree;
+    lambdaLabel.textContent = lambda.toFixed(3);
+    topDegree.textContent = degree;
+    topLambda.textContent = lambda.toFixed(3);
+  }
+
+  function update(){
+    updateLabels();
+    state = computeModel(Number(degreeEl.value), lambdaFromRaw(Number(lambdaEl.value)));
+    drawPlot();
+    drawResiduals();
+    drawWeights();
+    updateComparePanel();
+    updateMetrics();
+  }
+
+  degreeEl.addEventListener('input', ()=>{ if(!freeMode && lessonIndex===lessons.length-1) freeMode = true; quizFeedback.textContent=''; update(); });
+  lambdaEl.addEventListener('input', ()=>{ if(!freeMode && lessonIndex===lessons.length-1) freeMode = true; quizFeedback.textContent=''; update(); });
+  document.getElementById('nextStepBtn').addEventListener('click', ()=>applyLesson(lessonIndex+1));
+  document.getElementById('prevStepBtn').addEventListener('click', ()=>applyLesson(lessonIndex-1));
+  document.getElementById('freeModeBtn').addEventListener('click', enableFreeMode);
+  document.getElementById('worthBtn').addEventListener('click', ()=>answerQuiz('worth'));
+  document.getElementById('notWorthBtn').addEventListener('click', ()=>answerQuiz('notWorth'));
+  tieBtn.addEventListener('click', ()=>answerQuiz('tie'));
+  window.addEventListener('resize', update);
+
+  applyLesson(0);
+})();
+</script>
+</body>
+</html>

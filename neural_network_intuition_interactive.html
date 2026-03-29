@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>深度学习：神经元矩阵化地图</title>
+<style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1e1e2f; color: #fff; text-align: center; padding: 2rem; }
+    .container { display: flex; justify-content: center; align-items: center; gap: 20px; margin-top: 40px; }
+    .matrix-box { background: #2a2a40; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+    h3 { margin-top: 0; color: #a5b4fc; font-size: 1.1rem; }
+    .grid { display: grid; gap: 5px; }
+    .cell { width: 50px; height: 50px; background: #3f3f5a; display: flex; justify-content: center; align-items: center; border-radius: 6px; font-family: monospace; font-size: 1.2rem; transition: all 0.3s; }
+    .cell.active-x { background: #10b981; color: white; transform: scale(1.1); box-shadow: 0 0 10px #10b981; }
+    .cell.active-w { background: #f59e0b; color: white; transform: scale(1.1); box-shadow: 0 0 10px #f59e0b; }
+    .cell.active-z { background: #6366f1; color: white; transform: scale(1.1); box-shadow: 0 0 10px #6366f1; }
+    .cell.active-a { background: #ec4899; color: white; transform: scale(1.1); box-shadow: 0 0 10px #ec4899; }
+    .math-symbol { font-size: 2rem; font-weight: bold; color: #9ca3af; }
+    button { margin-top: 40px; padding: 12px 24px; font-size: 1.1rem; background: #6366f1; color: white; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+    button:hover { background: #4f46e5; transform: translateY(-2px); }
+    #explanation { margin-top: 30px; font-size: 1.2rem; color: #d1d5db; min-height: 60px; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.9rem; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+    <h2>🧠 深度学习模块化直觉地图：一层网络是如何计算的？</h2>
+    <p style="color: #9ca3af;">设定：1个样本(3个特征) 输入给包含 4个神经元 的隐藏层</p>
+
+    <div class="container">
+        <div class="matrix-box">
+            <h3>输入特征 X <br><span class="tag" style="background:#10b98122; color:#10b981;">1行 × 3列</span></h3>
+            <div class="grid" style="grid-template-columns: repeat(3, 1fr);" id="mat-x">
+                <div class="cell" id="x-0">x₁</div><div class="cell" id="x-1">x₂</div><div class="cell" id="x-2">x₃</div>
+            </div>
+        </div>
+
+        <div class="math-symbol">@</div>
+
+        <div class="matrix-box">
+            <h3>权重矩阵 W (4个神经元)<br><span class="tag" style="background:#f59e0b22; color:#f59e0b;">3行 × 4列</span></h3>
+            <div class="grid" style="grid-template-columns: repeat(4, 1fr);" id="mat-w">
+                <div class="cell" id="w-0-0">w₁₁</div><div class="cell" id="w-0-1">w₁₂</div><div class="cell" id="w-0-2">w₁₃</div><div class="cell" id="w-0-3">w₁₄</div>
+                <div class="cell" id="w-1-0">w₂₁</div><div class="cell" id="w-1-1">w₂₂</div><div class="cell" id="w-1-2">w₂₃</div><div class="cell" id="w-1-3">w₂₄</div>
+                <div class="cell" id="w-2-0">w₃₁</div><div class="cell" id="w-2-1">w₃₂</div><div class="cell" id="w-2-2">w₃₃</div><div class="cell" id="w-2-3">w₃₄</div>
+            </div>
+            <p style="font-size: 0.8rem; color: #9ca3af; margin-top: 10px;">注：每一列代表一个神经元的所有权重</p>
+        </div>
+
+        <div class="math-symbol">=</div>
+
+        <div class="matrix-box">
+            <h3>线性组合 Z<br><span class="tag" style="background:#6366f122; color:#6366f1;">1行 × 4列</span></h3>
+            <div class="grid" style="grid-template-columns: repeat(4, 1fr);" id="mat-z">
+                <div class="cell" id="z-0">z₁</div><div class="cell" id="z-1">z₂</div><div class="cell" id="z-2">z₃</div><div class="cell" id="z-3">z₄</div>
+            </div>
+        </div>
+
+        <div class="math-symbol">➡<br><span style="font-size:1rem; color:#ec4899">Sigmoid</span></div>
+
+        <div class="matrix-box">
+            <h3>神经元输出 A<br><span class="tag" style="background:#ec489922; color:#ec4899;">1行 × 4列</span></h3>
+            <div class="grid" style="grid-template-columns: repeat(4, 1fr);" id="mat-a">
+                <div class="cell" id="a-0">a₁</div><div class="cell" id="a-1">a₂</div><div class="cell" id="a-2">a₃</div><div class="cell" id="a-3">a₄</div>
+            </div>
+        </div>
+    </div>
+
+    <button id="playBtn" onclick="playAnimation()">▶ 运行矩阵代码：A = Sigmoid(X @ W + b)</button>
+    <div id="explanation">点击按钮，观察一行代码是如何让 4 个神经元同时工作的。</div>
+
+<script>
+    async function playAnimation() {
+        const btn = document.getElementById('playBtn');
+        const exp = document.getElementById('explanation');
+        btn.disabled = true;
+
+        // Reset all
+        document.querySelectorAll('.cell').forEach(c => c.className = 'cell');
+
+        for(let neuron = 0; neuron < 4; neuron++) {
+            exp.innerHTML = `正在计算 <strong>第 ${neuron + 1} 个神经元</strong> 的结果...`;
+            
+            // Highlight X row (all features)
+            for(let i=0; i<3; i++) document.getElementById(`x-${i}`).classList.add('active-x');
+            
+            // Highlight W column (the current neuron's weights)
+            for(let i=0; i<3; i++) document.getElementById(`w-${i}-${neuron}`).classList.add('active-w');
+            
+            await new Promise(r => setTimeout(r, 800)); // wait
+            
+            // Show Z result
+            exp.innerHTML = `计算点积 (横行乘竖列)：得出第 ${neuron + 1} 个神经元的线性总和 z<sub>${neuron+1}</sub>`;
+            document.getElementById(`z-${neuron}`).classList.add('active-z');
+            
+            await new Promise(r => setTimeout(r, 800)); // wait
+
+            // Show A result
+            exp.innerHTML = `套上激活函数：Sigmoid(z<sub>${neuron+1}</sub>) 变成最终输出 a<sub>${neuron+1}</sub>`;
+            document.getElementById(`z-${neuron}`).classList.remove('active-z');
+            document.getElementById(`a-${neuron}`).classList.add('active-a');
+
+            await new Promise(r => setTimeout(r, 1000)); // wait
+
+            // Clear highlights for next neuron
+            for(let i=0; i<3; i++) {
+                document.getElementById(`x-${i}`).classList.remove('active-x');
+                document.getElementById(`w-${i}-${neuron}`).classList.remove('active-w');
+            }
+        }
+
+        exp.innerHTML = `✅ <strong>计算完成！</strong> 原本你需要写 4 次循环，现在通过 <code>X @ W</code> 矩阵乘法，瞬间并行算出了所有神经元的结果！<br>这 4 个输出(a₁~a₄)将作为<strong>全新的特征</strong>，传入下一层。`;
+        btn.disabled = false;
+    }
+</script>
+</body>
+</html>

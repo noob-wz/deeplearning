@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>神经网络前向传播 · 空间维度导航</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600;700&family=Playfair+Display:wght@700;900&display=swap');
+
+:root {
+  --bg: #0a0e1a;
+  --bg2: #111827;
+  --bg3: #1a2236;
+  --surface: #1e293b;
+  --border: #2d3a52;
+  --text: #e2e8f0;
+  --text2: #94a3b8;
+  --text3: #64748b;
+  --accent1: #60a5fa;  /* input blue */
+  --accent2: #f472b6;  /* weight pink */
+  --accent3: #34d399;  /* output green */
+  --accent4: #fbbf24;  /* bias yellow */
+  --accent5: #a78bfa;  /* activation purple */
+  --accent6: #fb923c;  /* sum orange */
+  --glow1: rgba(96,165,250,0.3);
+  --glow2: rgba(244,114,182,0.3);
+  --glow3: rgba(52,211,153,0.3);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans SC', sans-serif;
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+/* ========== NAV ========== */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: rgba(10,14,26,0.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+}
+.nav-inner {
+  max-width: 1200px; margin: 0 auto;
+  display: flex; align-items: center; gap: 8px;
+  height: 56px; overflow-x: auto;
+}
+.nav-btn {
+  background: none; border: 1px solid transparent;
+  color: var(--text3); font-size: 13px; padding: 6px 14px;
+  border-radius: 20px; cursor: pointer; white-space: nowrap;
+  font-family: 'Noto Sans SC', sans-serif; transition: all .3s;
+}
+.nav-btn:hover { color: var(--text); border-color: var(--border); }
+.nav-btn.active {
+  color: var(--accent1); border-color: var(--accent1);
+  background: rgba(96,165,250,0.1);
+}
+
+/* ========== SECTIONS ========== */
+.section {
+  max-width: 1100px; margin: 0 auto;
+  padding: 100px 24px 60px;
+}
+
+.section-tag {
+  display: inline-block;
+  font-size: 11px; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent1);
+  background: rgba(96,165,250,0.1);
+  border: 1px solid rgba(96,165,250,0.2);
+  padding: 4px 12px; border-radius: 4px;
+  margin-bottom: 16px;
+}
+.section-tag.pink { color: var(--accent2); background: rgba(244,114,182,0.1); border-color: rgba(244,114,182,0.2); }
+.section-tag.green { color: var(--accent3); background: rgba(52,211,153,0.1); border-color: rgba(52,211,153,0.2); }
+.section-tag.purple { color: var(--accent5); background: rgba(167,139,250,0.1); border-color: rgba(167,139,250,0.2); }
+.section-tag.orange { color: var(--accent6); background: rgba(251,146,60,0.1); border-color: rgba(251,146,60,0.2); }
+
+h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(32px, 5vw, 52px);
+  font-weight: 900;
+  line-height: 1.15;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, var(--accent1), var(--accent5), var(--accent2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+h2 {
+  font-size: clamp(24px, 3.5vw, 36px);
+  font-weight: 900; margin-bottom: 12px;
+}
+h3 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+
+.subtitle { font-size: 17px; color: var(--text2); max-width: 640px; margin-bottom: 40px; }
+
+/* ========== CARD ========== */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  margin-bottom: 28px;
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--accent1), var(--accent2), var(--accent3));
+}
+
+/* ========== DIMENSION BADGE ========== */
+.dim {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; font-weight: 600;
+  padding: 2px 10px; border-radius: 6px;
+  margin: 0 2px;
+}
+.dim-blue { background: rgba(96,165,250,0.15); color: var(--accent1); border: 1px solid rgba(96,165,250,0.3); }
+.dim-pink { background: rgba(244,114,182,0.15); color: var(--accent2); border: 1px solid rgba(244,114,182,0.3); }
+.dim-green { background: rgba(52,211,153,0.15); color: var(--accent3); border: 1px solid rgba(52,211,153,0.3); }
+.dim-yellow { background: rgba(251,191,36,0.15); color: var(--accent4); border: 1px solid rgba(251,191,36,0.3); }
+.dim-purple { background: rgba(167,139,250,0.15); color: var(--accent5); border: 1px solid rgba(167,139,250,0.3); }
+.dim-orange { background: rgba(251,146,60,0.15); color: var(--accent6); border: 1px solid rgba(251,146,60,0.3); }
+
+/* ========== KEY POINT ========== */
+.keypoint {
+  background: rgba(96,165,250,0.06);
+  border-left: 3px solid var(--accent1);
+  padding: 16px 20px;
+  border-radius: 0 12px 12px 0;
+  margin: 16px 0;
+  font-size: 15px;
+}
+.keypoint.warn {
+  background: rgba(251,191,36,0.06);
+  border-left-color: var(--accent4);
+}
+.keypoint.success {
+  background: rgba(52,211,153,0.06);
+  border-left-color: var(--accent3);
+}
+
+/* ========== INTERACTIVE CANVAS AREAS ========== */
+.canvas-wrap {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin: 20px 0;
+  position: relative;
+}
+
+/* ========== SVG STYLES ========== */
+svg text { font-family: 'JetBrains Mono', monospace; }
+
+/* ========== STEP CONTROLS ========== */
+.step-controls {
+  display: flex; gap: 10px; align-items: center;
+  margin: 16px 0;
+  flex-wrap: wrap;
+}
+.step-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 14px;
+  padding: 8px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all .25s;
+}
+.step-btn:hover { border-color: var(--accent1); background: rgba(96,165,250,0.1); }
+.step-btn.primary {
+  background: var(--accent1);
+  color: #0a0e1a;
+  border-color: var(--accent1);
+  font-weight: 700;
+}
+.step-btn.primary:hover { background: #93c5fd; }
+.step-label {
+  font-size: 14px; color: var(--text2);
+}
+
+/* ========== MATRIX VIS ========== */
+.matrix-grid {
+  display: inline-grid;
+  gap: 3px;
+  padding: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 8px 4px;
+  position: relative;
+}
+.matrix-grid::before, .matrix-grid::after {
+  content: '';
+  position: absolute;
+  top: 4px; bottom: 4px; width: 3px;
+  background: var(--text3);
+  border-radius: 2px;
+}
+.matrix-grid::before { left: 2px; }
+.matrix-grid::after { right: 2px; }
+
+.matrix-cell {
+  width: 44px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; font-weight: 600;
+  border-radius: 4px;
+  transition: all .4s;
+}
+
+.mc-blue { background: rgba(96,165,250,0.12); color: var(--accent1); }
+.mc-pink { background: rgba(244,114,182,0.12); color: var(--accent2); }
+.mc-green { background: rgba(52,211,153,0.12); color: var(--accent3); }
+.mc-yellow { background: rgba(251,191,36,0.12); color: var(--accent4); }
+.mc-orange { background: rgba(251,146,60,0.12); color: var(--accent6); }
+.mc-purple { background: rgba(167,139,250,0.12); color: var(--accent5); }
+.mc-highlight {
+  outline: 2px solid var(--accent6);
+  outline-offset: 1px;
+  transform: scale(1.1);
+  z-index: 2;
+}
+
+/* ========== FLEX HELPERS ========== */
+.flex { display: flex; }
+.flex-wrap { flex-wrap: wrap; }
+.gap-8 { gap: 8px; }
+.gap-16 { gap: 16px; }
+.gap-24 { gap: 24px; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+
+.op-symbol {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 22px; font-weight: 700;
+  color: var(--accent6);
+  display: flex; align-items: center; justify-content: center;
+  min-width: 36px;
+}
+.eq-symbol { color: var(--accent3); }
+.matrix-label {
+  font-size: 12px; color: var(--text3);
+  text-align: center;
+  margin-top: 4px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ========== NEURON VIS ========== */
+.neuron-diagram {
+  position: relative;
+  min-height: 320px;
+}
+
+/* ========== TABS ========== */
+.tabs {
+  display: flex; gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+.tab {
+  padding: 8px 18px;
+  font-size: 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--text3);
+  font-family: 'Noto Sans SC', sans-serif;
+  transition: all .25s;
+  white-space: nowrap;
+}
+.tab:hover { color: var(--text); }
+.tab.active { background: var(--bg3); color: var(--accent1); font-weight: 600; }
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ========== ANIM ========== */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 rgba(96,165,250,0); }
+  50% { box-shadow: 0 0 20px rgba(96,165,250,0.3); }
+}
+@keyframes flow-right {
+  0% { transform: translateX(-8px); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: translateX(8px); opacity: 0; }
+}
+.flow-arrow { animation: flow-right 1.5s infinite; }
+
+.animate-in {
+  animation: fadeInUp .6s ease both;
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+  .card { padding: 20px; }
+  .matrix-cell { width: 36px; height: 30px; font-size: 11px; }
+  .section { padding: 80px 16px 40px; }
+}
+
+/* scroll margin for nav */
+[id] { scroll-margin-top: 70px; }
+
+/* Legend */
+.legend {
+  display: flex; flex-wrap: wrap; gap: 12px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 8px;
+  margin: 12px 0;
+}
+.legend-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--text2);
+}
+.legend-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+}
+
+/* Code block */
+.code-block {
+  background: #0d1117;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  margin: 16px 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.8;
+  overflow-x: auto;
+  white-space: pre;
+  color: #c9d1d9;
+}
+.code-block .kw { color: #ff7b72; }
+.code-block .fn { color: #d2a8ff; }
+.code-block .cm { color: #8b949e; }
+.code-block .st { color: #a5d6ff; }
+.code-block .num { color: #79c0ff; }
+.code-block .var { color: #ffa657; }
+
+/* comparison table */
+.compare-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 16px 0;
+  font-size: 14px;
+}
+.compare-table th {
+  background: var(--bg3);
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 700;
+  border-bottom: 2px solid var(--border);
+}
+.compare-table th:first-child { border-radius: 10px 0 0 0; }
+.compare-table th:last-child { border-radius: 0 10px 0 0; }
+.compare-table td {
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  vertical-align: top;
+}
+.compare-table tr:last-child td:first-child { border-radius: 0 0 0 10px; }
+.compare-table tr:last-child td:last-child { border-radius: 0 0 10px 0; }
+</style>
+</head>
+<body>
+
+<!-- ====== NAV ====== -->
+<nav class="nav">
+  <div class="nav-inner">
+    <button class="nav-btn active" onclick="goTo('hero')">🧠 首页</button>
+    <button class="nav-btn" onclick="goTo('s1')">① 单个神经元</button>
+    <button class="nav-btn" onclick="goTo('s2')">② 一层网络</button>
+    <button class="nav-btn" onclick="goTo('s3')">③ 矩阵乘法拆解</button>
+    <button class="nav-btn" onclick="goTo('s4')">④ 多层传播</button>
+    <button class="nav-btn" onclick="goTo('s5')">⑤ 内积 vs 外积</button>
+    <button class="nav-btn" onclick="goTo('s6')">⑥ 速查表</button>
+  </div>
+</nav>
+
+<!-- ====== HERO ====== -->
+<div class="section" id="hero">
+  <h1>神经网络前向传播<br>空间维度导航</h1>
+  <p class="subtitle">从一个神经元到多层网络，手把手拆解每一步运算的维度对应关系。<br>再也不混淆「哪个下标对哪个轴」「该用内积还是外积」。</p>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent1)"></div> 输入 x</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div> 权重 W</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent4)"></div> 偏置 b</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent6)"></div> 线性求和 z</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent5)"></div> 激活函数 σ</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent3)"></div> 输出 a</div>
+  </div>
+</div>
+
+<!-- ====== SECTION 1: SINGLE NEURON ====== -->
+<div class="section" id="s1">
+  <div class="section-tag">第一课</div>
+  <h2>单个神经元：一切的起点</h2>
+  <p class="subtitle">一个神经元只做两件事：① 加权求和（线性）② 激活（非线性）</p>
+
+  <div class="card">
+    <h3>📐 一个神经元的完整计算</h3>
+    <p style="color:var(--text2); margin-bottom:20px;">点击「下一步」逐步观察每个计算环节：</p>
+
+    <div class="canvas-wrap">
+      <svg id="neuron-svg" viewBox="0 0 800 340" width="100%" style="max-height:340px;">
+        <!-- Inputs -->
+        <g id="n-inputs">
+          <circle cx="80" cy="70" r="28" fill="rgba(96,165,250,0.15)" stroke="#60a5fa" stroke-width="2"/>
+          <text x="80" y="75" text-anchor="middle" fill="#60a5fa" font-size="16" font-weight="700">x₁</text>
+          <circle cx="80" cy="170" r="28" fill="rgba(96,165,250,0.15)" stroke="#60a5fa" stroke-width="2"/>
+          <text x="80" y="175" text-anchor="middle" fill="#60a5fa" font-size="16" font-weight="700">x₂</text>
+          <circle cx="80" cy="270" r="28" fill="rgba(96,165,250,0.15)" stroke="#60a5fa" stroke-width="2"/>
+          <text x="80" y="275" text-anchor="middle" fill="#60a5fa" font-size="16" font-weight="700">x₃</text>
+        </g>
+
+        <!-- Weights (lines) -->
+        <g id="n-weights" opacity="0.2">
+          <line x1="108" y1="70" x2="340" y2="170" stroke="#f472b6" stroke-width="2.5" stroke-dasharray="6,4"/>
+          <text x="200" y="100" fill="#f472b6" font-size="13" font-weight="600">w₁=0.5</text>
+          <line x1="108" y1="170" x2="340" y2="170" stroke="#f472b6" stroke-width="2.5" stroke-dasharray="6,4"/>
+          <text x="200" y="160" fill="#f472b6" font-size="13" font-weight="600">w₂=0.3</text>
+          <line x1="108" y1="270" x2="340" y2="170" stroke="#f472b6" stroke-width="2.5" stroke-dasharray="6,4"/>
+          <text x="200" y="246" fill="#f472b6" font-size="13" font-weight="600">w₃=−0.2</text>
+        </g>
+
+        <!-- Neuron body -->
+        <g id="n-body" opacity="0.2">
+          <circle cx="370" cy="170" r="42" fill="rgba(251,146,60,0.1)" stroke="#fb923c" stroke-width="2.5"/>
+          <text x="370" y="165" text-anchor="middle" fill="#fb923c" font-size="11" font-weight="600">Σ + b</text>
+          <text x="370" y="182" text-anchor="middle" fill="#fbbf24" font-size="11">(b=0.1)</text>
+        </g>
+
+        <!-- Activation -->
+        <g id="n-activation" opacity="0.2">
+          <line x1="412" y1="170" x2="510" y2="170" stroke="#a78bfa" stroke-width="2.5"/>
+          <rect x="510" y="140" width="80" height="60" rx="12" fill="rgba(167,139,250,0.1)" stroke="#a78bfa" stroke-width="2"/>
+          <text x="550" y="175" text-anchor="middle" fill="#a78bfa" font-size="14" font-weight="700">σ(z)</text>
+        </g>
+
+        <!-- Output -->
+        <g id="n-output" opacity="0.2">
+          <line x1="590" y1="170" x2="680" y2="170" stroke="#34d399" stroke-width="2.5"/>
+          <circle cx="710" cy="170" r="28" fill="rgba(52,211,153,0.15)" stroke="#34d399" stroke-width="2"/>
+          <text x="710" y="175" text-anchor="middle" fill="#34d399" font-size="16" font-weight="700">a</text>
+        </g>
+
+        <!-- Formula annotations (step by step) -->
+        <g id="n-formula-1" opacity="0" transform="translate(0,0)">
+          <rect x="140" y="290" width="520" height="40" rx="8" fill="rgba(251,146,60,0.1)" stroke="#fb923c" stroke-width="1"/>
+          <text x="400" y="316" text-anchor="middle" fill="#fb923c" font-size="14" font-weight="600">z = x₁·w₁ + x₂·w₂ + x₃·w₃ + b = 2×0.5 + 1×0.3 + 3×(−0.2) + 0.1 = 0.7</text>
+        </g>
+        <g id="n-formula-2" opacity="0">
+          <rect x="490" y="96" width="260" height="36" rx="8" fill="rgba(52,211,153,0.1)" stroke="#34d399" stroke-width="1"/>
+          <text x="620" y="120" text-anchor="middle" fill="#34d399" font-size="14" font-weight="600">a = σ(0.7) = 0.668</text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="step-controls">
+      <button class="step-btn primary" onclick="neuronStep()">▶ 下一步</button>
+      <button class="step-btn" onclick="neuronReset()">↺ 重置</button>
+      <span class="step-label" id="neuron-step-label">点击开始 →</span>
+    </div>
+
+    <div class="keypoint" style="margin-top:16px;">
+      <strong>🔑 核心记忆：</strong>单个神经元 = <span class="dim dim-blue">输入向量 x</span> 与 <span class="dim dim-pink">权重向量 w</span> 做<strong>内积（dot product）</strong>→ 加 <span class="dim dim-yellow">偏置 b</span> → 过 <span class="dim dim-purple">激活函数 σ</span>。维度消减：n维 → 1维标量。
+    </div>
+  </div>
+</div>
+
+<!-- ====== SECTION 2: ONE LAYER ====== -->
+<div class="section" id="s2">
+  <div class="section-tag pink">第二课</div>
+  <h2>一层网络：从向量到矩阵</h2>
+  <p class="subtitle">多个神经元并排 = 把每个神经元的权重向量「叠」成权重矩阵 W</p>
+
+  <div class="card">
+    <h3>🧱 关键洞察：W 的每一行就是一个神经元</h3>
+    <p style="color:var(--text2); margin-bottom:16px;">假设输入维度 = 3，本层有 2 个神经元：</p>
+
+    <div class="flex flex-wrap gap-24 items-center justify-center" style="margin:20px 0;">
+      <div style="text-align:center;">
+        <div class="matrix-grid" style="grid-template-columns: repeat(3,1fr);" id="w-matrix">
+          <div class="matrix-cell mc-pink">0.5</div>
+          <div class="matrix-cell mc-pink">0.3</div>
+          <div class="matrix-cell mc-pink">-0.2</div>
+          <div class="matrix-cell mc-pink">0.1</div>
+          <div class="matrix-cell mc-pink">-0.4</div>
+          <div class="matrix-cell mc-pink">0.6</div>
+        </div>
+        <div class="matrix-label">W <span class="dim dim-pink">2×3</span></div>
+        <div style="font-size:12px; color:var(--text3); margin-top:4px;">↑ 行0 = 神经元0的权重<br>↑ 行1 = 神经元1的权重</div>
+      </div>
+
+      <div class="op-symbol">×</div>
+
+      <div style="text-align:center;">
+        <div class="matrix-grid" style="grid-template-columns: repeat(1,1fr);" id="x-vector">
+          <div class="matrix-cell mc-blue">2</div>
+          <div class="matrix-cell mc-blue">1</div>
+          <div class="matrix-cell mc-blue">3</div>
+        </div>
+        <div class="matrix-label">x <span class="dim dim-blue">3×1</span></div>
+      </div>
+
+      <div class="op-symbol">+</div>
+
+      <div style="text-align:center;">
+        <div class="matrix-grid" style="grid-template-columns: repeat(1,1fr);">
+          <div class="matrix-cell mc-yellow">0.1</div>
+          <div class="matrix-cell mc-yellow">-0.1</div>
+        </div>
+        <div class="matrix-label">b <span class="dim dim-yellow">2×1</span></div>
+      </div>
+
+      <div class="op-symbol eq-symbol">=</div>
+
+      <div style="text-align:center;">
+        <div class="matrix-grid" style="grid-template-columns: repeat(1,1fr);" id="z-vector">
+          <div class="matrix-cell mc-orange">0.7</div>
+          <div class="matrix-cell mc-orange">1.7</div>
+        </div>
+        <div class="matrix-label">z <span class="dim dim-orange">2×1</span></div>
+      </div>
+    </div>
+
+    <div class="keypoint">
+      <strong>🔑 维度规则：</strong><span class="dim dim-pink">W(out×in)</span> × <span class="dim dim-blue">x(in×1)</span> + <span class="dim dim-yellow">b(out×1)</span> = <span class="dim dim-orange">z(out×1)</span><br>
+      <strong>W的形状</strong> = (本层神经元数, 上层输出维度) → 「<span style="color:var(--accent2)">行数 = 输出维度，列数 = 输入维度</span>」
+    </div>
+
+    <div class="keypoint warn">
+      <strong>⚠️ 常见混淆：</strong>有些框架/教材写成 <code class="mono" style="color:var(--accent4);">x @ W.T</code> 或 <code class="mono" style="color:var(--accent4);">xW</code>（W 转置了），这是因为 x 按行向量存储。<br>
+      <strong>统一记法：</strong>只要记住「<strong>消掉的那个维度 = 共享的内维度</strong>」，不管哪种写法都不会错。
+    </div>
+  </div>
+
+  <!-- Hover interactive -->
+  <div class="card">
+    <h3>🖱️ 互动：悬停看「哪些元素参与了哪个输出」</h3>
+    <p style="color:var(--text2); margin-bottom:16px;">把鼠标移到输出 z 的某个元素上，看看它是怎么算出来的：</p>
+
+    <div class="flex flex-wrap gap-24 items-center justify-center" style="margin:20px 0;" id="hover-demo">
+      <div style="text-align:center;">
+        <div class="matrix-grid" style="grid-template-columns: repeat(3,1fr);">
+          <div class="matrix-cell mc-pink" data-wr="0" data-wc="0">w₀₀</div>
+          <div class="matrix-cell mc-pink" data-wr="0" data-wc="1">w₀₁</div>
+          <div class="matrix-cell mc-pink" data-wr="0" data-wc="2">w₀₂</div>
+          <div class="matrix-cell mc-pink" data-wr="1" data-wc="0">w₁₀</div>
+          <div class="matrix-cell mc-pink" data-wr="1" data-wc="1">w₁₁</div>
+          <div class="matrix-cell mc-pink" data-wr="1" data-wc="2">w₁₂</div>
+        </div>
+        <div class="matrix-label">W <span class="dim dim-pink">2×3</span></div>
+      </div>
+
+      <div class="op-symbol">×</div>
+
+      <div style="text-align:center;">
+        <div class="matrix-grid" style="grid-template-columns: repeat(1,1fr);">
+          <div class="matrix-cell mc-blue" data-xr="0">x₀</div>
+          <div class="matrix-cell mc-blue" data-xr="1">x₁</div>
+          <div class="matrix-cell mc-blue" data-xr="2">x₂</div>
+        </div>
+        <div class="matrix-label">x <span class="dim dim-blue">3×1</span></div>
+      </div>
+
+      <div class="op-symbol eq-symbol">=</div>
+
+      <div style="text-align:center;">
+        <div class="matrix-grid" style="grid-template-columns: repeat(1,1fr);">
+          <div class="matrix-cell mc-orange" data-zr="0" style="cursor:pointer;">z₀</div>
+          <div class="matrix-cell mc-orange" data-zr="1" style="cursor:pointer;">z₁</div>
+        </div>
+        <div class="matrix-label">z <span class="dim dim-orange">2×1</span></div>
+      </div>
+    </div>
+    <div id="hover-explain" style="text-align:center; font-size:14px; color:var(--text2); min-height:24px; font-family:'JetBrains Mono',monospace;">
+      👆 悬停在 z₀ 或 z₁ 上试试
+    </div>
+  </div>
+</div>
+
+<!-- ====== SECTION 3: MATMUL DECOMPOSED ====== -->
+<div class="section" id="s3">
+  <div class="section-tag green">第三课</div>
+  <h2>矩阵乘法：逐元素拆解</h2>
+  <p class="subtitle">矩阵乘法的本质 = 多个内积的并行计算，每个输出元素都是一行×一列的内积</p>
+
+  <div class="card">
+    <h3>🔬 动画拆解 C = A × B</h3>
+    <p style="color:var(--text2); margin-bottom:16px;">
+      <span class="dim dim-pink">A(2×3)</span> × <span class="dim dim-blue">B(3×2)</span> = <span class="dim dim-green">C(2×2)</span>
+      — 点击「计算下一个」逐个看每个输出元素
+    </p>
+
+    <div class="flex flex-wrap gap-16 items-center justify-center" style="margin:20px 0;">
+      <div style="text-align:center;">
+        <div class="matrix-grid" style="grid-template-columns: repeat(3,1fr);" id="matA">
+          <div class="matrix-cell mc-pink" id="a00">1</div>
+          <div class="matrix-cell mc-pink" id="a01">2</div>
+          <div class="matrix-cell mc-pink" id="a02">3</div>
+          <div class="matrix-cell mc-pink" id="a10">4</div>
+          <div class="matrix-cell mc-pink" id="a11">5</div>
+          <div class="matrix-cell mc-pink" id="a12">6</div>
+        </div>
+        <div class="matrix-label">A <span class="dim dim-pink">2×3</span></div>
+      </div>
+      <div class="op-symbol">×</div>
+      <div style="text-align:center;">
+        <div class="matrix-grid" style="grid-template-columns: repeat(2,1fr);" id="matB">
+          <div class="matrix-cell mc-blue" id="b00">7</div>
+          <div class="matrix-cell mc-blue" id="b01">8</div>
+          <div class="matrix-cell mc-blue" id="b10">9</div>
+          <div class="matrix-cell mc-blue" id="b11">10</div>
+          <div class="matrix-cell mc-blue" id="b20">11</div>
+          <div class="matrix-cell mc-blue" id="b21">12</div>
+        </div>
+        <div class="matrix-label">B <span class="dim dim-blue">3×2</span></div>
+      </div>
+      <div class="op-symbol eq-symbol">=</div>
+      <div style="text-align:center;">
+        <div class="matrix-grid" style="grid-template-columns: repeat(2,1fr);" id="matC">
+          <div class="matrix-cell mc-green" id="c00" style="color:var(--text3);">?</div>
+          <div class="matrix-cell mc-green" id="c01" style="color:var(--text3);">?</div>
+          <div class="matrix-cell mc-green" id="c10" style="color:var(--text3);">?</div>
+          <div class="matrix-cell mc-green" id="c11" style="color:var(--text3);">?</div>
+        </div>
+        <div class="matrix-label">C <span class="dim dim-green">2×2</span></div>
+      </div>
+    </div>
+
+    <div id="matmul-detail" style="text-align:center; min-height:56px; padding:12px; background:var(--bg); border-radius:8px; margin:8px 0;">
+      <span style="color:var(--text3); font-size:14px;">点击「计算下一个」开始</span>
+    </div>
+
+    <div class="step-controls">
+      <button class="step-btn primary" onclick="matmulStep()">▶ 计算下一个</button>
+      <button class="step-btn" onclick="matmulReset()">↺ 重置</button>
+      <span class="step-label" id="matmul-step-label">0 / 4</span>
+    </div>
+
+    <div class="keypoint" style="margin-top:12px;">
+      <strong>🔑 核心规则：</strong> C[i][j] = A 的<strong>第 i 行</strong> · B 的<strong>第 j 列</strong>（内积）<br>
+      维度：(m×<strong style="color:var(--accent6)">k</strong>) × (<strong style="color:var(--accent6)">k</strong>×n) = (m×n) — <strong style="color:var(--accent6)">k 被消掉了</strong>（这就是「收缩维度」）
+    </div>
+  </div>
+
+  <!-- Batch matmul -->
+  <div class="card">
+    <h3>📦 批量输入时的维度</h3>
+    <p style="color:var(--text2); margin-bottom:16px;">实际训练中不会一个样本一个样本算，而是一个 batch：</p>
+
+    <div class="flex flex-wrap gap-16 items-center justify-center" style="margin:20px 0;">
+      <div style="text-align:center;">
+        <div class="matrix-grid" style="grid-template-columns: repeat(3,1fr);">
+          <div class="matrix-cell mc-blue" style="font-size:11px">x₁₁</div>
+          <div class="matrix-cell mc-blue" style="font-size:11px">x₁₂</div>
+          <div class="matrix-cell mc-blue" style="font-size:11px">x₁₃</div>
+          <div class="matrix-cell mc-blue" style="font-size:11px">x₂₁</div>
+          <div class="matrix-cell mc-blue" style="font-size:11px">x₂₂</div>
+          <div class="matrix-cell mc-blue" style="font-size:11px">x₂₃</div>
+          <div class="matrix-cell mc-blue" style="font-size:11px">x₃₁</div>
+          <div class="matrix-cell mc-blue" style="font-size:11px">x₃₂</div>
+          <div class="matrix-cell mc-blue" style="font-size:11px">x₃₃</div>
+          <div class="matrix-cell mc-blue" style="font-size:11px">x₄₁</div>
+          <div class="matrix-cell mc-blue" style="font-size:11px">x₄₂</div>
+          <div class="matrix-cell mc-blue" style="font-size:11px">x₄₃</div>
+        </div>
+        <div class="matrix-label">X <span class="dim dim-blue">4×3</span></div>
+        <div style="font-size:11px;color:var(--text3)">batch=4, features=3</div>
+      </div>
+      <div class="op-symbol">×</div>
+      <div style="text-align:center;">
+        <div class="matrix-grid" style="grid-template-columns: repeat(2,1fr);">
+          <div class="matrix-cell mc-pink" style="font-size:11px">w₁₁</div>
+          <div class="matrix-cell mc-pink" style="font-size:11px">w₁₂</div>
+          <div class="matrix-cell mc-pink" style="font-size:11px">w₂₁</div>
+          <div class="matrix-cell mc-pink" style="font-size:11px">w₂₂</div>
+          <div class="matrix-cell mc-pink" style="font-size:11px">w₃₁</div>
+          <div class="matrix-cell mc-pink" style="font-size:11px">w₃₂</div>
+        </div>
+        <div class="matrix-label">Wᵀ <span class="dim dim-pink">3×2</span></div>
+        <div style="font-size:11px;color:var(--text3)">features=3, neurons=2</div>
+      </div>
+      <div class="op-symbol eq-symbol">=</div>
+      <div style="text-align:center;">
+        <div class="matrix-grid" style="grid-template-columns: repeat(2,1fr);">
+          <div class="matrix-cell mc-orange" style="font-size:11px">z₁₁</div>
+          <div class="matrix-cell mc-orange" style="font-size:11px">z₁₂</div>
+          <div class="matrix-cell mc-orange" style="font-size:11px">z₂₁</div>
+          <div class="matrix-cell mc-orange" style="font-size:11px">z₂₂</div>
+          <div class="matrix-cell mc-orange" style="font-size:11px">z₃₁</div>
+          <div class="matrix-cell mc-orange" style="font-size:11px">z₃₂</div>
+          <div class="matrix-cell mc-orange" style="font-size:11px">z₄₁</div>
+          <div class="matrix-cell mc-orange" style="font-size:11px">z₄₂</div>
+        </div>
+        <div class="matrix-label">Z <span class="dim dim-orange">4×2</span></div>
+        <div style="font-size:11px;color:var(--text3)">batch=4, neurons=2</div>
+      </div>
+    </div>
+
+    <div class="keypoint warn">
+      <strong>⚠️ PyTorch / TensorFlow 常用写法：</strong><code class="mono" style="color:var(--accent4);">Z = X @ W.T + b</code><br>
+      这里 X 的每一<strong>行</strong>是一个样本，W.T 让「列数=神经元数」。<br>
+      维度链：<span class="dim dim-blue">(batch, in)</span> @ <span class="dim dim-pink">(in, out)</span> + <span class="dim dim-yellow">(out,)</span> = <span class="dim dim-orange">(batch, out)</span><br>
+      <strong>b 通过广播机制自动扩展到 batch 维度。</strong>
+    </div>
+  </div>
+</div>
+
+<!-- ====== SECTION 4: MULTI-LAYER ====== -->
+<div class="section" id="s4">
+  <div class="section-tag purple">第四课</div>
+  <h2>多层传播：维度流水线</h2>
+  <p class="subtitle">前向传播就像工厂流水线——每一层的输出维度 = 下一层的输入维度</p>
+
+  <div class="card">
+    <h3>🏭 3层网络的维度追踪</h3>
+    <p style="color:var(--text2); margin-bottom:12px;">输入 4 特征 → 隐藏层1(8) → 隐藏层2(6) → 输出层(3)</p>
+
+    <div class="canvas-wrap" style="overflow-x:auto;">
+      <svg id="pipeline-svg" viewBox="0 0 900 280" width="100%" style="min-width:700px;">
+        <!-- Layer boxes -->
+        <g>
+          <!-- Input -->
+          <rect x="10" y="50" width="100" height="180" rx="12" fill="rgba(96,165,250,0.08)" stroke="#60a5fa" stroke-width="1.5"/>
+          <text x="60" y="36" text-anchor="middle" fill="#60a5fa" font-size="13" font-weight="700">输入层</text>
+          <text x="60" y="145" text-anchor="middle" fill="#60a5fa" font-size="28" font-weight="900">4</text>
+          <text x="60" y="168" text-anchor="middle" fill="var(--text3)" font-size="11">特征</text>
+
+          <!-- Arrow 1 -->
+          <g transform="translate(120,130)">
+            <rect x="0" y="-24" width="130" height="48" rx="8" fill="rgba(244,114,182,0.08)" stroke="#f472b6" stroke-width="1" stroke-dasharray="4,3"/>
+            <text x="65" y="-6" text-anchor="middle" fill="#f472b6" font-size="11" font-weight="600">W¹: 8×4</text>
+            <text x="65" y="10" text-anchor="middle" fill="#fbbf24" font-size="11">b¹: 8×1</text>
+            <line x1="130" y1="0" x2="145" y2="0" stroke="#f472b6" stroke-width="2" marker-end="url(#arrowPink)"/>
+          </g>
+
+          <!-- Hidden 1 -->
+          <rect x="275" y="50" width="100" height="180" rx="12" fill="rgba(167,139,250,0.08)" stroke="#a78bfa" stroke-width="1.5"/>
+          <text x="325" y="36" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="700">隐藏层1</text>
+          <text x="325" y="145" text-anchor="middle" fill="#a78bfa" font-size="28" font-weight="900">8</text>
+          <text x="325" y="168" text-anchor="middle" fill="var(--text3)" font-size="11">神经元</text>
+
+          <!-- Arrow 2 -->
+          <g transform="translate(385,130)">
+            <rect x="0" y="-24" width="130" height="48" rx="8" fill="rgba(244,114,182,0.08)" stroke="#f472b6" stroke-width="1" stroke-dasharray="4,3"/>
+            <text x="65" y="-6" text-anchor="middle" fill="#f472b6" font-size="11" font-weight="600">W²: 6×8</text>
+            <text x="65" y="10" text-anchor="middle" fill="#fbbf24" font-size="11">b²: 6×1</text>
+            <line x1="130" y1="0" x2="145" y2="0" stroke="#f472b6" stroke-width="2" marker-end="url(#arrowPink)"/>
+          </g>
+
+          <!-- Hidden 2 -->
+          <rect x="540" y="50" width="100" height="180" rx="12" fill="rgba(167,139,250,0.08)" stroke="#a78bfa" stroke-width="1.5"/>
+          <text x="590" y="36" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="700">隐藏层2</text>
+          <text x="590" y="145" text-anchor="middle" fill="#a78bfa" font-size="28" font-weight="900">6</text>
+          <text x="590" y="168" text-anchor="middle" fill="var(--text3)" font-size="11">神经元</text>
+
+          <!-- Arrow 3 -->
+          <g transform="translate(650,130)">
+            <rect x="0" y="-24" width="130" height="48" rx="8" fill="rgba(244,114,182,0.08)" stroke="#f472b6" stroke-width="1" stroke-dasharray="4,3"/>
+            <text x="65" y="-6" text-anchor="middle" fill="#f472b6" font-size="11" font-weight="600">W³: 3×6</text>
+            <text x="65" y="10" text-anchor="middle" fill="#fbbf24" font-size="11">b³: 3×1</text>
+            <line x1="130" y1="0" x2="145" y2="0" stroke="#f472b6" stroke-width="2" marker-end="url(#arrowPink)"/>
+          </g>
+
+          <!-- Output -->
+          <rect x="790" y="50" width="100" height="180" rx="12" fill="rgba(52,211,153,0.08)" stroke="#34d399" stroke-width="1.5"/>
+          <text x="840" y="36" text-anchor="middle" fill="#34d399" font-size="13" font-weight="700">输出层</text>
+          <text x="840" y="145" text-anchor="middle" fill="#34d399" font-size="28" font-weight="900">3</text>
+          <text x="840" y="168" text-anchor="middle" fill="var(--text3)" font-size="11">类别</text>
+        </g>
+
+        <!-- Dimension flow annotation -->
+        <text x="60" y="256" text-anchor="middle" fill="#60a5fa" font-size="11" font-weight="600">(batch,4)</text>
+        <text x="325" y="256" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="600">(batch,8)</text>
+        <text x="590" y="256" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="600">(batch,6)</text>
+        <text x="840" y="256" text-anchor="middle" fill="#34d399" font-size="11" font-weight="600">(batch,3)</text>
+
+        <defs>
+          <marker id="arrowPink" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#f472b6"/>
+          </marker>
+        </defs>
+      </svg>
+    </div>
+
+    <div class="keypoint success">
+      <strong>✅ 万能口诀：</strong><br>
+      <code class="mono" style="font-size:14px; color:var(--accent3);">
+        a⁰ = x &nbsp;(batch, 4)<br>
+        z¹ = a⁰ @ W¹ᵀ + b¹ &nbsp;→ (batch, 8)<br>
+        a¹ = σ(z¹) &nbsp;→ (batch, 8)<br>
+        z² = a¹ @ W²ᵀ + b² &nbsp;→ (batch, 6)<br>
+        a² = σ(z²) &nbsp;→ (batch, 6)<br>
+        z³ = a² @ W³ᵀ + b³ &nbsp;→ (batch, 3)<br>
+        ŷ = softmax(z³) &nbsp;→ (batch, 3)
+      </code>
+    </div>
+
+    <div class="keypoint">
+      <strong>🔑 参数统计：</strong><br>
+      W¹ 有 8×4=<strong>32</strong> 个参数 + 8 个偏置 = 40<br>
+      W² 有 6×8=<strong>48</strong> 个参数 + 6 个偏置 = 54<br>
+      W³ 有 3×6=<strong>18</strong> 个参数 + 3 个偏置 = 21<br>
+      <strong>总参数 = 115</strong>
+    </div>
+  </div>
+</div>
+
+<!-- ====== SECTION 5: DOT vs OUTER ====== -->
+<div class="section" id="s5">
+  <div class="section-tag orange">第五课</div>
+  <h2>内积 vs 外积：一次搞清</h2>
+  <p class="subtitle">混淆根源 = 不知道「哪个维度被消掉，哪个被保留」</p>
+
+  <div class="card">
+    <div class="tabs" id="product-tabs">
+      <button class="tab active" onclick="switchTab('dot')">内积 (Dot Product)</button>
+      <button class="tab" onclick="switchTab('outer')">外积 (Outer Product)</button>
+      <button class="tab" onclick="switchTab('compare')">对比总结</button>
+    </div>
+
+    <!-- DOT PRODUCT -->
+    <div class="tab-content active" id="tab-dot">
+      <h3 style="color:var(--accent1);">内积：维度收缩 (n → 1)</h3>
+      <p style="color:var(--text2); margin:8px 0 20px;">两个相同长度向量「对位相乘 → 全部加起来」→ 得到一个标量</p>
+
+      <div class="flex flex-wrap gap-16 items-center justify-center" style="margin:20px 0;">
+        <div style="text-align:center;">
+          <div class="matrix-grid" style="grid-template-columns: repeat(1,1fr);">
+            <div class="matrix-cell mc-blue">2</div>
+            <div class="matrix-cell mc-blue">3</div>
+            <div class="matrix-cell mc-blue">4</div>
+          </div>
+          <div class="matrix-label">a <span class="dim dim-blue">(3,)</span></div>
+        </div>
+        <div class="op-symbol">·</div>
+        <div style="text-align:center;">
+          <div class="matrix-grid" style="grid-template-columns: repeat(1,1fr);">
+            <div class="matrix-cell mc-pink">5</div>
+            <div class="matrix-cell mc-pink">6</div>
+            <div class="matrix-cell mc-pink">7</div>
+          </div>
+          <div class="matrix-label">b <span class="dim dim-pink">(3,)</span></div>
+        </div>
+        <div class="op-symbol eq-symbol">=</div>
+        <div style="text-align:center;">
+          <div style="padding:16px 20px; background:rgba(52,211,153,0.1); border:2px solid var(--accent3); border-radius:12px;">
+            <span class="mono" style="font-size:20px; font-weight:700; color:var(--accent3);">56</span>
+          </div>
+          <div class="matrix-label">标量</div>
+        </div>
+      </div>
+
+      <div style="text-align:center; font-family:'JetBrains Mono',monospace; font-size:14px; color:var(--text2); margin:16px 0;">
+        2×5 + 3×6 + 4×7 = 10 + 18 + 28 = <strong style="color:var(--accent3)">56</strong>
+      </div>
+
+      <div class="keypoint">
+        <strong>🔑 内积的本质：</strong>「对位相乘 + 求和」→ <strong>维度被消掉</strong><br>
+        在矩阵乘法里：每个输出元素 = 一行与一列的内积<br>
+        <strong>用途：</strong>神经元内的加权求和、注意力分数 QKᵀ 的每个元素
+      </div>
+
+      <div class="code-block"><span class="cm"># NumPy</span>
+<span class="var">np</span>.<span class="fn">dot</span>(a, b)       <span class="cm"># → 标量 56</span>
+a @ b              <span class="cm"># → 同上（两个1D向量的@就是内积）</span>
+
+<span class="cm"># PyTorch</span>
+<span class="var">torch</span>.<span class="fn">dot</span>(a, b)     <span class="cm"># → 标量</span>
+(a * b).<span class="fn">sum</span>()       <span class="cm"># → 手动拆开看本质</span></div>
+    </div>
+
+    <!-- OUTER PRODUCT -->
+    <div class="tab-content" id="tab-outer">
+      <h3 style="color:var(--accent2);">外积：维度扩张 (m, n → m×n)</h3>
+      <p style="color:var(--text2); margin:8px 0 20px;">两个向量「每个与每个相乘」→ 得到一个矩阵</p>
+
+      <div class="flex flex-wrap gap-16 items-center justify-center" style="margin:20px 0;">
+        <div style="text-align:center;">
+          <div class="matrix-grid" style="grid-template-columns: repeat(1,1fr);">
+            <div class="matrix-cell mc-blue">2</div>
+            <div class="matrix-cell mc-blue">3</div>
+            <div class="matrix-cell mc-blue">4</div>
+          </div>
+          <div class="matrix-label">a <span class="dim dim-blue">(3,1)</span></div>
+        </div>
+        <div class="op-symbol">⊗</div>
+        <div style="text-align:center;">
+          <div class="matrix-grid" style="grid-template-columns: repeat(2,1fr);">
+            <div class="matrix-cell mc-pink">5</div>
+            <div class="matrix-cell mc-pink">6</div>
+          </div>
+          <div class="matrix-label">b <span class="dim dim-pink">(1,2)</span></div>
+        </div>
+        <div class="op-symbol eq-symbol">=</div>
+        <div style="text-align:center;">
+          <div class="matrix-grid" style="grid-template-columns: repeat(2,1fr);">
+            <div class="matrix-cell mc-green">10</div>
+            <div class="matrix-cell mc-green">12</div>
+            <div class="matrix-cell mc-green">15</div>
+            <div class="matrix-cell mc-green">18</div>
+            <div class="matrix-cell mc-green">20</div>
+            <div class="matrix-cell mc-green">24</div>
+          </div>
+          <div class="matrix-label">矩阵 <span class="dim dim-green">(3,2)</span></div>
+        </div>
+      </div>
+
+      <div style="text-align:center; font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text2); margin:16px 0;">
+        C[i][j] = a[i] × b[j] — 不求和！每对组合产生一个元素
+      </div>
+
+      <div class="keypoint" style="border-left-color:var(--accent2); background:rgba(244,114,182,0.06);">
+        <strong>🔑 外积的本质：</strong>「每对相乘，不求和」→ <strong>维度被扩张</strong><br>
+        本质就是列向量 × 行向量 = 矩阵<br>
+        <strong>用途：</strong>反向传播中梯度计算 dW = δ ⊗ aᵀ、嵌入查表的对偶操作
+      </div>
+
+      <div class="code-block"><span class="cm"># NumPy</span>
+<span class="var">np</span>.<span class="fn">outer</span>(a, b)     <span class="cm"># → (3,2) 矩阵</span>
+a[:, <span class="var">None</span>] * b[<span class="var">None</span>, :]  <span class="cm"># → 广播实现，本质一样</span>
+a.<span class="fn">reshape</span>(-<span class="num">1</span>,<span class="num">1</span>) @ b.<span class="fn">reshape</span>(<span class="num">1</span>,-<span class="num">1</span>)  <span class="cm"># → 用矩阵乘法实现</span>
+
+<span class="cm"># PyTorch</span>
+<span class="var">torch</span>.<span class="fn">outer</span>(a, b)   <span class="cm"># → (3,2)</span>
+<span class="var">torch</span>.<span class="fn">einsum</span>(<span class="st">'i,j->ij'</span>, a, b)  <span class="cm"># → 最清晰</span></div>
+    </div>
+
+    <!-- COMPARISON -->
+    <div class="tab-content" id="tab-compare">
+      <h3>📊 一张表搞定</h3>
+      <table class="compare-table">
+        <tr>
+          <th></th>
+          <th style="color:var(--accent1);">内积 (Dot)</th>
+          <th style="color:var(--accent2);">外积 (Outer)</th>
+          <th style="color:var(--accent5);">矩阵乘法 (Matmul)</th>
+        </tr>
+        <tr>
+          <td><strong>输入</strong></td>
+          <td>两个 (n,) 向量</td>
+          <td>一个 (m,)，一个 (n,)</td>
+          <td>(m,k) 和 (k,n)</td>
+        </tr>
+        <tr>
+          <td><strong>输出</strong></td>
+          <td>标量 (1个数)</td>
+          <td>(m,n) 矩阵</td>
+          <td>(m,n) 矩阵</td>
+        </tr>
+        <tr>
+          <td><strong>维度变化</strong></td>
+          <td style="color:var(--accent6);">收缩（消维）</td>
+          <td style="color:var(--accent2);">扩张（增维）</td>
+          <td style="color:var(--accent5);">收缩 k（保留 m,n）</td>
+        </tr>
+        <tr>
+          <td><strong>操作本质</strong></td>
+          <td>对位乘 → <strong>求和</strong></td>
+          <td>每对乘 → <strong>不求和</strong></td>
+          <td>多个内积并行</td>
+        </tr>
+        <tr>
+          <td><strong>记忆法</strong></td>
+          <td>→← 相向挤压</td>
+          <td>↗↘ 交叉扩散</td>
+          <td>行扫列的内积阵列</td>
+        </tr>
+        <tr>
+          <td><strong>前向传播中</strong></td>
+          <td>单神经元求和</td>
+          <td>几乎不用</td>
+          <td>整层计算</td>
+        </tr>
+        <tr>
+          <td><strong>反向传播中</strong></td>
+          <td>标量梯度</td>
+          <td><strong>计算 dW</strong></td>
+          <td>梯度传播</td>
+        </tr>
+      </table>
+
+      <div class="keypoint success">
+        <strong>✅ 终极判断法：</strong>问自己这三个问题——<br>
+        ① 输入的两个东西「形状一样吗？」→ 一样且要标量结果 → <strong>内积</strong><br>
+        ② 我需要「每对组合」产生一个元素吗？→ 是 → <strong>外积</strong><br>
+        ③ 我要消掉某个共享维度吗？→ 是 → <strong>矩阵乘法</strong>（本质是批量内积）
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== SECTION 6: CHEAT SHEET ====== -->
+<div class="section" id="s6">
+  <div class="section-tag" style="color:var(--accent3); background:rgba(52,211,153,0.1); border-color:rgba(52,211,153,0.2);">速查表</div>
+  <h2>维度速查 & 常见错误</h2>
+
+  <div class="card">
+    <h3>🗺️ 维度追踪口诀</h3>
+    <div style="font-size:15px; line-height:2; margin:16px 0; padding:16px; background:var(--bg); border-radius:10px;">
+      <div style="margin-bottom:12px;">
+        <strong style="color:var(--accent1);">① 写下每个变量的 shape</strong><br>
+        &nbsp;&nbsp;&nbsp;写代码前先在旁边标注 <code class="mono" style="color:var(--accent4);"># (batch, in_dim)</code>
+      </div>
+      <div style="margin-bottom:12px;">
+        <strong style="color:var(--accent2);">② 矩阵乘法看「内维度」</strong><br>
+        &nbsp;&nbsp;&nbsp;(m, <strong style="color:var(--accent6);">k</strong>) @ (<strong style="color:var(--accent6);">k</strong>, n) → 两个 k 必须相等，结果是 (m, n)
+      </div>
+      <div style="margin-bottom:12px;">
+        <strong style="color:var(--accent3);">③ W 的 shape = (输出, 输入) 或 (输入, 输出)</strong><br>
+        &nbsp;&nbsp;&nbsp;取决于你用 <code class="mono" style="color:var(--accent4);">W @ x</code> 还是 <code class="mono" style="color:var(--accent4);">x @ W</code>
+      </div>
+      <div>
+        <strong style="color:var(--accent5);">④ 偏置 b 的 shape = (输出维度,)</strong><br>
+        &nbsp;&nbsp;&nbsp;永远等于「这一层的神经元数」，通过广播加到 batch 的每个样本上
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>🐛 Top 3 常见 Bug</h3>
+    <div style="margin:16px 0;">
+      <div style="padding:16px; background:rgba(251,146,60,0.06); border:1px solid rgba(251,146,60,0.2); border-radius:10px; margin-bottom:12px;">
+        <strong style="color:var(--accent6);">Bug 1: RuntimeError: mat1 and mat2 shapes cannot be multiplied</strong>
+        <p style="color:var(--text2); margin-top:6px; font-size:14px;">
+          内维度不匹配。检查：你是不是忘了转置 W？是不是 in_features 设错了？<br>
+          <span class="mono" style="font-size:13px;">nn.Linear(in_features, out_features)</span> 内部存储的是 <span class="mono" style="font-size:13px;">W.shape = (out, in)</span>
+        </p>
+      </div>
+      <div style="padding:16px; background:rgba(251,146,60,0.06); border:1px solid rgba(251,146,60,0.2); border-radius:10px; margin-bottom:12px;">
+        <strong style="color:var(--accent6);">Bug 2: 偏置维度不对</strong>
+        <p style="color:var(--text2); margin-top:6px; font-size:14px;">
+          b 的 shape 应该是 <span class="mono">(out_dim,)</span> 而不是 <span class="mono">(in_dim,)</span>。<br>
+          手动实现时常把 b 写成输入维度的大小。
+        </p>
+      </div>
+      <div style="padding:16px; background:rgba(251,146,60,0.06); border:1px solid rgba(251,146,60,0.2); border-radius:10px;">
+        <strong style="color:var(--accent6);">Bug 3: batch 维度上做了内积</strong>
+        <p style="color:var(--text2); margin-top:6px; font-size:14px;">
+          把 <span class="mono">(batch, features)</span> 和 <span class="mono">(batch, features)</span> 做了 @ 运算 → 得到 (batch, batch)。<br>
+          你需要的是「每个样本独立通过同一组权重」，不是「样本之间互相算」。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>📝 PyTorch 前向传播完整模板</h3>
+    <div class="code-block"><span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+
+<span class="kw">class</span> <span class="fn">SimpleNet</span>(nn.Module):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self):
+        <span class="fn">super</span>().__init__()
+        <span class="cm"># nn.Linear 内部: W.shape = (out, in), b.shape = (out,)</span>
+        <span class="cm"># 前向计算: output = input @ W.T + b</span>
+        self.fc1 = nn.<span class="fn">Linear</span>(<span class="num">4</span>, <span class="num">8</span>)   <span class="cm"># W¹: (8,4),  b¹: (8,)</span>
+        self.fc2 = nn.<span class="fn">Linear</span>(<span class="num">8</span>, <span class="num">6</span>)   <span class="cm"># W²: (6,8),  b²: (6,)</span>
+        self.fc3 = nn.<span class="fn">Linear</span>(<span class="num">6</span>, <span class="num">3</span>)   <span class="cm"># W³: (3,6),  b³: (3,)</span>
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x):        <span class="cm"># x: (batch, 4)</span>
+        x = torch.<span class="fn">relu</span>(self.fc1(x)) <span class="cm"># → (batch, 8)</span>
+        x = torch.<span class="fn">relu</span>(self.fc2(x)) <span class="cm"># → (batch, 6)</span>
+        x = self.fc3(x)             <span class="cm"># → (batch, 3)  最后一层不加relu</span>
+        <span class="kw">return</span> x
+
+<span class="cm"># 验证维度</span>
+model = <span class="fn">SimpleNet</span>()
+x = torch.<span class="fn">randn</span>(<span class="num">32</span>, <span class="num">4</span>)       <span class="cm"># batch=32, features=4</span>
+out = model(x)
+<span class="fn">print</span>(out.shape)               <span class="cm"># torch.Size([32, 3]) ✓</span></div>
+  </div>
+</div>
+
+<div style="height:80px;"></div>
+
+<script>
+// ========== NAV ==========
+function goTo(id) {
+  document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+}
+
+// Highlight active nav
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      const id = e.target.id;
+      const map = { hero: 0, s1: 1, s2: 2, s3: 3, s4: 4, s5: 5, s6: 6 };
+      if (map[id] !== undefined) {
+        document.querySelectorAll('.nav-btn')[map[id]].classList.add('active');
+      }
+    }
+  });
+}, { rootMargin: '-30% 0px -60% 0px' });
+
+['hero','s1','s2','s3','s4','s5','s6'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) observer.observe(el);
+});
+
+// ========== NEURON STEP ANIMATION ==========
+let neuronState = 0;
+const neuronSteps = [
+  { label: '步骤 1/5：输入到达', action: () => { show('n-inputs', 1); }},
+  { label: '步骤 2/5：权重连接（注意每条线是一个 wᵢ）', action: () => { show('n-weights', 1); }},
+  { label: '步骤 3/5：加权求和 Σ(xᵢ·wᵢ) + b（这就是内积 + 偏置！）', action: () => { show('n-body', 1); show('n-formula-1', 1); }},
+  { label: '步骤 4/5：通过激活函数 σ（如 ReLU / Sigmoid）', action: () => { show('n-activation', 1); }},
+  { label: '步骤 5/5：输出 a = σ(z)', action: () => { show('n-output', 1); show('n-formula-2', 1); }},
+];
+
+function show(id, opacity) {
+  const el = document.getElementById(id);
+  if (el) el.style.transition = 'opacity .5s';
+  if (el) el.style.opacity = opacity;
+}
+
+function neuronStep() {
+  if (neuronState >= neuronSteps.length) { neuronReset(); return; }
+  const s = neuronSteps[neuronState];
+  s.action();
+  document.getElementById('neuron-step-label').textContent = s.label;
+  neuronState++;
+}
+
+function neuronReset() {
+  neuronState = 0;
+  ['n-weights','n-body','n-activation','n-output','n-formula-1','n-formula-2'].forEach(id => show(id, 0.2));
+  show('n-formula-1', 0);
+  show('n-formula-2', 0);
+  show('n-inputs', 1);
+  document.getElementById('neuron-step-label').textContent = '已重置，点击开始 →';
+}
+
+// init
+show('n-inputs', 1);
+
+// ========== HOVER DEMO ==========
+const hoverDemo = document.getElementById('hover-demo');
+const hoverExplain = document.getElementById('hover-explain');
+const zCells = hoverDemo.querySelectorAll('[data-zr]');
+const wCells = hoverDemo.querySelectorAll('[data-wr]');
+const xCells = hoverDemo.querySelectorAll('[data-xr]');
+
+zCells.forEach(cell => {
+  cell.addEventListener('mouseenter', () => {
+    const row = cell.getAttribute('data-zr');
+    wCells.forEach(w => {
+      if (w.getAttribute('data-wr') === row) {
+        w.classList.add('mc-highlight');
+      } else {
+        w.style.opacity = '0.25';
+      }
+    });
+    xCells.forEach(x => x.classList.add('mc-highlight'));
+    cell.classList.add('mc-highlight');
+
+    const subs = ['₀','₁','₂'];
+    hoverExplain.innerHTML = `<span style="color:var(--accent6)">z${subs[row]}</span> = ` +
+      [0,1,2].map(c => `<span style="color:var(--accent2)">w${subs[row]}${subs[c]}</span>·<span style="color:var(--accent1)">x${subs[c]}</span>`).join(' + ') +
+      ` — <span style="color:var(--text3)">W 的第 ${row} 行与 x 做内积</span>`;
+  });
+
+  cell.addEventListener('mouseleave', () => {
+    wCells.forEach(w => { w.classList.remove('mc-highlight'); w.style.opacity = '1'; });
+    xCells.forEach(x => x.classList.remove('mc-highlight'));
+    cell.classList.remove('mc-highlight');
+    hoverExplain.innerHTML = '👆 悬停在 z₀ 或 z₁ 上试试';
+  });
+});
+
+// ========== MATMUL STEP ==========
+const A = [[1,2,3],[4,5,6]];
+const B = [[7,8],[9,10],[11,12]];
+const resultC = [[58,64],[139,154]];
+const matOrder = [[0,0],[0,1],[1,0],[1,1]];
+let matStep = 0;
+
+function matmulStep() {
+  if (matStep >= 4) { matmulReset(); return; }
+
+  // Clear previous highlights
+  document.querySelectorAll('#matA .matrix-cell, #matB .matrix-cell').forEach(c => {
+    c.classList.remove('mc-highlight');
+    c.style.opacity = '1';
+  });
+
+  const [r, c] = matOrder[matStep];
+
+  // Highlight A row
+  for (let k = 0; k < 3; k++) {
+    document.getElementById(`a${r}${k}`).classList.add('mc-highlight');
+  }
+  // Dim other A row
+  for (let k = 0; k < 3; k++) {
+    document.getElementById(`a${1-r}${k}`).style.opacity = '0.25';
+  }
+  // Highlight B col
+  for (let k = 0; k < 3; k++) {
+    document.getElementById(`b${k}${c}`).classList.add('mc-highlight');
+  }
+  // Dim other B col
+  for (let k = 0; k < 3; k++) {
+    document.getElementById(`b${k}${1-c}`).style.opacity = '0.25';
+  }
+
+  // Show result
+  const cCell = document.getElementById(`c${r}${c}`);
+  cCell.textContent = resultC[r][c];
+  cCell.style.color = 'var(--accent3)';
+  cCell.classList.add('mc-highlight');
+
+  // Detail
+  const detail = `C[${r}][${c}] = A 第${r}行 · B 第${c}列 = ` +
+    A[r].map((v, k) => `${v}×${B[k][c]}`).join(' + ') +
+    ` = <strong style="color:var(--accent3)">${resultC[r][c]}</strong>`;
+  document.getElementById('matmul-detail').innerHTML = `<span style="font-family:'JetBrains Mono',monospace; font-size:14px;">${detail}</span>`;
+
+  matStep++;
+  document.getElementById('matmul-step-label').textContent = `${matStep} / 4`;
+}
+
+function matmulReset() {
+  matStep = 0;
+  document.querySelectorAll('#matA .matrix-cell, #matB .matrix-cell').forEach(c => {
+    c.classList.remove('mc-highlight');
+    c.style.opacity = '1';
+  });
+  for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) {
+    const cell = document.getElementById(`c${r}${c}`);
+    cell.textContent = '?';
+    cell.style.color = 'var(--text3)';
+    cell.classList.remove('mc-highlight');
+  }
+  document.getElementById('matmul-detail').innerHTML = '<span style="color:var(--text3); font-size:14px;">点击「计算下一个」开始</span>';
+  document.getElementById('matmul-step-label').textContent = '0 / 4';
+}
+
+// ========== TABS ==========
+function switchTab(name) {
+  document.querySelectorAll('#product-tabs .tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+
+  const tabMap = { dot: 0, outer: 1, compare: 2 };
+  document.querySelectorAll('#product-tabs .tab')[tabMap[name]].classList.add('active');
+  document.getElementById(`tab-${name}`).classList.add('active');
+}
+
+// ========== SCROLL ANIMATIONS ==========
+const animObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('animate-in');
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.card').forEach(c => animObserver.observe(c));
+</script>
+</body>
+</html>

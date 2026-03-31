@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>计算图与神经网络可视化</title>
+  <style>
+    :root {
+      --bg: #07111f;
+      --panel: rgba(10, 22, 43, 0.88);
+      --panel-2: rgba(17, 33, 60, 0.92);
+      --line: rgba(145, 180, 255, 0.2);
+      --text: #edf4ff;
+      --muted: #a0b4d3;
+      --accent: #67e8f9;
+      --accent2: #a78bfa;
+      --green: #4ade80;
+      --yellow: #fbbf24;
+      --red: #fb7185;
+      --shadow: 0 18px 42px rgba(0,0,0,0.34);
+      --radius: 20px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 0%, rgba(103,232,249,0.12), transparent 30%),
+        radial-gradient(circle at 88% 18%, rgba(167,139,250,0.12), transparent 28%),
+        linear-gradient(180deg, #06101c 0%, #081426 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+      background-size: 28px 28px;
+      mask-image: radial-gradient(circle at center, black 55%, transparent 100%);
+      pointer-events: none;
+    }
+
+    .wrap {
+      width: min(1460px, calc(100vw - 24px));
+      margin: 18px auto 30px;
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 18px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .sidebar {
+      padding: 18px;
+      position: sticky;
+      top: 16px;
+      height: fit-content;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 26px;
+      line-height: 1.25;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+      margin-bottom: 14px;
+    }
+
+    .section {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .tabs, .controls, .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    button, .chip {
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: 0.24s ease;
+      font-size: 14px;
+    }
+
+    button:hover, .chip:hover { transform: translateY(-1px); border-color: rgba(103,232,249,0.45); }
+    .active, button.primary {
+      background: linear-gradient(135deg, rgba(103,232,249,0.18), rgba(167,139,250,0.16));
+      border-color: rgba(103,232,249,0.55);
+      box-shadow: 0 0 0 1px rgba(103,232,249,0.12) inset;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 12px 14px;
+      line-height: 1.72;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    .formula {
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: #def4ff;
+      font-size: 13px;
+    }
+
+    .main {
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 18px;
+    }
+
+    .hero {
+      padding: 16px 18px;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .hero-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .hero-text { color: var(--muted); font-size: 14px; line-height: 1.7; }
+
+    .progress { min-width: 260px; }
+    .bar { height: 10px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; margin-bottom: 8px; }
+    .bar > div { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .35s ease; }
+    .step-line { text-align: right; font-size: 13px; color: var(--muted); }
+
+    .canvas {
+      padding: 18px;
+      min-height: 620px;
+      position: relative;
+      overflow: hidden;
+      perspective: 1200px;
+    }
+
+    .scene { position: relative; min-height: 560px; }
+    .hidden { display: none !important; }
+
+    .legend-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .legend-item {
+      padding: 14px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.025));
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .legend-item strong { color: #fff; }
+    .legend-item p { margin: 8px 0 0; color: var(--muted); line-height: 1.7; font-size: 14px; }
+
+    .cg-layout {
+      position: relative;
+      min-height: 560px;
+      display: grid;
+      grid-template-columns: 1fr;
+      align-items: center;
+      justify-items: center;
+    }
+
+    .svg-layer {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .node {
+      position: absolute;
+      width: 110px;
+      min-height: 74px;
+      border-radius: 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 10px 8px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: var(--shadow);
+      transition: .25s ease;
+    }
+
+    .node .name { font-weight: 800; font-size: 16px; }
+    .node .desc { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+
+    .node.input { border-color: rgba(103,232,249,0.28); }
+    .node.op { border-color: rgba(167,139,250,0.28); }
+    .node.loss { border-color: rgba(251,113,133,0.35); }
+    .node.grad { border-color: rgba(74,222,128,0.32); }
+
+    .node.active {
+      transform: translateY(-2px) scale(1.04);
+      border-color: rgba(103,232,249,0.72);
+      box-shadow: 0 0 0 1px rgba(103,232,249,0.22) inset, 0 0 28px rgba(103,232,249,0.22);
+    }
+
+    .node.backward {
+      border-color: rgba(74,222,128,0.72);
+      box-shadow: 0 0 0 1px rgba(74,222,128,0.22) inset, 0 0 28px rgba(74,222,128,0.2);
+    }
+
+    .pill {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(103,232,249,0.08);
+      border: 1px solid rgba(103,232,249,0.2);
+      color: #d8fbff;
+      font-size: 12px;
+      margin-top: 6px;
+    }
+
+    .math-panel {
+      position: absolute;
+      right: 16px;
+      top: 16px;
+      width: 330px;
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(9,18,34,0.86);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: var(--shadow);
+    }
+
+    .math-panel .title { font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+    .math-panel .body {
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      line-height: 1.8;
+      color: #dff6ff;
+      font-size: 13px;
+    }
+
+    .nn-layout {
+      min-height: 560px;
+      display: grid;
+      grid-template-columns: 1fr 280px 1fr 280px 1fr;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+    }
+
+    .layer-card, .matrix-card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.025));
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .layer-card { transform: rotateY(-8deg); }
+    .layer-card.right { transform: rotateY(8deg); }
+
+    .title-small { font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+    .nodes { display: flex; flex-direction: column; gap: 14px; align-items: center; margin-top: 14px; }
+    .ball {
+      width: 82px;
+      height: 82px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      font-weight: 700;
+      background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.16), rgba(255,255,255,0.04));
+      border: 1px solid rgba(255,255,255,0.12);
+      transition: .25s ease;
+      box-shadow: 0 10px 25px rgba(0,0,0,.24);
+    }
+    .ball small { display: block; font-size: 11px; color: var(--muted); font-weight: 500; }
+    .ball.active {
+      transform: translateY(-2px) scale(1.05);
+      border-color: rgba(103,232,249,0.72);
+      box-shadow: 0 0 0 1px rgba(103,232,249,0.22) inset, 0 0 28px rgba(103,232,249,0.22);
+    }
+
+    .matrix-grid {
+      display: grid;
+      gap: 6px;
+      margin-top: 12px;
+      justify-content: start;
+    }
+
+    .cell {
+      min-width: 46px;
+      height: 46px;
+      padding: 4px 6px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,0.045);
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 13px;
+      transition: .25s ease;
+    }
+    .cell.active {
+      transform: translateY(-2px) scale(1.03);
+      border-color: rgba(103,232,249,0.72);
+      box-shadow: 0 0 0 1px rgba(103,232,249,0.22) inset, 0 0 24px rgba(103,232,249,0.18);
+    }
+
+    .note {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-top: 10px;
+    }
+
+    .code-board {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      min-height: 560px;
+      align-items: start;
+    }
+
+    .code-card {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .code-title { font-size: 16px; font-weight: 800; margin-bottom: 10px; }
+    .code-pre {
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      line-height: 1.8;
+      font-size: 13px;
+      color: #dff6ff;
+    }
+
+    .trace-item {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--muted);
+    }
+    .trace-item strong { color: white; }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    @keyframes pulseCyan {
+      0%,100% { filter: drop-shadow(0 0 3px rgba(103,232,249,0.15)); }
+      50% { filter: drop-shadow(0 0 12px rgba(103,232,249,0.5)); }
+    }
+    .pulse-line { animation: pulseCyan 1.4s infinite; }
+
+    @media (max-width: 1180px) {
+      .wrap { grid-template-columns: 1fr; }
+      .sidebar { position: relative; top: 0; }
+      .nn-layout, .legend-grid, .footer-grid, .code-board { grid-template-columns: 1fr; }
+      .math-panel { position: relative; top: 0; right: 0; width: 100%; margin-top: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <aside class="panel sidebar">
+      <h1>计算图 × 神经网络<br>可视化辅助</h1>
+      <div class="subtitle">
+        这个页面的目标不是只告诉你“计算图是什么”，而是让你真正看到：<strong>一个复杂公式是如何被拆成节点、边、局部运算、局部导数，以及梯度如何沿图反向流动</strong>。你把它看懂以后，前向传播、反向传播、自动求导会连成一件事。
+      </div>
+
+      <div class="section">
+        <div class="label">视图切换</div>
+        <div class="tabs">
+          <button class="tab active" data-tab="graph">计算图</button>
+          <button class="tab" data-tab="network">神经网络</button>
+          <button class="tab" data-tab="autodiff">自动求导</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="label">播放控制</div>
+        <div class="controls">
+          <button id="prevBtn">上一步</button>
+          <button id="playBtn" class="primary">自动播放</button>
+          <button id="nextBtn">下一步</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="label">当前公式 / 规则</div>
+        <div class="card formula" id="formulaBox"></div>
+        <div class="card" id="ruleBox"></div>
+      </div>
+
+      <div class="section">
+        <div class="label">快速抓住计算图</div>
+        <div class="card"><strong>计算图</strong>就是：把一个复合函数拆成许多更小的“局部运算节点”，再用箭头表示数据依赖关系。</div>
+        <div class="card"><strong>前向传播</strong>是顺着箭头算值。</div>
+        <div class="card"><strong>反向传播</strong>是逆着箭头传梯度。</div>
+        <div class="card"><strong>链式法则</strong>是整个反向传播的底层规则：总导数 = 沿路径把局部导数乘起来，再把多条路径贡献加起来。</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="panel hero">
+        <div>
+          <div class="hero-title" id="heroTitle">计算图视图：把复合函数拆成“节点 + 箭头 + 局部规则”</div>
+          <div class="hero-text" id="heroText">
+            先看一个最简单但最典型的例子：\nL = (wx + b - y)²。你会看到这并不是一个“大公式直接求导”，而是被拆成乘法、加法、减法、平方这几个小节点。
+          </div>
+        </div>
+        <div class="progress">
+          <div class="bar"><div id="progressBar"></div></div>
+          <div class="step-line" id="stepLine">步骤 1 / 6</div>
+        </div>
+      </section>
+
+      <section class="panel canvas">
+        <div class="scene" id="scene-graph">
+          <div class="cg-layout">
+            <svg class="svg-layer" viewBox="0 0 1200 560" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="edgeGrad" x1="0%" x2="100%">
+                  <stop offset="0%" stop-color="rgba(103,232,249,0.18)"/>
+                  <stop offset="50%" stop-color="rgba(103,232,249,0.9)"/>
+                  <stop offset="100%" stop-color="rgba(167,139,250,0.28)"/>
+                </linearGradient>
+                <linearGradient id="backGrad" x1="0%" x2="100%">
+                  <stop offset="0%" stop-color="rgba(74,222,128,0.18)"/>
+                  <stop offset="50%" stop-color="rgba(74,222,128,0.9)"/>
+                  <stop offset="100%" stop-color="rgba(251,191,36,0.28)"/>
+                </linearGradient>
+              </defs>
+              <path id="e1" d="M110 160 C 180 160, 190 160, 260 160" stroke="url(#edgeGrad)" stroke-width="4" fill="none" opacity="0.25"/>
+              <path id="e2" d="M110 300 C 180 300, 190 200, 260 180" stroke="url(#edgeGrad)" stroke-width="4" fill="none" opacity="0.25"/>
+              <path id="e3" d="M370 170 C 450 170, 450 170, 540 170" stroke="url(#edgeGrad)" stroke-width="4" fill="none" opacity="0.25"/>
+              <path id="e4" d="M110 430 C 300 430, 360 250, 540 190" stroke="url(#edgeGrad)" stroke-width="4" fill="none" opacity="0.25"/>
+              <path id="e5" d="M650 180 C 740 180, 740 180, 830 180" stroke="url(#edgeGrad)" stroke-width="4" fill="none" opacity="0.25"/>
+              <path id="e6" d="M110 80 C 530 80, 650 120, 830 160" stroke="url(#edgeGrad)" stroke-width="4" fill="none" opacity="0.25"/>
+              <path id="e7" d="M940 170 C 1020 170, 1020 170, 1090 170" stroke="url(#edgeGrad)" stroke-width="4" fill="none" opacity="0.25"/>
+
+              <path id="b7" d="M1090 210 C 1020 210, 1000 210, 930 210" stroke="url(#backGrad)" stroke-width="4" fill="none" opacity="0.12"/>
+              <path id="b6" d="M830 205 C 710 250, 640 250, 560 210" stroke="url(#backGrad)" stroke-width="4" fill="none" opacity="0.12"/>
+              <path id="b5" d="M830 205 C 710 160, 710 160, 640 160" stroke="url(#backGrad)" stroke-width="4" fill="none" opacity="0.12"/>
+              <path id="b4" d="M540 210 C 420 280, 220 420, 120 430" stroke="url(#backGrad)" stroke-width="4" fill="none" opacity="0.12"/>
+              <path id="b3" d="M540 160 C 450 160, 450 160, 370 160" stroke="url(#backGrad)" stroke-width="4" fill="none" opacity="0.12"/>
+              <path id="b2" d="M260 180 C 180 195, 160 280, 110 300" stroke="url(#backGrad)" stroke-width="4" fill="none" opacity="0.12"/>
+              <path id="b1" d="M260 150 C 180 150, 170 160, 110 160" stroke="url(#backGrad)" stroke-width="4" fill="none" opacity="0.12"/>
+            </svg>
+
+            <div class="node input" id="n-y" style="left:40px; top:40px;">
+              <div class="name">y</div>
+              <div class="desc">真实标签</div>
+            </div>
+            <div class="node input" id="n-w" style="left:40px; top:120px;">
+              <div class="name">w</div>
+              <div class="desc">参数</div>
+            </div>
+            <div class="node input" id="n-x" style="left:40px; top:260px;">
+              <div class="name">x</div>
+              <div class="desc">输入</div>
+            </div>
+            <div class="node input" id="n-b" style="left:40px; top:390px;">
+              <div class="name">b</div>
+              <div class="desc">偏置参数</div>
+            </div>
+
+            <div class="node op" id="n-mul" style="left:250px; top:140px;">
+              <div class="name">q = wx</div>
+              <div class="desc">乘法节点</div>
+            </div>
+            <div class="node op" id="n-add" style="left:530px; top:150px;">
+              <div class="name">z = q+b</div>
+              <div class="desc">加法节点</div>
+            </div>
+            <div class="node op" id="n-sub" style="left:820px; top:150px;">
+              <div class="name">r = z-y</div>
+              <div class="desc">减法节点</div>
+            </div>
+            <div class="node loss" id="n-loss" style="left:1060px; top:150px;">
+              <div class="name">L = r²</div>
+              <div class="desc">损失节点</div>
+            </div>
+
+            <div class="math-panel">
+              <div class="title">当前拆解</div>
+              <div class="body" id="graphMath"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="scene hidden" id="scene-network">
+          <div class="nn-layout">
+            <svg class="svg-layer" viewBox="0 0 1200 560" preserveAspectRatio="none">
+              <path id="nn1" d="M140 130 C 250 130, 260 130, 380 150" stroke="url(#edgeGrad)" stroke-width="4" fill="none" opacity="0.25"/>
+              <path id="nn2" d="M140 220 C 250 220, 260 200, 380 180" stroke="url(#edgeGrad)" stroke-width="4" fill="none" opacity="0.25"/>
+              <path id="nn3" d="M140 310 C 250 310, 260 270, 380 210" stroke="url(#edgeGrad)" stroke-width="4" fill="none" opacity="0.25"/>
+              <path id="nn4" d="M140 130 C 250 130, 260 230, 380 310" stroke="url(#edgeGrad)" stroke-width="4" fill="none" opacity="0.25"/>
+              <path id="nn5" d="M140 220 C 250 220, 260 300, 380 340" stroke="url(#edgeGrad)" stroke-width="4" fill="none" opacity="0.25"/>
+              <path id="nn6" d="M140 310 C 250 310, 260 350, 380 370" stroke="url(#edgeGrad)" stroke-width="4" fill="none" opacity="0.25"/>
+              <path id="nn7" d="M620 180 C 760 180, 770 180, 900 240" stroke="url(#edgeGrad)" stroke-width="4" fill="none" opacity="0.25"/>
+              <path id="nn8" d="M620 340 C 760 340, 770 320, 900 260" stroke="url(#edgeGrad)" stroke-width="4" fill="none" opacity="0.25"/>
+            </svg>
+
+            <div class="layer-card">
+              <div class="title-small">输入层</div>
+              <div><strong>x ∈ R^(3×1)</strong></div>
+              <div class="pill">每个圆点是一个变量节点</div>
+              <div class="nodes">
+                <div class="ball" id="ix1">x₁<small>输入</small></div>
+                <div class="ball" id="ix2">x₂<small>输入</small></div>
+                <div class="ball" id="ix3">x₃<small>输入</small></div>
+              </div>
+            </div>
+
+            <div class="matrix-card">
+              <div class="title-small">第一层局部计算图</div>
+              <div><strong>z¹ = W¹x + b¹</strong></div>
+              <div class="matrix-grid" style="grid-template-columns: repeat(3, 46px);">
+                <div class="cell" id="w11">w¹₁₁</div><div class="cell" id="w12">w¹₁₂</div><div class="cell" id="w13">w¹₁₃</div>
+                <div class="cell" id="w21">w¹₂₁</div><div class="cell" id="w22">w¹₂₂</div><div class="cell" id="w23">w¹₂₃</div>
+              </div>
+              <div class="note">别把整个神经网络想成一个“大黑盒公式”。每个神经元其实都对应一个更小的计算图：先乘，再加，再求和，再过激活。</div>
+            </div>
+
+            <div class="layer-card right">
+              <div class="title-small">隐藏层</div>
+              <div><strong>a¹ = g(z¹)</strong></div>
+              <div class="pill">每个神经元内部都有自己的小计算图</div>
+              <div class="nodes">
+                <div class="ball" id="h1">a¹₁<small>隐藏神经元 1</small></div>
+                <div class="ball" id="h2">a¹₂<small>隐藏神经元 2</small></div>
+              </div>
+            </div>
+
+            <div class="matrix-card">
+              <div class="title-small">第二层局部计算图</div>
+              <div><strong>z² = W²a¹ + b²</strong></div>
+              <div class="matrix-grid" style="grid-template-columns: repeat(2, 46px);">
+                <div class="cell" id="v11">w²₁₁</div><div class="cell" id="v12">w²₁₂</div>
+              </div>
+              <div class="note">整张网的前向传播，就是这些局部小图按层串联起来。反向传播，就是它们再按链式法则反向连接。</div>
+            </div>
+
+            <div class="layer-card">
+              <div class="title-small">输出层</div>
+              <div><strong>ŷ = a²</strong></div>
+              <div class="pill">最后接损失 L(ŷ, y)</div>
+              <div class="nodes">
+                <div class="ball" id="out">ŷ<small>预测</small></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="scene hidden" id="scene-autodiff">
+          <div class="code-board">
+            <div class="code-card">
+              <div class="code-title">从代码角度看计算图</div>
+              <div class="code-pre" id="codeBox"></div>
+              <div class="trace-item" id="traceBox"></div>
+            </div>
+            <div class="code-card">
+              <div class="code-title">自动求导在做什么</div>
+              <div class="trace-item"><strong>1. 前向阶段：</strong>记录每个中间变量是怎么由前面的变量算出来的。</div>
+              <div class="trace-item"><strong>2. 图被保留：</strong>每个节点会记住自己的输入是谁、局部运算是什么。</div>
+              <div class="trace-item"><strong>3. backward：</strong>从最终损失开始，把梯度按链式法则一层层往回传。</div>
+              <div class="trace-item"><strong>4. 参数得到梯度：</strong>例如 w.grad、b.grad、W.grad。</div>
+              <div class="trace-item"><strong>5. 优化器更新：</strong>w ← w - η·∂L/∂w。</div>
+              <div class="card formula" id="autoFormula"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="legend-grid">
+        <div class="panel legend-item">
+          <strong>节点是什么？</strong>
+          <p>节点可以是变量（x, w, b, y），也可以是中间结果（q, z, r），也可以是运算（乘法、加法、激活、损失）。初学时你可以把“运算后的结果”当成节点来理解。</p>
+        </div>
+        <div class="panel legend-item">
+          <strong>边是什么？</strong>
+          <p>边表示依赖关系：后面的值要依赖前面的值才能算出来。前向传播顺着边算值，反向传播逆着边传梯度。</p>
+        </div>
+        <div class="panel legend-item">
+          <strong>为什么计算图重要？</strong>
+          <p>因为神经网络本质上就是一个超大的复合函数。只要把它拆成计算图，求导就不再是“硬背大公式”，而是“对每个小节点应用局部规则”。</p>
+        </div>
+      </section>
+
+      <section class="footer-grid">
+        <div class="panel legend-item">
+          <strong>你最该记住的一句话</strong>
+          <p><strong>计算图 = 复合函数的空间展开图。</strong> 它把“谁先算、谁依赖谁、梯度从哪里传到哪里”全部显式画出来。</p>
+        </div>
+        <div class="panel legend-item">
+          <strong>和前向传播的关系</strong>
+          <p>前向传播就是在图上“把数值填满”。每走到一个节点，就根据它的输入把这个节点的值算出来。</p>
+        </div>
+        <div class="panel legend-item">
+          <strong>和反向传播的关系</strong>
+          <p>反向传播就是在图上“把梯度填回去”。每个节点根据自己的局部导数，把上游梯度分发给下游依赖的输入节点。</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const tabs = document.querySelectorAll('.tab');
+    const scenes = {
+      graph: document.getElementById('scene-graph'),
+      network: document.getElementById('scene-network'),
+      autodiff: document.getElementById('scene-autodiff')
+    };
+
+    const heroTitle = document.getElementById('heroTitle');
+    const heroText = document.getElementById('heroText');
+    const formulaBox = document.getElementById('formulaBox');
+    const ruleBox = document.getElementById('ruleBox');
+    const graphMath = document.getElementById('graphMath');
+    const codeBox = document.getElementById('codeBox');
+    const traceBox = document.getElementById('traceBox');
+    const autoFormula = document.getElementById('autoFormula');
+    const progressBar = document.getElementById('progressBar');
+    const stepLine = document.getElementById('stepLine');
+    const playBtn = document.getElementById('playBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+
+    let currentTab = 'graph';
+    let step = 0;
+    let timer = null;
+
+    const graphSteps = [
+      {
+        title: '计算图视图：一个大公式先拆成小节点',
+        text: '看损失函数 L = (wx + b - y)²。不要一上来把它当成一个整体，而是先拆成乘法、加法、减法、平方四个局部步骤。',
+        formula: 'L = (wx + b - y)^2\n\n拆解：\nq = wx\nz = q + b\nr = z - y\nL = r^2',
+        rule: '<strong>计算图的第一步是拆。</strong> 把复杂复合函数拆成很多局部运算节点，每个节点只负责一件小事。'
+      },
+      {
+        title: '前向传播第 1 步：先算乘法节点 q = wx',
+        text: 'w 和 x 是输入变量，q 是它们通过乘法得到的中间结果。这个节点只关心一件事：把两个输入相乘。',
+        formula: 'q = w · x',
+        rule: '一个节点只做局部运算，所以它的局部导数也会很简单：∂q/∂w = x，∂q/∂x = w。'
+      },
+      {
+        title: '前向传播第 2 步：加偏置 z = q + b',
+        text: '现在 q 和 b 进入加法节点，产生 z。你可以把偏置理解为“在线性结果基础上整体平移”。',
+        formula: 'z = q + b',
+        rule: '加法节点的局部导数也很简单：∂z/∂q = 1，∂z/∂b = 1。'
+      },
+      {
+        title: '前向传播第 3 步：与真实标签比较 r = z - y',
+        text: '预测值 z 与真实值 y 的差得到残差 r。注意这里的 y 不参与模型生成，只参与损失定义。',
+        formula: 'r = z - y',
+        rule: '减法节点局部导数：∂r/∂z = 1，∂r/∂y = -1。'
+      },
+      {
+        title: '前向传播第 4 步：平方得到损失 L = r²',
+        text: '损失节点把残差映射成一个标量损失 L。训练时我们最终关心的，就是这个损失对参数的导数。',
+        formula: 'L = r^2',
+        rule: '平方节点局部导数：∂L/∂r = 2r。到这里，前向传播把整张图上的值都算完了。'
+      },
+      {
+        title: '反向传播：逆着图传梯度',
+        text: '反向传播从最右侧损失节点开始，逆着依赖关系回传。每过一个节点，就把“上游梯度 × 本节点局部导数”传给输入。',
+        formula: '∂L/∂w = ∂L/∂r · ∂r/∂z · ∂z/∂q · ∂q/∂w\n        = 2r · 1 · 1 · x',
+        rule: '<strong>链式法则是计算图的灵魂。</strong> 大导数不是直接背出来的，而是沿路径把局部导数乘起来。'
+      }
+    ];
+
+    const networkSteps = [
+      {
+        title: '神经网络不是一个公式，而是一大片计算图',
+        text: '每一层、每一个神经元、每一个线性组合、每一个激活函数，其实都可以看成计算图的一部分。整张神经网络就是这些局部图拼接起来。',
+        formula: 'z^{[1]} = W^{[1]}x + b^{[1]}\na^{[1]} = g(z^{[1]})\nz^{[2]} = W^{[2]}a^{[1]} + b^{[2]}\n\hat y = a^{[2]}',
+        rule: '把神经网络看成计算图后，你就不会再把“前向传播”和“求导”分成两件孤立的事。'
+      },
+      {
+        title: '第一层每个神经元都有自己的局部小图',
+        text: '例如隐藏层第 1 个神经元，会把 x₁,x₂,x₃ 与自己的那一行权重做乘法，再加总，再加偏置，再过激活。',
+        formula: 'z^{[1]}_1 = w^{[1]}_{11}x_1 + w^{[1]}_{12}x_2 + w^{[1]}_{13}x_3 + b^{[1]}_1',
+        rule: '所谓“神经元内部求和”，在计算图语言里就是：很多乘法节点的结果，进入一个加法聚合节点。'
+      },
+      {
+        title: '激活函数也是计算图中的一个节点',
+        text: 'ReLU、Sigmoid、Tanh 都不是额外神秘步骤，而是普通节点：输入 z，输出 a = g(z)。',
+        formula: 'a = g(z)',
+        rule: '这意味着激活函数在反向传播里也有自己的局部导数，比如 sigmoid 的导数是 a(1-a)。'
+      },
+      {
+        title: '层与层串联，形成更深的复合函数',
+        text: '上一层输出 a¹ 进入下一层，再参与新的线性组合和激活。图会越来越大，但每个节点规则始终局部且简单。',
+        formula: 'L(\hat y, y) = L\big(g(W^{[2]}g(W^{[1]}x+b^{[1]})+b^{[2]}), y\big)',
+        rule: '神经网络复杂，不是因为单个节点复杂，而是因为节点很多、连接很深。'
+      },
+      {
+        title: '反向传播就是在这张大图上反向传梯度',
+        text: '损失先对输出层求导，再传给隐藏层，再传给输入相关节点。参数 W,b 的梯度就是在这张图上沿路径累积出来的。',
+        formula: '从 L 开始：\n∂L/∂W^{[2]}, ∂L/∂b^{[2]}\n↓\n∂L/∂a^{[1]}\n↓\n∂L/∂W^{[1]}, ∂L/∂b^{[1]}',
+        rule: '所以你可以把反向传播理解为：<strong>在神经网络计算图上执行一次系统性的链式法则</strong>。'
+      }
+    ];
+
+    const autodiffSteps = [
+      {
+        title: '自动求导不是“突然会求导”，而是“自动维护计算图”',
+        text: '像 PyTorch 这样的框架，在你写出张量运算时，会悄悄记录这些运算之间的依赖关系，从而形成动态计算图。',
+        formula: 'x, w, b → q = wx → z = q+b → r = z-y → L = r^2',
+        rule: '你写的是普通算式，框架看到的是节点和边。'
+      },
+      {
+        title: '前向时记录，backward 时回放',
+        text: '前向传播时，系统记录每个张量由谁产生、局部操作是什么；backward() 时，系统按图逆序遍历。',
+        formula: 'forward: 计算值 + 记录图\nbackward: 从 L 开始传播梯度',
+        rule: '这就是为什么没有计算图，就没有系统性的自动反向传播。'
+      },
+      {
+        title: '梯度不是凭空出现，而是沿图积累',
+        text: '如果某个变量通向损失有多条路径，那么它的总梯度就是多条路径贡献的和。',
+        formula: '总梯度 = 各路径梯度贡献之和',
+        rule: '这点特别重要，因为深度网络里同一个中间量常常会影响很多后续节点。'
+      },
+      {
+        title: '参数更新只发生在图外一步',
+        text: '当梯度已经由计算图算好以后，优化器才会根据这些梯度更新参数。更新本身不是前向传播，也不是计算图内部局部节点。',
+        formula: 'w \leftarrow w - \eta \frac{∂L}{∂w}',
+        rule: '计算图负责“算值 + 算梯度”；优化器负责“用梯度改参数”。'
+      }
+    ];
+
+    function currentSteps() {
+      if (currentTab === 'graph') return graphSteps;
+      if (currentTab === 'network') return networkSteps;
+      return autodiffSteps;
+    }
+
+    function clearClasses() {
+      document.querySelectorAll('.node, .ball, .cell').forEach(el => {
+        el.classList.remove('active', 'backward');
+      });
+      ['e1','e2','e3','e4','e5','e6','e7','b1','b2','b3','b4','b5','b6','b7','nn1','nn2','nn3','nn4','nn5','nn6','nn7','nn8']
+        .forEach(id => {
+          const p = document.getElementById(id);
+          if (p) p.style.opacity = id.startsWith('b') ? '0.12' : '0.25';
+          if (p) p.classList.remove('pulse-line');
+        });
+    }
+
+    function setStepContent(item, total, idx) {
+      heroTitle.textContent = item.title;
+      heroText.innerHTML = item.text.replace(/\n/g, '<br>');
+      formulaBox.textContent = item.formula;
+      ruleBox.innerHTML = item.rule;
+      progressBar.style.width = ((idx + 1) / total * 100) + '%';
+      stepLine.textContent = `步骤 ${idx + 1} / ${total}`;
+    }
+
+    function renderGraph() {
+      const item = graphSteps[step];
+      setStepContent(item, graphSteps.length, step);
+      clearClasses();
+
+      if (step === 0) {
+        ['n-w','n-x','n-b','n-y','n-mul','n-add','n-sub','n-loss'].forEach(id => document.getElementById(id).classList.add('active'));
+        graphMath.textContent = '原始公式：\nL = (wx + b - y)^2\n\n计算图拆解：\n1) q = wx\n2) z = q + b\n3) r = z - y\n4) L = r^2';
+      }
+      if (step === 1) {
+        ['n-w','n-x','n-mul'].forEach(id => document.getElementById(id).classList.add('active'));
+        ['e1','e2'].forEach(id => { const p = document.getElementById(id); p.style.opacity='0.95'; p.classList.add('pulse-line'); });
+        graphMath.textContent = '当前节点：q = wx\n\n局部值：\n输入：w, x\n输出：q\n\n局部导数：\n∂q/∂w = x\n∂q/∂x = w';
+      }
+      if (step === 2) {
+        ['n-mul','n-b','n-add'].forEach(id => document.getElementById(id).classList.add('active'));
+        ['e3','e4'].forEach(id => { const p = document.getElementById(id); p.style.opacity='0.95'; p.classList.add('pulse-line'); });
+        graphMath.textContent = '当前节点：z = q + b\n\n局部导数：\n∂z/∂q = 1\n∂z/∂b = 1';
+      }
+      if (step === 3) {
+        ['n-add','n-y','n-sub'].forEach(id => document.getElementById(id).classList.add('active'));
+        ['e5','e6'].forEach(id => { const p = document.getElementById(id); p.style.opacity='0.95'; p.classList.add('pulse-line'); });
+        graphMath.textContent = '当前节点：r = z - y\n\n局部导数：\n∂r/∂z = 1\n∂r/∂y = -1';
+      }
+      if (step === 4) {
+        ['n-sub','n-loss'].forEach(id => document.getElementById(id).classList.add('active'));
+        const p = document.getElementById('e7'); p.style.opacity='0.95'; p.classList.add('pulse-line');
+        graphMath.textContent = '当前节点：L = r^2\n\n局部导数：\n∂L/∂r = 2r\n\n到这里前向传播完成。';
+      }
+      if (step === 5) {
+        ['n-loss','n-sub','n-add','n-mul','n-w','n-x','n-b','n-y'].forEach(id => document.getElementById(id).classList.add('backward'));
+        ['b7','b6','b5','b4','b3','b2','b1'].forEach(id => { const p = document.getElementById(id); p.style.opacity='0.95'; p.classList.add('pulse-line'); });
+        graphMath.textContent = '反向传播示例：\n∂L/∂r = 2r\n∂L/∂z = ∂L/∂r · ∂r/∂z = 2r\n∂L/∂q = ∂L/∂z · ∂z/∂q = 2r\n∂L/∂w = ∂L/∂q · ∂q/∂w = 2r·x\n∂L/∂x = ∂L/∂q · ∂q/∂x = 2r·w\n∂L/∂b = 2r';
+      }
+    }
+
+    function renderNetwork() {
+      const item = networkSteps[step];
+      setStepContent(item, networkSteps.length, step);
+      clearClasses();
+
+      if (step === 0) {
+        ['ix1','ix2','ix3','h1','h2','out'].forEach(id => document.getElementById(id).classList.add('active'));
+        ['nn1','nn2','nn3','nn4','nn5','nn6','nn7','nn8'].forEach(id => { const p = document.getElementById(id); p.style.opacity='0.58'; });
+      }
+      if (step === 1) {
+        ['ix1','ix2','ix3','w11','w12','w13','h1'].forEach(id => document.getElementById(id).classList.add('active'));
+        ['nn1','nn2','nn3'].forEach(id => { const p = document.getElementById(id); p.style.opacity='0.95'; p.classList.add('pulse-line'); });
+      }
+      if (step === 2) {
+        ['h1','h2'].forEach(id => document.getElementById(id).classList.add('active'));
+      }
+      if (step === 3) {
+        ['h1','h2','v11','v12','out'].forEach(id => document.getElementById(id).classList.add('active'));
+        ['nn7','nn8'].forEach(id => { const p = document.getElementById(id); p.style.opacity='0.95'; p.classList.add('pulse-line'); });
+      }
+      if (step === 4) {
+        ['w11','w12','w13','w21','w22','w23','v11','v12','h1','h2','out'].forEach(id => document.getElementById(id).classList.add('active'));
+      }
+    }
+
+    function renderAutodiff() {
+      const item = autodiffSteps[step];
+      setStepContent(item, autodiffSteps.length, step);
+      clearClasses();
+
+      if (step === 0) {
+        codeBox.textContent = 'import torch\n\nx = torch.tensor(2.0)\ny = torch.tensor(5.0)\nw = torch.tensor(3.0, requires_grad=True)\nb = torch.tensor(1.0, requires_grad=True)\n\nq = w * x\nz = q + b\nr = z - y\nL = r ** 2';
+        traceBox.innerHTML = '<strong>解释：</strong>这几行表面上只是普通运算，但框架会把 q、z、r、L 和它们的来源关系记下来，于是形成一张动态计算图。';
+        autoFormula.textContent = '记录图：\nq ← (w, x, mul)\nz ← (q, b, add)\nr ← (z, y, sub)\nL ← (r, square)';
+      }
+      if (step === 1) {
+        codeBox.textContent = 'L.backward()';
+        traceBox.innerHTML = '<strong>解释：</strong>调用 backward() 后，系统从损失 L 出发，按照图的逆拓扑顺序，把梯度往回传播。';
+        autoFormula.textContent = '上游梯度从 ∂L/∂L = 1 开始\n然后逐节点回传';
+      }
+      if (step === 2) {
+        codeBox.textContent = 'print(w.grad)\nprint(b.grad)';
+        traceBox.innerHTML = '<strong>解释：</strong>此时 w.grad、b.grad 已经不是手工推出来的，而是沿计算图自动累计得到的。';
+        autoFormula.textContent = 'w.grad = ∂L/∂w\nb.grad = ∂L/∂b';
+      }
+      if (step === 3) {
+        codeBox.textContent = 'with torch.no_grad():\n    w -= lr * w.grad\n    b -= lr * b.grad\n    w.grad.zero_()\n    b.grad.zero_()';
+        traceBox.innerHTML = '<strong>解释：</strong>真正的参数更新发生在图外。更新完后通常要把梯度清零，再开始下一轮前向/反向。';
+        autoFormula.textContent = '优化器步骤：\n参数更新 ≠ 计算图节点\n它使用的是计算图产出的梯度';
+      }
+    }
+
+    function render() {
+      Object.values(scenes).forEach(scene => scene.classList.add('hidden'));
+      scenes[currentTab].classList.remove('hidden');
+      if (currentTab === 'graph') renderGraph();
+      if (currentTab === 'network') renderNetwork();
+      if (currentTab === 'autodiff') renderAutodiff();
+    }
+
+    function countSteps() { return currentSteps().length; }
+    function next() { step = (step + 1) % countSteps(); render(); }
+    function prev() { step = (step - 1 + countSteps()) % countSteps(); render(); }
+    function togglePlay() {
+      if (timer) {
+        clearInterval(timer); timer = null; playBtn.textContent = '自动播放';
+      } else {
+        timer = setInterval(next, 2500); playBtn.textContent = '暂停';
+      }
+    }
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentTab = tab.dataset.tab;
+        step = 0;
+        render();
+      });
+    });
+
+    playBtn.addEventListener('click', togglePlay);
+    prevBtn.addEventListener('click', prev);
+    nextBtn.addEventListener('click', next);
+
+    render();
+  </script>
+</body>
+</html>

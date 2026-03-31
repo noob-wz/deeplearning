@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>反向传播手把手可视化</title>
+<style>
+:root{
+  --bg:#f7f6f2; --panel:#ffffff; --panel2:#f1efe8; --text:#252525; --muted:#6f6b63;
+  --border:#d7d2c7; --border2:#c9c4b8; --blue:#1f66b0; --blueBg:#e9f2fb;
+  --orange:#b66e13; --orangeBg:#fbefdc; --green:#397116; --greenBg:#eaf4df;
+  --red:#aa3131; --redBg:#f9e8e8; --shadow:0 10px 26px rgba(0,0,0,.05);
+  --radius:16px; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#1a1916; --panel:#23221f; --panel2:#2b2a26; --text:#ece8dd; --muted:#a39f94;
+    --border:#4f4c45; --border2:#605c54; --blue:#92bde8; --blueBg:#173b63;
+    --orange:#f6c577; --orangeBg:#5d3a11; --green:#abd373; --greenBg:#284b14;
+    --red:#f1a2a2; --redBg:#4d2323; --shadow:0 14px 28px rgba(0,0,0,.24);
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);padding:18px}
+.app{max-width:1220px;margin:0 auto;display:grid;gap:14px}
+.hero,.tabs,.panel,.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.hero{padding:18px;display:grid;gap:12px}
+.kicker{display:inline-flex;align-items:center;gap:8px;width:max-content;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--panel2);color:var(--muted);font-size:12px}
+h1{margin:0;font-size:28px;line-height:1.2}
+.hero p{margin:0;color:var(--muted);font-size:14px;line-height:1.75}
+.hero-grid{display:grid;grid-template-columns:1.45fr 1fr;gap:14px}
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{padding:6px 10px;border-radius:999px;font-size:12px;border:1px solid var(--border);background:var(--panel2);color:var(--muted)}
+.pill.blue{color:var(--blue)} .pill.orange{color:var(--orange)} .pill.green{color:var(--green)} .pill.red{color:var(--red)}
+.tabs{display:flex;gap:6px;overflow:auto;padding:6px;position:sticky;top:8px;z-index:5}
+.tab{border:0;background:transparent;color:var(--muted);padding:10px 14px;border-radius:999px;cursor:pointer;white-space:nowrap;font-size:13px}
+.tab:hover{background:var(--panel2);color:var(--text)} .tab.active{background:var(--text);color:var(--panel);font-weight:700}
+.panel{display:none;padding:14px}
+.panel.active{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(290px,0.95fr);gap:14px;align-items:start}
+.left{display:grid;gap:12px}
+.viz{border:1px solid var(--border);background:var(--panel2);border-radius:14px;overflow:hidden;min-height:350px}
+.viz svg{display:block;width:100%;height:auto}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{border:1px solid var(--border2);background:var(--panel);color:var(--text);padding:8px 12px;border-radius:10px;cursor:pointer;font-size:12px}
+.btn:hover{background:var(--panel2)} .btn.primary{color:var(--blue);border-color:var(--blue)} .btn.orange{color:var(--orange);border-color:var(--orange)}
+.status{font-size:12px;color:var(--muted)}
+.side{display:grid;gap:12px}
+.card{padding:14px}
+.card h3{margin:0 0 8px;font-size:15px}
+.card p{margin:0;color:var(--muted);line-height:1.72;font-size:14px}
+.mono{font-family:var(--mono);font-size:12px;line-height:1.8;white-space:pre-wrap;background:var(--panel2);border:1px solid var(--border);padding:12px;border-radius:12px;color:var(--text)}
+.note{padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--panel2);font-size:13px;line-height:1.72;color:var(--muted)}
+.note b{color:var(--text)}
+.legend{display:flex;flex-wrap:wrap;gap:8px}.legend span{padding:6px 10px;border-radius:999px;font-size:12px;background:var(--panel2);border:1px solid var(--border);color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.small{font-size:12px;color:var(--muted)}
+.tableish{display:grid;grid-template-columns:repeat(3,minmax(70px,max-content));gap:6px;align-items:center;justify-content:center}
+.cell{padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--panel);font-family:var(--mono);font-size:12px;text-align:center}
+.cell.hi{border-color:var(--blue);background:var(--blueBg);color:var(--blue);font-weight:700}
+.cell.orange{border-color:var(--orange);background:var(--orangeBg);color:var(--orange);font-weight:700}
+.cell.green{border-color:var(--green);background:var(--greenBg);color:var(--green);font-weight:700}
+.center{text-align:center}
+@media (max-width: 980px){ .hero-grid,.panel,.grid2{grid-template-columns:1fr} body{padding:10px} }
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="hero">
+    <div class="kicker">重点：为初学者把反向传播讲清楚，而不是只画一个会动的网络图</div>
+    <div class="hero-grid">
+      <div>
+        <h1>反向传播：从记号、前向，到梯度回传，一步一步讲明白</h1>
+        <p>这版只使用 <b>一套固定记号</b>：采用 <b>row-batch</b> 约定，单个样本写成一行 <code>x ∈ R<sup>1×3</sup></code>，batch 写成 <code>X ∈ R<sup>m×3</sup></code>。两层网络统一写成：<code>Z<sup>[1]</sup>=XW<sup>[1]</sup>+b<sup>[1]</sup></code>，<code>A<sup>[1]</sup>=ReLU(Z<sup>[1]</sup>)</code>，<code>Z<sup>[2]</sup>=A<sup>[1]</sup>W<sup>[2]</sup>+b<sup>[2]</sup></code>，<code>Ŷ=σ(Z<sup>[2]</sup>)</code>。</p>
+      </div>
+      <div>
+        <div class="note"><b>这版先修正三个容易误导初学者的点：</b><br>1. <b>同层神经元</b> 要写成 <code>z₁<sup>[1]</sup>, z₂<sup>[1]</sup></code>，不是把 <code>z₁</code> 和 <code>z₂</code> 当成前后两层。<br>2. <b>线性求和</b> 必须明确是谁和谁相乘、维度是什么。<br>3. <b>反向传播</b> 不能一闪而过，必须按链式法则一环一环地讲。</div>
+        <div class="pills" style="margin-top:10px">
+          <div class="pill blue">蓝色：前向值流动</div>
+          <div class="pill orange">橙色：当前正在讲的局部计算</div>
+          <div class="pill green">绿色：反向传播的梯度</div>
+          <div class="pill red">红色：损失 / 监督信号</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <nav class="tabs" id="tabs"></nav>
+
+  <section class="panel active" id="panel-0">
+    <div class="left">
+      <div class="viz"><svg id="svg-0" viewBox="0 0 760 360"></svg></div>
+      <div class="note"><b>先把记号讲清楚。</b> 这里最容易混淆的是：<b>上标 [l] 表示第几层</b>；<b>下标 j 表示该层第几个神经元</b>。所以 <code>z₁<sup>[1]</sup></code> 和 <code>z₂<sup>[1]</sup></code> 是 <b>同一层的两个线性输出</b>；而 <code>z₁<sup>[2]</sup></code> 才是下一层的线性输出。</div>
+    </div>
+    <div class="side">
+      <div class="card"><h3>先统一记号</h3><p>为了避免你在代码、手算、矩阵式之间来回切换脑回路，这个页面从头到尾都使用同一套写法。</p></div>
+      <div class="mono">单个样本（row-batch）
+x ∈ R^(1×3)
+W^[1] ∈ R^(3×2),  b^[1] ∈ R^(1×2)
+W^[2] ∈ R^(2×1),  b^[2] ∈ R^(1×1)
+
+z^[1] = xW^[1] + b^[1]   → 形状 1×2
+a^[1] = ReLU(z^[1])
+z^[2] = a^[1]W^[2] + b^[2] → 形状 1×1
+ŷ = sigmoid(z^[2])</div>
+      <div class="note"><b>为什么这样写更稳？</b><br>因为当 batch 大小从 1 扩到 m 时，只需要把 <code>x</code> 换成 <code>X</code>，整套式子几乎不变。</div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-1">
+    <div class="left">
+      <div class="viz"><svg id="svg-1" viewBox="0 0 760 360"></svg></div>
+      <div class="controls">
+        <button class="btn" data-prev="1">上一步</button>
+        <button class="btn primary" data-next="1">下一步</button>
+        <button class="btn orange" data-auto="1">慢速自动演示</button>
+        <button class="btn" data-reset="1">重置</button>
+        <span class="status" id="status-1"></span>
+      </div>
+    </div>
+    <div class="side">
+      <div class="card"><h3 id="title-1"></h3><p id="desc-1"></p></div>
+      <div class="mono" id="formula-1"></div>
+      <div class="note" id="warn-1"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-2">
+    <div class="left">
+      <div class="viz"><svg id="svg-2" viewBox="0 0 760 360"></svg></div>
+      <div class="controls">
+        <button class="btn" data-prev="2">上一步</button>
+        <button class="btn primary" data-next="2">下一步</button>
+        <button class="btn orange" data-auto="2">慢速自动演示</button>
+        <button class="btn" data-reset="2">重置</button>
+        <span class="status" id="status-2"></span>
+      </div>
+    </div>
+    <div class="side">
+      <div class="card"><h3 id="title-2"></h3><p id="desc-2"></p></div>
+      <div class="mono" id="formula-2"></div>
+      <div class="note" id="warn-2"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-3">
+    <div class="left">
+      <div class="viz"><svg id="svg-3" viewBox="0 0 760 360"></svg></div>
+      <div class="controls">
+        <button class="btn" data-prev="3">上一步</button>
+        <button class="btn primary" data-next="3">下一步</button>
+        <button class="btn orange" data-auto="3">慢速自动演示</button>
+        <button class="btn" data-reset="3">重置</button>
+        <span class="status" id="status-3"></span>
+      </div>
+    </div>
+    <div class="side">
+      <div class="card"><h3 id="title-3"></h3><p id="desc-3"></p></div>
+      <div class="mono" id="formula-3"></div>
+      <div class="note" id="warn-3"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-4">
+    <div class="left">
+      <div class="viz"><svg id="svg-4" viewBox="0 0 760 360"></svg></div>
+      <div class="controls">
+        <button class="btn" data-prev="4">上一步</button>
+        <button class="btn primary" data-next="4">下一步</button>
+        <button class="btn orange" data-auto="4">慢速自动演示</button>
+        <button class="btn" data-reset="4">重置</button>
+        <span class="status" id="status-4"></span>
+      </div>
+    </div>
+    <div class="side">
+      <div class="card"><h3 id="title-4"></h3><p id="desc-4"></p></div>
+      <div class="mono" id="formula-4"></div>
+      <div class="note" id="warn-4"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+const TAB_NAMES = ['① 先统一记号','② 一个神经元的线性求和','③ 单样本前向传播','④ 单样本反向传播（重点）','⑤ batch 矩阵化'];
+const current = { tab:0, steps:{1:0,2:0,3:0,4:0}, timers:{} };
+
+const model = {
+  x:[1.0,0.5,-1.0],
+  y:1.0,
+  W1:[[0.8,0.3],[0.3,0.7],[-0.5,0.4]],
+  b1:[0.2,-0.1],
+  W2:[[0.6],[0.9]],
+  b2:[0.1]
+};
+
+function relu(v){ return Math.max(0,v); }
+function sig(v){ return 1/(1+Math.exp(-v)); }
+function round(v,n=4){ return Number(v.toFixed(n)); }
+function calc(){
+  const {x,W1,b1,W2,b2,y} = model;
+  const z1 = [
+    x[0]*W1[0][0] + x[1]*W1[1][0] + x[2]*W1[2][0] + b1[0],
+    x[0]*W1[0][1] + x[1]*W1[1][1] + x[2]*W1[2][1] + b1[1]
+  ];
+  const a1 = z1.map(relu);
+  const z2 = a1[0]*W2[0][0] + a1[1]*W2[1][0] + b2[0];
+  const yhat = sig(z2);
+  const L = 0.5 * (yhat - y) * (yhat - y);
+  const dL_dyhat = yhat - y;
+  const delta2 = dL_dyhat * yhat * (1-yhat);
+  const dW2 = [[a1[0] * delta2],[a1[1] * delta2]];
+  const db2 = [delta2];
+  const dA1 = [delta2 * W2[0][0], delta2 * W2[1][0]];
+  const reluPrime = z1.map(v => v>0?1:0);
+  const delta1 = [dA1[0] * reluPrime[0], dA1[1] * reluPrime[1]];
+  const dW1 = [
+    [x[0]*delta1[0], x[0]*delta1[1]],
+    [x[1]*delta1[0], x[1]*delta1[1]],
+    [x[2]*delta1[0], x[2]*delta1[1]]
+  ];
+  const db1 = [...delta1];
+  return {z1,a1,z2,yhat,L,dL_dyhat,delta2,dW2,db2,dA1,reluPrime,delta1,dW1,db1};
+}
+const C = calc();
+
+const neuronSteps = [
+  {
+    title:'先只看“一个隐藏神经元”在做什么',
+    desc:'这里故意只盯住隐藏层的第 1 个神经元。因为初学者最容易一上来就被“整层一起算”吓到。先弄清楚一个神经元到底怎么算，再扩展到同层多个神经元。',
+    formula:`当前样本 x = [1.0, 0.5, -1.0]\n隐藏层第1个神经元使用 W^[1] 的第1列：\n[w₁₁^[1], w₂₁^[1], w₃₁^[1]]ᵀ = [0.8, 0.3, -0.5]ᵀ\nb₁^[1] = 0.2`,
+    warn:'<b>这一步只讲“一个神经元”。</b> 不是说这一层只有一个神经元，而是为了先把单个线性求和讲明白。'
+  },
+  {
+    title:'先做逐项相乘',
+    desc:'线性求和不是“凭空求和”，而是先把每个输入和它自己的权重一一配对，再做乘法。',
+    formula:`x₁·w₁₁^[1] = 1.0 × 0.8 = 0.8\nx₂·w₂₁^[1] = 0.5 × 0.3 = 0.15\nx₃·w₃₁^[1] = -1.0 × (-0.5) = 0.5`,
+    warn:'<b>初学者最容易漏掉符号。</b> 第三个输入是 -1.0，而权重是 -0.5，所以乘积是 <b>+0.5</b>，不是 -0.5。'
+  },
+  {
+    title:'把乘积加起来，再加偏置',
+    desc:'这一步才叫“线性输出 z”。先把三个乘积加总，再加上该神经元自己的偏置。',
+    formula:`z₁^[1] = 0.8 + 0.15 + 0.5 + 0.2\n       = 1.65`,
+    warn:'<b>z₁^[1] 是隐藏层第 1 个神经元的线性输出。</b> 还没有过激活函数，所以它还不是 a₁^[1]。'
+  },
+  {
+    title:'过激活函数，得到 a₁^[1]',
+    desc:'这里用 ReLU。当 z>0 时，ReLU(z)=z；当 z≤0 时，ReLU(z)=0。',
+    formula:`a₁^[1] = ReLU(z₁^[1]) = ReLU(1.65) = 1.65`,
+    warn:'<b>先分清 z 和 a。</b> z 是线性部分的输出，a 是激活之后的输出。它们可以相同，也可以不同，取决于激活函数和 z 的值。'
+  },
+  {
+    title:'同一层的另一个神经元会得到 z₂^[1]',
+    desc:'隐藏层第 2 个神经元用的是 W^[1] 的第 2 列和 b₂^[1]，所以它得到的是 z₂^[1]，不是“下一层”。',
+    formula:`z₂^[1] = 1.0×0.3 + 0.5×0.7 + (-1.0)×0.4 + (-0.1)\n       = 0.15\na₂^[1] = ReLU(0.15) = 0.15`,
+    warn:'<b>这一步专门纠正一个常见误区：</b> z₁^[1] 和 z₂^[1] 是 <b>同一层</b> 两个神经元的线性输出；真正下一层的是 z₁^[2]。'
+  }
+];
+
+const forwardSteps = [
+  {
+    title:'先把“这一层算什么”说清楚',
+    desc:'现在不再只看一个神经元，而是把整层一起看。隐藏层有 2 个神经元，所以 z^[1] 是一个 1×2 行向量。',
+    formula:`x ∈ R^(1×3)\nW^[1] ∈ R^(3×2), b^[1] ∈ R^(1×2)\nz^[1] = xW^[1] + b^[1]  → 形状 1×2`,
+    warn:'<b>这一页仍然只算一个样本。</b> 不是因为 batch 不重要，而是先把单样本讲透，后面再自然扩到 batch。'
+  },
+  {
+    title:'先算隐藏层的线性输出 z^[1]',
+    desc:'同层两个神经元同时算，所以一次得到两个数。',
+    formula:`z^[1] = [z₁^[1], z₂^[1]] = [1.65, 0.15]`,
+    warn:'<b>同一层有几个神经元，z^[1] 就有几个分量。</b> 这里隐藏层有 2 个神经元，所以 z^[1] 的长度是 2。'
+  },
+  {
+    title:'对隐藏层逐元素做激活，得到 a^[1]',
+    desc:'ReLU 是逐元素作用的，不会把两个神经元的值重新混在一起。',
+    formula:`a^[1] = ReLU(z^[1]) = [ReLU(1.65), ReLU(0.15)] = [1.65, 0.15]`,
+    warn:'<b>激活函数不改变“谁是谁”的身份。</b> z₁^[1] 变成 a₁^[1]，z₂^[1] 变成 a₂^[1]。'
+  },
+  {
+    title:'再算输出层的线性输出 z₁^[2]',
+    desc:'输出层只有 1 个神经元，所以输出层的线性输出只有一个数。',
+    formula:`z₁^[2] = a^[1]W^[2] + b^[2]\n      = 1.65×0.6 + 0.15×0.9 + 0.1\n      = 1.225`,
+    warn:'<b>这时候才进入第 2 层。</b> 所以这里写的是 z₁^[2]，而不是 z₂。'
+  },
+  {
+    title:'输出预测值 ŷ，再计算损失',
+    desc:'这里用 sigmoid 做输出激活，再用单样本 MSE 损失。',
+    formula:`ŷ = sigmoid(z₁^[2]) = sigmoid(1.225) ≈ 0.7729\nL = 1/2(ŷ - y)^2 = 1/2(0.7729 - 1)^2 ≈ 0.0258`,
+    warn:'<b>为什么这里先不讲 batch loss？</b> 因为当前目标是先把“单样本的一次前向 + 一次反向”真正讲懂。'
+  }
+];
+
+const backwardSteps = [
+  {
+    title:'反向传播先从损失 L 开始',
+    desc:'反向传播的方向和前向相反：前向是 x → ... → ŷ → L；反向是 L → ... → 参数。它不是“倒着再算一遍前向”，而是用链式法则回传梯度。',
+    formula:`已知：y = 1,  ŷ ≈ 0.7729,  L ≈ 0.0258\n目标：求 ∂L/∂W^[2], ∂L/∂b^[2], ∂L/∂W^[1], ∂L/∂b^[1]`,
+    warn:'<b>这一步只讲方向。</b> 先接受一个事实：梯度一定从损失开始，因为只有损失告诉我们“现在错了多少”。'
+  },
+  {
+    title:'第1步：先求 ∂L/∂ŷ',
+    desc:'损失写成 L = 1/2(ŷ-y)^2，所以先对 ŷ 求导。',
+    formula:`∂L/∂ŷ = ŷ - y = 0.7729 - 1 = -0.2271`,
+    warn:'<b>这里还没碰到 W。</b> 先只在损失函数这一层求局部导数。初学者不要一上来就跳去求 ∂L/∂W。'
+  },
+  {
+    title:'第2步：把梯度从 ŷ 传到 z₁^[2]',
+    desc:'因为 ŷ = sigmoid(z₁^[2])，所以还要乘上 sigmoid 的导数。我们把 ∂L/∂z₁^[2] 记成 δ^[2]。',
+    formula:`σ'(z) = σ(z)(1-σ(z))\nδ^[2] = ∂L/∂z₁^[2] = ∂L/∂ŷ · ∂ŷ/∂z₁^[2]\n      = (ŷ-y)·ŷ(1-ŷ)\n      ≈ -0.03985`,
+    warn:'<b>δ^[2] 不是新发明的神秘量。</b> 它只是“这一层线性输出 z^[2] 的梯度”写成一个短名字。'
+  },
+  {
+    title:'第3步：先得到输出层参数的梯度',
+    desc:'输出层的线性式是 z₁^[2] = a^[1]W^[2] + b^[2]。因此对 W^[2] 的梯度，就是“输入到这一层的量”乘以 δ^[2]。',
+    formula:`∂L/∂W^[2] = (a^[1])ᵀ δ^[2]\n          = [1.65, 0.15]ᵀ × (-0.03985)\n          = [[-0.06575], [-0.00598]]\n∂L/∂b^[2] = δ^[2] = -0.03985`,
+    warn:'<b>这一步很关键：</b> 对某层权重的梯度，总是和“进入这一层的输入”有关。输出层的输入是 a^[1]，所以这里出现的是 a^[1]。'
+  },
+  {
+    title:'第4步：把梯度继续传回隐藏层激活 a^[1]',
+    desc:'输出层算完后，还要把“上游的责任”传回隐藏层。',
+    formula:`∂L/∂a^[1] = δ^[2](W^[2])ᵀ\n         = -0.03985 × [0.6, 0.9]\n         = [-0.02391, -0.03586]`,
+    warn:'<b>这里只是传到 a^[1]。</b> 还没有传到 z^[1]，因为中间还隔着一个 ReLU。'
+  },
+  {
+    title:'第5步：穿过 ReLU，得到 δ^[1]',
+    desc:'因为 a^[1] = ReLU(z^[1])，所以还要逐元素乘上 ReLU 的导数。',
+    formula:`ReLU'(z) = 1 (z>0), 否则为 0\nz^[1] = [1.65, 0.15]，两者都 > 0\n所以 δ^[1] = ∂L/∂z^[1] = ∂L/∂a^[1] ⊙ ReLU'(z^[1])\n         = [-0.02391, -0.03586]`,
+    warn:'<b>这就是“逐元素乘”的来源。</b> 因为 ReLU 是逐元素作用的，所以它的导数也逐元素作用。'
+  },
+  {
+    title:'第6步：得到第一层参数的梯度',
+    desc:'第一层的线性式是 z^[1] = xW^[1] + b^[1]。所以对 W^[1] 的梯度，要用最原始输入 x 和 δ^[1]。',
+    formula:`∂L/∂W^[1] = xᵀ δ^[1]\n= [1.0, 0.5, -1.0]ᵀ × [-0.02391, -0.03586]\n= [[-0.02391, -0.03586],\n   [-0.01195, -0.01793],\n   [ 0.02391,  0.03586]]\n∂L/∂b^[1] = δ^[1] = [-0.02391, -0.03586]`,
+    warn:'<b>到这里才真正回到第一层参数。</b> 这正是“链式法则一层一层传回来”的含义。'
+  },
+  {
+    title:'最后一步：参数更新是反向传播之后的事',
+    desc:'反向传播的任务只是把梯度求出来。参数更新是下一步。',
+    formula:`W ← W - η · ∂L/∂W\nb ← b - η · ∂L/∂b`,
+    warn:'<b>别把“求梯度”和“更新参数”混成一件事。</b> 反向传播负责前者，优化器负责后者。'
+  }
+];
+
+const batchSteps = [
+  {
+    title:'从单样本扩到 batch，先只变一件事：把 x 换成 X',
+    desc:'如果一个样本是一行，那么 m 个样本就堆成 m 行。这个约定会让前向和反向的矩阵式非常统一。',
+    formula:`单样本：x ∈ R^(1×3)\nbatch： X ∈ R^(m×3)\n\nZ^[1] = XW^[1] + b^[1]   → 形状 m×2\nA^[1] = ReLU(Z^[1])\nZ^[2] = A^[1]W^[2] + b^[2] → 形状 m×1\nŶ = sigmoid(Z^[2])`,
+    warn:'<b>这里的 b^[1], b^[2] 是按行广播。</b> 也就是同一层同一个神经元的偏置，会加到 batch 的每个样本上。'
+  },
+  {
+    title:'第一层矩阵乘法到底在干什么',
+    desc:'XW^[1] 不是神秘黑箱。它只是把每个样本对每个隐藏神经元的线性求和，一次性并行算出来。',
+    formula:`X 形状 m×3\nW^[1] 形状 3×2\n所以 XW^[1] 形状 m×2\n\n含义：\n第 i 行 = 第 i 个样本\n第 j 列 = 隐藏层第 j 个神经元的线性输出`,
+    warn:'<b>这一步专门防混淆：</b> 在 row-batch 写法里，<b>行对应样本</b>，<b>列对应该层神经元</b>。'
+  },
+  {
+    title:'batch 版反向传播和单样本版只差“把每个样本加总 / 平均”',
+    desc:'本质链条没有变，只是每一步不再是单个数或单行，而是整块矩阵。',
+    formula:`Δ^[2] = ∂L/∂Z^[2]\n∂L/∂W^[2] = (A^[1])ᵀ Δ^[2]\n∂L/∂b^[2] = row_sum(Δ^[2])\n\nΔ^[1] = (Δ^[2](W^[2])ᵀ) ⊙ ReLU'(Z^[1])\n∂L/∂W^[1] = Xᵀ Δ^[1]\n∂L/∂b^[1] = row_sum(Δ^[1])`,
+    warn:'<b>如果损失定义成 batch 平均值，</b> 最后这些梯度通常还要再除以 m。写代码时一定先确认你的 loss 是“求和”还是“平均”。'
+  }
+];
+
+const panels = {1: neuronSteps, 2: forwardSteps, 3: backwardSteps, 4: batchSteps};
+
+function svgEl(id){ return document.getElementById('svg-'+id); }
+function fmt(v,n=4){ return (typeof v==='number') ? Number(v.toFixed(n)).toString() : v; }
+function line(x1,y1,x2,y2,stroke,width=2,dash=''){ return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${width}" ${dash?`stroke-dasharray="${dash}"`:''} />`; }
+function arrow(x1,y1,x2,y2,stroke,width=2,dash=''){ return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${width}" marker-end="url(#arr)" ${dash?`stroke-dasharray="${dash}"`:''} />`; }
+function circle(cx,cy,r,fill,stroke,w=2){ return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="${w}"/>`; }
+function rect(x,y,w,h,rx,fill,stroke,sw=2){ return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`; }
+function text(x,y,str,size=13,color='var(--text)',anchor='middle',weight=500){ return `<text x="${x}" y="${y}" fill="${color}" font-size="${size}" text-anchor="${anchor}" font-weight="${weight}" dominant-baseline="middle" font-family="var(--sans)">${str}</text>`; }
+function mono(x,y,str,size=12,color='var(--muted)',anchor='middle',weight=500){ return `<text x="${x}" y="${y}" fill="${color}" font-size="${size}" text-anchor="${anchor}" font-weight="${weight}" dominant-baseline="middle" font-family="var(--mono)">${str}</text>`; }
+function defs(){ return `<defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>`; }
+
+function drawNotation(){
+  const s = svgEl(0); let h = defs();
+  const P={x1:[95,95],x2:[95,180],x3:[95,265],h1:[320,130],h2:[320,230],o1:[545,180],loss:[675,180]};
+  const nodes=[['x₁',P.x1],['x₂',P.x2],['x₃',P.x3]];
+  for(const [lbl,[x,y]] of nodes){ h+=circle(x,y,24,'var(--panel)','var(--border2)'); h+=text(x,y-3,lbl,13,'var(--text)'); }
+  ['x1','x2','x3'].forEach((k,idx)=>{ const p=P['x'+(idx+1)]; h+=text(p[0],p[1]+38,'输入',11,'var(--muted)'); });
+  [[P.x1,P.h1],[P.x1,P.h2],[P.x2,P.h1],[P.x2,P.h2],[P.x3,P.h1],[P.x3,P.h2]].forEach(([a,b])=> h+=line(a[0]+24,a[1],b[0]-28,b[1],'var(--border2)',1.8));
+  [[P.h1,P.o1],[P.h2,P.o1]].forEach(([a,b])=> h+=line(a[0]+26,a[1],b[0]-28,b[1],'var(--border2)',1.8));
+  h+=line(P.o1[0]+24,P.o1[1],P.loss[0]-28,P.loss[1],'var(--border2)',1.8);
+  h+=circle(P.h1[0],P.h1[1],28,'var(--blueBg)','var(--blue)'); h+=text(P.h1[0],P.h1[1]-8,'z₁^[1]',13,'var(--blue)'); h+=mono(P.h1[0],P.h1[1]+11,'a₁^[1]',11,'var(--blue)');
+  h+=circle(P.h2[0],P.h2[1],28,'var(--blueBg)','var(--blue)'); h+=text(P.h2[0],P.h2[1]-8,'z₂^[1]',13,'var(--blue)'); h+=mono(P.h2[0],P.h2[1]+11,'a₂^[1]',11,'var(--blue)');
+  h+=circle(P.o1[0],P.o1[1],30,'var(--orangeBg)','var(--orange)'); h+=text(P.o1[0],P.o1[1]-8,'z₁^[2]',13,'var(--orange)'); h+=mono(P.o1[0],P.o1[1]+11,'ŷ',12,'var(--orange)');
+  h+=circle(P.loss[0],P.loss[1],28,'var(--redBg)','var(--red)'); h+=text(P.loss[0],P.loss[1],'L',16,'var(--red)', 'middle',700);
+  h+=text(320,324,'上标 [1] / [2] 表示层号；下标 1 / 2 表示该层第几个神经元',12,'var(--muted)');
+  s.innerHTML=h;
+}
+
+function drawNeuron(step){
+  const s = svgEl(1); let h = defs();
+  const xPos=[[95,90],[95,170],[95,250]], wPos=[[245,90],[245,170],[245,250]], sum=[430,170], act=[600,170];
+  const hiMul=step>=1, hiSum=step>=2, hiAct=step>=3, showPeer=step>=4;
+  for(let i=0;i<3;i++){
+    const [x,y]=xPos[i], [wx,wy]=wPos[i];
+    h+=circle(x,y,22,step===0?'var(--panel)':'var(--blueBg)',step===0?'var(--border2)':'var(--blue)');
+    h+=text(x,y-5,'x'+(i+1),13,'var(--text)'); h+=mono(x,y+10,fmt(model.x[i],1),11,'var(--muted)');
+    h+=circle(wx,wy,22,hiMul?'var(--orangeBg)':'var(--panel)',hiMul?'var(--orange)':'var(--border2)');
+    h+=text(wx,wy-5,['w₁₁^[1]','w₂₁^[1]','w₃₁^[1]'][i],11,hiMul?'var(--orange)':'var(--text)');
+    h+=mono(wx,wy+11,fmt([0.8,0.3,-0.5][i],1),11,'var(--muted)');
+    h+=arrow(x+22,y,wx-24,wy,'var(--border2)',1.6);
+    h+=arrow(wx+22,wy,sum[0]-28,sum[1],'var(--border2)',1.6);
+    if(hiMul){ h+=mono(340, (wy+sum[1])/2 + (i-1)*10, ['0.8','0.15','0.5'][i],11,'var(--orange)'); }
+  }
+  h+=circle(245,320,20,hiSum?'var(--orangeBg)':'var(--panel)',hiSum?'var(--orange)':'var(--border2)'); h+=text(245,315,'b',13,'var(--text)'); h+=mono(245,329,'0.2',11,'var(--muted)');
+  h+=arrow(265,320,sum[0]-22,sum[1]+20,'var(--border2)',1.6,'4 3');
+  h+=circle(sum[0],sum[1],30,hiSum?'var(--orangeBg)':'var(--panel)',hiSum?'var(--orange)':'var(--border2)',2.2); h+=text(sum[0],sum[1],'Σ + b',14,hiSum?'var(--orange)':'var(--text)');
+  if(hiSum){ h+=mono(sum[0],sum[1]+42,'z₁^[1] = 1.65',12,'var(--orange)'); }
+  h+=arrow(sum[0]+30,sum[1],act[0]-30,act[1],hiAct?'var(--green)':'var(--border2)',2);
+  h+=circle(act[0],act[1],30,hiAct?'var(--greenBg)':'var(--panel)',hiAct?'var(--green)':'var(--border2)',2.2); h+=text(act[0],act[1],'ReLU',14,hiAct?'var(--green)':'var(--text)');
+  if(hiAct){ h+=mono(act[0],act[1]+42,'a₁^[1] = 1.65',12,'var(--green)'); }
+  if(showPeer){
+    h+=circle(600,70,26,'var(--blueBg)','var(--blue)',2.2); h+=text(600,62,'z₂^[1]',13,'var(--blue)'); h+=mono(600,82,'a₂^[1]=0.15',11,'var(--blue)');
+    h+=text(600,25,'同一层的另一个神经元',12,'var(--muted)');
+  }
+  h+=text(95,38,'输入',12,'var(--muted)'); h+=text(245,38,'该神经元使用的权重',12,'var(--muted)'); h+=text(430,123,'线性输出 z₁^[1]',12,'var(--muted)'); h+=text(600,123,'激活输出 a₁^[1]',12,'var(--muted)');
+  s.innerHTML=h;
+}
+
+function drawForward(step){
+  const s = svgEl(2); let h = defs();
+  const I=[[95,95],[95,180],[95,265]], H=[[330,135],[330,235]], O=[570,180], Loss=[695,180];
+  const z1Ready=step>=1, a1Ready=step>=2, z2Ready=step>=3, lossReady=step>=4;
+  I.forEach((p,idx)=>{ h+=circle(p[0],p[1],24,'var(--panel)','var(--border2)'); h+=text(p[0],p[1]-4,'x'+(idx+1),13,'var(--text)'); h+=mono(p[0],p[1]+10,fmt(model.x[idx],1),11,'var(--muted)'); });
+  [[0,0],[0,1],[1,0],[1,1],[2,0],[2,1]].forEach(([i,j])=> h+=arrow(I[i][0]+24,I[i][1],H[j][0]-28,H[j][1], step>=1?'var(--blue)':'var(--border2)', step>=1?2:1.6));
+  H.forEach((p,idx)=>{
+    const fill = a1Ready ? 'var(--greenBg)' : z1Ready ? 'var(--orangeBg)' : 'var(--panel)';
+    const stroke = a1Ready ? 'var(--green)' : z1Ready ? 'var(--orange)' : 'var(--border2)';
+    h+=circle(p[0],p[1],32,fill,stroke,2.2);
+    h+=text(p[0],p[1]-10,'z'+(idx+1)+'^[1]',13, z1Ready||a1Ready ? 'var(--orange)' : 'var(--text)');
+    h+=mono(p[0],p[1]+12, a1Ready ? 'a'+(idx+1)+'^[1]='+fmt(C.a1[idx],2) : z1Ready ? fmt(C.z1[idx],2) : '?', 11, a1Ready ? 'var(--green)' : z1Ready ? 'var(--orange)' : 'var(--muted)');
+  });
+  [[0],[1]].forEach(([i])=> h+=arrow(H[i][0]+32,H[i][1],O[0]-32,O[1], step>=3?'var(--blue)':'var(--border2)', step>=3?2:1.6));
+  h+=circle(O[0],O[1],34, lossReady ? 'var(--greenBg)' : z2Ready ? 'var(--orangeBg)' : 'var(--panel)', lossReady ? 'var(--green)' : z2Ready ? 'var(--orange)' : 'var(--border2)', 2.2);
+  h+=text(O[0],O[1]-10,'z₁^[2]',13, z2Ready||lossReady ? 'var(--orange)' : 'var(--text)');
+  h+=mono(O[0],O[1]+12, lossReady ? 'ŷ='+fmt(C.yhat,4) : z2Ready ? fmt(C.z2,3) : '?', 11, lossReady ? 'var(--green)' : z2Ready ? 'var(--orange)' : 'var(--muted)');
+  h+=arrow(O[0]+34,O[1],Loss[0]-28,Loss[1], lossReady?'var(--red)':'var(--border2)', lossReady?2:1.6);
+  h+=circle(Loss[0],Loss[1],28, lossReady?'var(--redBg)':'var(--panel)', lossReady?'var(--red)':'var(--border2)',2.2); h+=text(Loss[0],Loss[1]-2,'L',16, lossReady?'var(--red)':'var(--text)'); if(lossReady) h+=mono(Loss[0],Loss[1]+16, fmt(C.L,4),10,'var(--red)');
+  h+=text(330,320,'隐藏层：z₁^[1], z₂^[1] 是同一层两个神经元的线性输出',12,'var(--muted)');
+  s.innerHTML=h;
+}
+
+function drawBackward(step){
+  const s = svgEl(3); let h = defs();
+  const X=[95,180], Z1a=[290,125], Z1b=[290,235], Z2=[510,180], L=[675,180];
+  h+=circle(X[0],X[1],26,'var(--panel)','var(--border2)'); h+=text(X[0],X[1]-5,'x',13,'var(--text)'); h+=mono(X[0],X[1]+11,'[1.0,0.5,-1.0]',10,'var(--muted)');
+  h+=circle(Z1a[0],Z1a[1],32, step>=5 ? 'var(--greenBg)' : 'var(--panel2)', step>=5 ? 'var(--green)' : 'var(--border2)', 2.2);
+  h+=text(Z1a[0],Z1a[1]-10,'z₁^[1]',13, step>=5 ? 'var(--green)' : 'var(--text)'); h+=mono(Z1a[0],Z1a[1]+12, step>=5 ? 'δ₁^[1]='+fmt(C.delta1[0],4) : '1.65', 10, step>=5 ? 'var(--green)' : 'var(--muted)');
+  h+=circle(Z1b[0],Z1b[1],32, step>=5 ? 'var(--greenBg)' : 'var(--panel2)', step>=5 ? 'var(--green)' : 'var(--border2)', 2.2);
+  h+=text(Z1b[0],Z1b[1]-10,'z₂^[1]',13, step>=5 ? 'var(--green)' : 'var(--text)'); h+=mono(Z1b[0],Z1b[1]+12, step>=5 ? 'δ₂^[1]='+fmt(C.delta1[1],4) : '0.15', 10, step>=5 ? 'var(--green)' : 'var(--muted)');
+  h+=circle(Z2[0],Z2[1],36, step>=2 ? 'var(--greenBg)' : 'var(--orangeBg)', step>=2 ? 'var(--green)' : 'var(--orange)', 2.4);
+  h+=text(Z2[0],Z2[1]-12,'z₁^[2]',13, step>=2 ? 'var(--green)' : 'var(--orange)'); h+=mono(Z2[0],Z2[1]+8, step>=2 ? 'δ^[2]='+fmt(C.delta2,5) : 'ŷ='+fmt(C.yhat,4), 10, step>=2 ? 'var(--green)' : 'var(--orange)');
+  h+=circle(L[0],L[1],30, step>=1 ? 'var(--redBg)' : 'var(--panel)', step>=1 ? 'var(--red)' : 'var(--border2)',2.2); h+=text(L[0],L[1],'L',16, step>=1 ? 'var(--red)' : 'var(--text)');
+  h+=arrow(X[0]+26,X[1]-16,Z1a[0]-34,Z1a[1],'var(--border2)',1.6); h+=arrow(X[0]+26,X[1]+16,Z1b[0]-34,Z1b[1],'var(--border2)',1.6);
+  h+=arrow(Z1a[0]+32,Z1a[1],Z2[0]-36,Z2[1]-18, step>=4 ? 'var(--green)' : 'var(--border2)', step>=4 ? 2.2 : 1.6);
+  h+=arrow(Z1b[0]+32,Z1b[1],Z2[0]-36,Z2[1]+18, step>=4 ? 'var(--green)' : 'var(--border2)', step>=4 ? 2.2 : 1.6);
+  h+=arrow(Z2[0]+36,Z2[1],L[0]-30,L[1], step>=1 ? 'var(--green)' : 'var(--border2)', step>=1 ? 2.2 : 1.6);
+  if(step>=3){ h+=rect(70,42,180,46,12,'var(--greenBg)','var(--green)',2); h+=text(160,58,'输出层参数梯度',12,'var(--green)'); h+=mono(160,74,'∂L/∂W^[2], ∂L/∂b^[2]',10,'var(--green)'); }
+  if(step>=6){ h+=rect(70,270,180,56,12,'var(--greenBg)','var(--green)',2); h+=text(160,288,'第一层参数梯度',12,'var(--green)'); h+=mono(160,306,'∂L/∂W^[1], ∂L/∂b^[1]',10,'var(--green)'); }
+  h+=text(380,328, step===0 ? '先记住方向：L → z^[2] → a^[1] → z^[1] → 参数' : '绿色表示“梯度正在往回传”', 12, 'var(--muted)');
+  s.innerHTML=h;
+}
+
+function drawBatch(step){
+  const s = svgEl(4); let h = defs();
+  const startX=45, startY=70, cw=72, ch=36;
+  const X=[['x11','x12','x13'],['x21','x22','x23'],['x31','x32','x33']];
+  const W=[['w11','w12'],['w21','w22'],['w31','w32']];
+  const Z=[['z11','z12'],['z21','z22'],['z31','z32']];
+  function drawMat(mat,x,y,title,sub,color,highlightCols=[]){
+    h+=text(x+mat[0].length*cw/2, y-26, title, 13, 'var(--text)'); h+=text(x+mat[0].length*cw/2, y-9, sub, 11, 'var(--muted)');
+    const fillVar = `var(--${color}Bg)`;
+    const strokeVar = `var(--${color})`;
+    for(let r=0;r<mat.length;r++) for(let c=0;c<mat[0].length;c++){
+      const hi = highlightCols.includes(c);
+      h+=rect(x+c*cw,y+r*ch,cw-6,ch-6,10, hi? fillVar:'var(--panel)', hi?strokeVar:'var(--border2)', hi?2.2:1.5);
+      h+=mono(x+c*cw+(cw-6)/2,y+r*ch+(ch-6)/2,mat[r][c],12, hi?strokeVar:'var(--text)');
+    }
+  }
+  drawMat(X, startX, startY, 'X（batch 输入）','m×3：一行一个样本', step>=1?'blue':'blue', step===1?[0,1,2]:[]);
+  h+=text(288,128,'×',24,'var(--text)');
+  drawMat(W, 330, startY, 'W^[1]','3×2：一列对应一个隐藏神经元', step>=1?'orange':'orange', step===1?[0,1]:[]);
+  h+=text(520,128,'=',24,'var(--text)');
+  drawMat(Z, 560, startY, 'Z^[1]=XW^[1]','m×2：一列对应 z₁^[1] / z₂^[1]', step>=2?'green':'green', step>=2?[0,1]:[]);
+  if(step>=1){ h+=text(380,280,'列 1 产生同层的 z₁^[1]，列 2 产生同层的 z₂^[1]',12,'var(--muted)'); }
+  if(step>=2){ h+=text(380,304,'所以 z₁^[1], z₂^[1] 是“同一层不同列”，不是前后两层',12,'var(--green)'); }
+  s.innerHTML=h;
+}
+
+function renderPanel(id){
+  if(id===1){
+    const st=current.steps[1], item=neuronSteps[st];
+    drawNeuron(st);
+    document.getElementById('title-1').textContent=item.title;
+    document.getElementById('desc-1').textContent=item.desc;
+    document.getElementById('formula-1').textContent=item.formula;
+    document.getElementById('warn-1').innerHTML=item.warn;
+    document.getElementById('status-1').textContent=`步骤 ${st+1} / ${neuronSteps.length} · 建议手动点击，先把每一步想明白`;
+  }
+  if(id===2){
+    const st=current.steps[2], item=forwardSteps[st];
+    drawForward(st);
+    document.getElementById('title-2').textContent=item.title;
+    document.getElementById('desc-2').textContent=item.desc;
+    document.getElementById('formula-2').textContent=item.formula;
+    document.getElementById('warn-2').innerHTML=item.warn;
+    document.getElementById('status-2').textContent=`步骤 ${st+1} / ${forwardSteps.length} · 从同层两个 z^[1] 到下一层 z^[2]`;
+  }
+  if(id===3){
+    const st=current.steps[3], item=backwardSteps[st];
+    drawBackward(st);
+    document.getElementById('title-3').textContent=item.title;
+    document.getElementById('desc-3').textContent=item.desc;
+    document.getElementById('formula-3').textContent=item.formula;
+    document.getElementById('warn-3').innerHTML=item.warn;
+    document.getElementById('status-3').textContent=`步骤 ${st+1} / ${backwardSteps.length} · 这里是重点，建议逐步看，不要一次跳完`;
+  }
+  if(id===4){
+    const st=current.steps[4], item=batchSteps[st];
+    drawBatch(st);
+    document.getElementById('title-4').textContent=item.title;
+    document.getElementById('desc-4').textContent=item.desc;
+    document.getElementById('formula-4').textContent=item.formula;
+    document.getElementById('warn-4').innerHTML=item.warn;
+    document.getElementById('status-4').textContent=`步骤 ${st+1} / ${batchSteps.length} · 用 batch 只是把单样本并行起来，逻辑没有变`;
+  }
+}
+
+function stopAuto(id){ if(current.timers[id]){ clearInterval(current.timers[id]); current.timers[id]=null; } }
+function autoPlay(id){
+  stopAuto(id);
+  current.timers[id]=setInterval(()=>{
+    const max=panels[id].length-1;
+    if(current.steps[id] >= max){ stopAuto(id); return; }
+    current.steps[id] += 1; renderPanel(id);
+  }, 2600);
+}
+
+function switchTab(idx){
+  Object.keys(current.timers).forEach(k=>stopAuto(Number(k)));
+  current.tab=idx;
+  document.querySelectorAll('.tab').forEach((el,i)=> el.classList.toggle('active', i===idx));
+  document.querySelectorAll('.panel').forEach((el,i)=> el.classList.toggle('active', i===idx));
+}
+
+function initTabs(){
+  const wrap=document.getElementById('tabs');
+  TAB_NAMES.forEach((name,i)=>{
+    const b=document.createElement('button');
+    b.className='tab'+(i===0?' active':'');
+    b.textContent=name;
+    b.onclick=()=>switchTab(i);
+    wrap.appendChild(b);
+  });
+}
+
+function initControls(){
+  document.querySelectorAll('[data-prev]').forEach(btn=>btn.onclick=()=>{ const id=Number(btn.dataset.prev); stopAuto(id); current.steps[id]=Math.max(0,current.steps[id]-1); renderPanel(id); });
+  document.querySelectorAll('[data-next]').forEach(btn=>btn.onclick=()=>{ const id=Number(btn.dataset.next); stopAuto(id); current.steps[id]=Math.min(panels[id].length-1,current.steps[id]+1); renderPanel(id); });
+  document.querySelectorAll('[data-reset]').forEach(btn=>btn.onclick=()=>{ const id=Number(btn.dataset.reset); stopAuto(id); current.steps[id]=0; renderPanel(id); });
+  document.querySelectorAll('[data-auto]').forEach(btn=>btn.onclick=()=>{ const id=Number(btn.dataset.auto); autoPlay(id); });
+}
+
+initTabs();
+initControls();
+drawNotation();
+renderPanel(1); renderPanel(2); renderPanel(3); renderPanel(4);
+</script>
+</body>
+</html>

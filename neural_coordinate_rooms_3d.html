@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>神经网络分层坐标系：3D 直觉演示</title>
+  <style>
+    :root {
+      --bg: #f6f8fc;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --line: #dbe3f0;
+      --primary: #2563eb;
+      --primary2: #7c3aed;
+      --accent: #ef4444;
+      --ok: #059669;
+      --shadow: 0 10px 30px rgba(15,23,42,.08);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(180deg, #f8fbff 0%, #f3f6fb 100%);
+      color: var(--text);
+    }
+    .wrap {
+      max-width: 1450px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .hero, .card {
+      background: var(--card);
+      border: 1px solid #e7edf7;
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+    }
+    .hero {
+      padding: 26px 28px;
+      margin-bottom: 18px;
+      background: linear-gradient(135deg, #eef6ff 0%, #faf5ff 100%);
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: 30px;
+      line-height: 1.22;
+    }
+    h2 {
+      margin: 0 0 8px;
+      font-size: 22px;
+    }
+    h3 {
+      margin: 0 0 6px;
+      font-size: 17px;
+    }
+    p { line-height: 1.8; }
+    .muted { color: var(--muted); }
+    .tagrow {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .tag {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid #e5e7eb;
+      background: rgba(255,255,255,.8);
+      font-size: 13px;
+      color: #334155;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+    .side, .main { display: grid; gap: 18px; }
+    .card { padding: 18px; }
+    .controls {
+      display: grid;
+      gap: 12px;
+    }
+    .control {
+      padding: 12px;
+      border: 1px solid #e8edf7;
+      background: #f8fafc;
+      border-radius: 14px;
+    }
+    .control label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      color: #475569;
+      font-size: 14px;
+    }
+    .control input[type="range"] { width: 100%; }
+    select, button {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #d8e1f1;
+      font-size: 14px;
+      background: white;
+    }
+    .btnrow {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    button {
+      cursor: pointer;
+      background: #111827;
+      color: white;
+      border: none;
+    }
+    button.secondary { background: #eef2ff; color: #312e81; }
+    .scene-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+    }
+    .scene-card {
+      border: 1px solid #e8edf7;
+      border-radius: 18px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .scene-head {
+      padding: 12px 14px;
+      border-bottom: 1px solid #eef2f7;
+      background: linear-gradient(180deg, #fbfdff 0%, #f8fbff 100%);
+    }
+    .scene-sub { color: var(--muted); font-size: 13px; line-height: 1.7; }
+    canvas {
+      width: 100%;
+      height: 360px;
+      display: block;
+      background:
+        linear-gradient(to right, rgba(148,163,184,.10) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148,163,184,.10) 1px, transparent 1px);
+      background-size: 34px 34px;
+    }
+    .formula {
+      background: #0f172a;
+      color: #e5efff;
+      padding: 14px 16px;
+      border-radius: 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.85;
+      overflow: auto;
+    }
+    .mini-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .mini {
+      border: 1px dashed #d8e1f1;
+      border-radius: 14px;
+      padding: 12px;
+      background: #fbfdff;
+    }
+    .hint {
+      margin-top: 10px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      line-height: 1.75;
+      font-size: 14px;
+    }
+    .legend {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #f8fafc;
+      border: 1px solid #edf2fb;
+      font-size: 13px;
+      color: #475569;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .table td, .table th {
+      border-bottom: 1px solid #eef2f7;
+      padding: 8px 6px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .bars { display: grid; gap: 10px; }
+    .bar-row { display: grid; grid-template-columns: 88px 1fr 56px; gap: 10px; align-items: center; }
+    .bar-track {
+      height: 12px;
+      background: #eef2f7;
+      border-radius: 999px;
+      overflow: hidden;
+      position: relative;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--primary), var(--primary2));
+      width: 0;
+    }
+    .sticky {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: #ecfeff;
+      border: 1px solid #a5f3fc;
+      color: #155e75;
+      line-height: 1.75;
+      font-size: 14px;
+    }
+    @media (max-width: 1150px) {
+      .grid { grid-template-columns: 1fr; }
+      .scene-grid { grid-template-columns: 1fr; }
+      .mini-grid { grid-template-columns: 1fr; }
+      canvas { height: 320px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>从“木棍类比”切换到“点云在分层坐标系里重编码” 🧭</h1>
+      <p class="muted">
+        这个页面故意不再用“弹簧拉木棍”的物理想象，而改成更接近矩阵公式的视角：
+        <b>每一层都把上一层的向量，重新编码成下一层的新坐标向量。</b>
+        为了便于看成立体坐标系，这里把输入层、隐藏层1、隐藏层2都固定成 3 个神经元，所以每一层都能画成一个 3D 空间。
+      </p>
+      <div class="tagrow">
+        <div class="tag">单个神经元：向量 → 一个标量</div>
+        <div class="tag">一整层神经元：向量 → 新向量</div>
+        <div class="tag">下一层维度 = 这一层神经元数</div>
+        <div class="tag">显示的是“坐标系重编码”，不是物理拉扯</div>
+      </div>
+    </section>
+
+    <div class="grid">
+      <div class="side">
+        <section class="card">
+          <h2>交互控制</h2>
+          <div class="controls">
+            <div class="control">
+              <label><span>视角旋转（Y轴）</span><strong id="rotYVal">-25°</strong></label>
+              <input id="rotY" type="range" min="-80" max="80" value="-25" step="1" />
+            </div>
+            <div class="control">
+              <label><span>视角俯仰（X轴）</span><strong id="rotXVal">20°</strong></label>
+              <input id="rotX" type="range" min="-75" max="75" value="20" step="1" />
+            </div>
+            <div class="control">
+              <label><span>选择激活函数</span></label>
+              <select id="activation">
+                <option value="tanh">tanh（更适合看正负）</option>
+                <option value="sigmoid">sigmoid（压到 0~1）</option>
+                <option value="relu">ReLU（截断负值）</option>
+              </select>
+            </div>
+            <div class="control">
+              <label><span>选择样本</span><strong id="sampleLabel">样本 #1</strong></label>
+              <input id="sampleIdx" type="range" min="0" max="11" value="0" step="1" />
+            </div>
+            <div class="control">
+              <label><span>数据预设</span></label>
+              <select id="preset">
+                <option value="spiral">螺旋 / 弯曲点云</option>
+                <option value="planes">两片倾斜平面</option>
+                <option value="clusters">两簇扭曲团块</option>
+              </select>
+            </div>
+            <div class="btnrow">
+              <button id="regenBtn">重新生成点云</button>
+              <button id="weightsBtn" class="secondary">换一组层权重</button>
+            </div>
+          </div>
+          <div class="hint">
+            <b>怎么看：</b><br>
+            同一种颜色的点，是同一个样本在三个房间里的位置。<br>
+            你会看到：<b>样本没换，坐标系在一层层换。</b>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>选中样本的“逐层坐标”</h2>
+          <div class="bars" id="bars"></div>
+          <div class="sticky" style="margin-top:12px">
+            这里最重要的观察是：<br>
+            <b>一个神经元只给出一个坐标分量；一整层神经元一起，才给出下一层的完整坐标向量。</b>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>矩阵对应关系</h2>
+          <div class="formula" id="formulaBox"></div>
+          <table class="table" style="margin-top:10px">
+            <tr><th>房间语言</th><th>矩阵语言</th></tr>
+            <tr><td>上一房间中样本的位置</td><td><code>a^(l-1)</code></td></tr>
+            <tr><td>当前层第 j 根“测量木棍”</td><td><code>w_j^(l)</code>（权重向量）</td></tr>
+            <tr><td>这一层所有木棍排成一组</td><td><code>W^(l)</code>（权重矩阵）</td></tr>
+            <tr><td>每根木棍先各自产出一个原始分数</td><td><code>z^(l)=W^(l)a^(l-1)+b^(l)</code></td></tr>
+            <tr><td>激活后变成真正传给下一层的新坐标</td><td><code>a^(l)=σ(z^(l))</code></td></tr>
+          </table>
+        </section>
+      </div>
+
+      <div class="main">
+        <section class="card">
+          <h2>三层坐标系并排看</h2>
+          <p class="muted">
+            这里没有“单个木棍把整个空间弯曲”的意思。更准确地说：<b>每一层里有 3 个神经元，各自输出 1 个标量；三个标量拼起来，就是下一层 3D 坐标。</b>
+          </p>
+          <div class="scene-grid">
+            <div class="scene-card">
+              <div class="scene-head">
+                <h3>输入层空间</h3>
+                <div class="scene-sub">坐标是原始特征 <code>(x₁, x₂, x₃)</code></div>
+              </div>
+              <canvas id="canvas0"></canvas>
+            </div>
+            <div class="scene-card">
+              <div class="scene-head">
+                <h3>隐藏层 1 空间</h3>
+                <div class="scene-sub">坐标是 <code>a^(1)=σ(W^(1)x+b^(1))</code></div>
+              </div>
+              <canvas id="canvas1"></canvas>
+            </div>
+            <div class="scene-card">
+              <div class="scene-head">
+                <h3>隐藏层 2 空间</h3>
+                <div class="scene-sub">坐标是 <code>a^(2)=σ(W^(2)a^(1)+b^(2))</code></div>
+              </div>
+              <canvas id="canvas2"></canvas>
+            </div>
+          </div>
+          <div class="legend">
+            <span><i class="dot" style="background:#111827"></i>坐标轴</span>
+            <span><i class="dot" style="background:#2563eb"></i>普通样本</span>
+            <span><i class="dot" style="background:#ef4444"></i>当前选中样本</span>
+            <span><i class="dot" style="background:#7c3aed"></i>同一类别的点云</span>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>你该怎样把它和真实训练对应起来？</h2>
+          <div class="mini-grid">
+            <div class="mini">
+              <h3>别再想“一个神经元 = 一个房间”</h3>
+              <p class="muted">
+                更准确是：<b>一层神经元 = 一个房间</b>。房间里有很多根“测量木棍”，每根木棍都对同一个样本打一个分。
+              </p>
+            </div>
+            <div class="mini">
+              <h3>单神经元只产出一个轴上的分量</h3>
+              <p class="muted">
+                所以它确实是在做“向量 → 标量”。但一整层一起，就变成“向量 → 新向量”。
+              </p>
+            </div>
+            <div class="mini">
+              <h3>维度为什么会变化？</h3>
+              <p class="muted">
+                因为 <b>当前层神经元数量</b> 决定下一层有多少个坐标分量，也就决定了下一空间的维度。
+              </p>
+            </div>
+            <div class="mini">
+              <h3>训练时改的到底是什么？</h3>
+              <p class="muted">
+                训练不是在移动当前点，而是在改 <code>W,b</code>。参数一改，下一轮前向传播时，样本在后续房间里的坐标就会整体重算。
+              </p>
+            </div>
+          </div>
+          <div class="hint">
+            <b>真正该记住的主线：</b><br>
+            输入样本固定 → 每层按当前参数重新编码 → 得到下一层坐标 → 最后一层读出预测。<br>
+            反向传播不是“物理拉扯”，而是告诉每层：<b>你下次生成坐标时，应该朝哪个方向重编码</b>。
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      const canvases = [
+        document.getElementById('canvas0'),
+        document.getElementById('canvas1'),
+        document.getElementById('canvas2')
+      ];
+      const ctxs = canvases.map(c => c.getContext('2d'));
+      const rotXEl = document.getElementById('rotX');
+      const rotYEl = document.getElementById('rotY');
+      const rotXVal = document.getElementById('rotXVal');
+      const rotYVal = document.getElementById('rotYVal');
+      const activationEl = document.getElementById('activation');
+      const sampleIdxEl = document.getElementById('sampleIdx');
+      const sampleLabel = document.getElementById('sampleLabel');
+      const presetEl = document.getElementById('preset');
+      const barsEl = document.getElementById('bars');
+      const formulaBox = document.getElementById('formulaBox');
+      const regenBtn = document.getElementById('regenBtn');
+      const weightsBtn = document.getElementById('weightsBtn');
+
+      let samples = [];
+      let labels = [];
+      let W1, b1, W2, b2;
+      let selected = 0;
+
+      function resizeCanvas(canvas, ctx) {
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = Math.round(rect.width * DPR);
+        canvas.height = Math.round(rect.height * DPR);
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      }
+
+      function rand(a, b) { return a + Math.random() * (b - a); }
+      function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+      function matVec(W, v, b) {
+        return W.map((row, i) => row.reduce((s, w, j) => s + w * v[j], 0) + (b ? b[i] : 0));
+      }
+
+      function applyAct(v) {
+        const name = activationEl.value;
+        if (name === 'sigmoid') return v.map(x => 1 / (1 + Math.exp(-x)));
+        if (name === 'relu') return v.map(x => Math.max(0, x));
+        return v.map(x => Math.tanh(x));
+      }
+
+      function forwardAll(x) {
+        const z1 = matVec(W1, x, b1);
+        const a1 = applyAct(z1);
+        const z2 = matVec(W2, a1, b2);
+        const a2 = applyAct(z2);
+        return { x, z1, a1, z2, a2 };
+      }
+
+      function randomMatrix(scale=1) {
+        return Array.from({length: 3}, () => Array.from({length: 3}, () => rand(-1.4, 1.4) * scale));
+      }
+      function randomBias(scale=1) {
+        return Array.from({length: 3}, () => rand(-0.6, 0.6) * scale);
+      }
+
+      function regenWeights() {
+        W1 = randomMatrix(1.0);
+        b1 = randomBias(1.0);
+        W2 = randomMatrix(1.0);
+        b2 = randomBias(1.0);
+      }
+
+      function genSpiral() {
+        const pts = [];
+        const ys = [];
+        for (let i = 0; i < 12; i++) {
+          const t = i / 12 * Math.PI * 1.4;
+          const r = 0.6 + 0.1 * i;
+          pts.push([
+            Math.cos(t) * r + rand(-0.08, 0.08),
+            Math.sin(t) * r + rand(-0.08, 0.08),
+            -1 + i * 0.18 + rand(-0.12, 0.12)
+          ]);
+          ys.push(i < 6 ? 0 : 1);
+        }
+        return { pts, ys };
+      }
+
+      function genPlanes() {
+        const pts = [];
+        const ys = [];
+        for (let i = 0; i < 6; i++) {
+          const x = rand(-1.8, 0.2), y = rand(-1.4, 1.4);
+          pts.push([x, y, 0.4 * x - 0.2 * y + rand(-0.15, 0.15)]);
+          ys.push(0);
+        }
+        for (let i = 0; i < 6; i++) {
+          const x = rand(0.2, 1.8), y = rand(-1.4, 1.4);
+          pts.push([x, y, -0.5 * x + 0.3 * y + rand(-0.15, 0.15)]);
+          ys.push(1);
+        }
+        return { pts, ys };
+      }
+
+      function genClusters() {
+        const pts = [];
+        const ys = [];
+        const centers = [[-1.2, -0.7, 0.8], [1.2, 0.7, -0.8]];
+        centers.forEach((c, idx) => {
+          for (let i = 0; i < 6; i++) {
+            pts.push([
+              c[0] + rand(-0.45, 0.45),
+              c[1] + rand(-0.45, 0.45),
+              c[2] + rand(-0.45, 0.45) + 0.2 * Math.sin(i)
+            ]);
+            ys.push(idx);
+          }
+        });
+        return { pts, ys };
+      }
+
+      function regenData() {
+        const p = presetEl.value;
+        const data = p === 'planes' ? genPlanes() : p === 'clusters' ? genClusters() : genSpiral();
+        samples = data.pts;
+        labels = data.ys;
+        sampleIdxEl.max = samples.length - 1;
+        selected = Math.min(selected, samples.length - 1);
+        sampleIdxEl.value = selected;
+      }
+
+      function rotatePoint([x,y,z], ax, ay) {
+        const cx = Math.cos(ax), sx = Math.sin(ax);
+        const cy = Math.cos(ay), sy = Math.sin(ay);
+        let yy = y * cx - z * sx;
+        let zz = y * sx + z * cx;
+        let xx = x * cy + zz * sy;
+        zz = -x * sy + zz * cy;
+        return [xx, yy, zz];
+      }
+
+      function project3D(p, width, height, scale=90) {
+        const ax = parseFloat(rotXEl.value) * Math.PI / 180;
+        const ay = parseFloat(rotYEl.value) * Math.PI / 180;
+        const [x,y,z] = rotatePoint(p, ax, ay);
+        const d = 4.6;
+        const k = scale / (d - z * 0.3);
+        return [width/2 + x * k, height/2 - y * k, z];
+      }
+
+      function drawAxis(ctx, w, h, scale, labels=['1','2','3']) {
+        const origin = [0,0,0];
+        const axes = [
+          {p:[1.7,0,0], color:'#2563eb', label:labels[0]},
+          {p:[0,1.7,0], color:'#059669', label:labels[1]},
+          {p:[0,0,1.7], color:'#111827', label:labels[2]}
+        ];
+        const [ox, oy] = project3D(origin, w, h, scale);
+        axes.forEach(a => {
+          const [px, py] = project3D(a.p, w, h, scale);
+          ctx.strokeStyle = a.color;
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(px, py); ctx.stroke();
+          ctx.fillStyle = a.color;
+          ctx.font = '13px sans-serif';
+          ctx.fillText(a.label, px + 6, py - 4);
+        });
+      }
+
+      function niceRange(points) {
+        let m = 1;
+        points.forEach(p => p.forEach(v => { m = Math.max(m, Math.abs(v)); }));
+        return m * 1.15;
+      }
+
+      function normalizeCloud(points) {
+        const m = niceRange(points);
+        return points.map(p => p.map(v => v / m * 1.5));
+      }
+
+      function drawScene(ctx, canvas, points, titleAxes) {
+        const w = canvas.getBoundingClientRect().width;
+        const h = canvas.getBoundingClientRect().height;
+        ctx.clearRect(0,0,w,h);
+        drawAxis(ctx, w, h, 92, titleAxes);
+
+        const proj = points.map((p, i) => ({
+          idx: i,
+          p,
+          proj: project3D(p, w, h, 92)
+        })).sort((a,b) => a.proj[2] - b.proj[2]);
+
+        proj.forEach(({idx, proj:[px,py,pz]}) => {
+          const sel = idx === selected;
+          const lab = labels[idx];
+          ctx.beginPath();
+          ctx.fillStyle = sel ? '#ef4444' : (lab === 0 ? 'rgba(37,99,235,.85)' : 'rgba(124,58,237,.85)');
+          const r = sel ? 8 : 5.5 + (pz + 2) * 0.4;
+          ctx.arc(px, py, r, 0, Math.PI*2);
+          ctx.fill();
+          if (sel) {
+            ctx.strokeStyle = '#991b1b';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fillStyle = '#991b1b';
+            ctx.font = '12px sans-serif';
+            ctx.fillText(`#${idx+1}`, px + 9, py - 8);
+          }
+        });
+      }
+
+      function setBar(container, label, value, maxAbs=1.8) {
+        const row = document.createElement('div');
+        row.className = 'bar-row';
+        const lab = document.createElement('div');
+        lab.textContent = label;
+        const track = document.createElement('div');
+        track.className = 'bar-track';
+        const fill = document.createElement('div');
+        fill.className = 'bar-fill';
+        const width = clamp(Math.abs(value) / maxAbs * 100, 0, 100);
+        fill.style.width = width + '%';
+        fill.style.background = value >= 0
+          ? 'linear-gradient(90deg, #2563eb, #7c3aed)'
+          : 'linear-gradient(90deg, #ef4444, #f59e0b)';
+        track.appendChild(fill);
+        const num = document.createElement('div');
+        num.textContent = value.toFixed(3);
+        row.appendChild(lab); row.appendChild(track); row.appendChild(num);
+        container.appendChild(row);
+      }
+
+      function renderBars(info) {
+        barsEl.innerHTML = '';
+        const sections = [
+          {title: '输入层 x', vals: info.x},
+          {title: '隐藏层1 线性分数 z^(1)', vals: info.z1},
+          {title: '隐藏层1 坐标 a^(1)', vals: info.a1},
+          {title: '隐藏层2 线性分数 z^(2)', vals: info.z2},
+          {title: '隐藏层2 坐标 a^(2)', vals: info.a2},
+        ];
+        sections.forEach(sec => {
+          const title = document.createElement('h3');
+          title.style.marginTop = '8px';
+          title.textContent = sec.title;
+          barsEl.appendChild(title);
+          sec.vals.forEach((v, i) => setBar(barsEl, `${sec.title.includes('输入') ? '轴' : '神经元'} ${i+1}`, v, 2));
+        });
+      }
+
+      function fmtMat(M) {
+        return '[' + M.map(r => '[' + r.map(v => v.toFixed(2)).join(', ') + ']').join(', ') + ']';
+      }
+      function fmtVec(v) {
+        return '[' + v.map(x => x.toFixed(2)).join(', ') + ']';
+      }
+
+      function renderFormula(info) {
+        formulaBox.textContent =
+`对当前选中样本（#${selected+1}）：
+
+x = ${fmtVec(info.x)}
+
+W^(1) = ${fmtMat(W1)}
+b^(1) = ${fmtVec(b1)}
+z^(1) = W^(1)x + b^(1) = ${fmtVec(info.z1)}
+a^(1) = σ(z^(1)) = ${fmtVec(info.a1)}
+
+W^(2) = ${fmtMat(W2)}
+b^(2) = ${fmtVec(b2)}
+z^(2) = W^(2)a^(1) + b^(2) = ${fmtVec(info.z2)}
+a^(2) = σ(z^(2)) = ${fmtVec(info.a2)}`;
+      }
+
+      function renderAll() {
+        rotXVal.textContent = rotXEl.value + '°';
+        rotYVal.textContent = rotYEl.value + '°';
+        selected = parseInt(sampleIdxEl.value, 10);
+        sampleLabel.textContent = `样本 #${selected+1}`;
+
+        const infos = samples.map(forwardAll);
+        const layer0 = normalizeCloud(infos.map(o => o.x));
+        const layer1 = normalizeCloud(infos.map(o => o.a1));
+        const layer2 = normalizeCloud(infos.map(o => o.a2));
+
+        drawScene(ctxs[0], canvases[0], layer0, ['x₁', 'x₂', 'x₃']);
+        drawScene(ctxs[1], canvases[1], layer1, ['a₁^(1)', 'a₂^(1)', 'a₃^(1)']);
+        drawScene(ctxs[2], canvases[2], layer2, ['a₁^(2)', 'a₂^(2)', 'a₃^(2)']);
+
+        const info = infos[selected];
+        renderBars(info);
+        renderFormula(info);
+      }
+
+      function resizeAll() {
+        canvases.forEach((c, i) => resizeCanvas(c, ctxs[i]));
+        renderAll();
+      }
+
+      [rotXEl, rotYEl, activationEl, sampleIdxEl, presetEl].forEach(el => {
+        el.addEventListener('input', () => {
+          if (el === presetEl) regenData();
+          renderAll();
+        });
+        el.addEventListener('change', () => {
+          if (el === presetEl) regenData();
+          renderAll();
+        });
+      });
+
+      regenBtn.addEventListener('click', () => { regenData(); renderAll(); });
+      weightsBtn.addEventListener('click', () => { regenWeights(); renderAll(); });
+      window.addEventListener('resize', resizeAll);
+
+      regenWeights();
+      regenData();
+      resizeAll();
+    })();
+  </script>
+</body>
+</html>

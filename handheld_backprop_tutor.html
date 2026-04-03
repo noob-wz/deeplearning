@@ -1,381 +1,592 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>神经网络层间数据变换</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<title>神经网络心智地图 - Batch Normalization 拆解器</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-  min-height: 100vh;
-  background: linear-gradient(160deg, #0a0a14 0%, #0f1029 50%, #0a0a14 100%);
-  color: #e0e0e0;
-  font-family: 'DM Sans', sans-serif;
-  padding: 24px 16px;
-}
-.container { max-width: 520px; margin: 0 auto; }
-h1 {
-  font-size: 20px; font-weight: 700; text-align: center;
-  letter-spacing: 1px; font-family: 'DM Mono', monospace;
-  background: linear-gradient(135deg, #64b4ff, #a78bfa);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  margin-bottom: 6px;
-}
-.subtitle { color: #666; font-size: 13px; text-align: center; margin-bottom: 20px; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    min-height: 100vh;
+    background: #141414;
+    font-family: 'Noto Sans SC', -apple-system, sans-serif;
+    color: #F5F5F0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .header { padding: 20px 16px 12px; text-align: center; }
+  .header h1 { font-size: 20px; font-weight: 900; letter-spacing: -0.5px; }
+  .header p { font-size: 12px; color: rgba(245,245,240,0.4); margin-top: 4px; }
 
-/* Network Diagram */
-.network { display: flex; align-items: center; justify-content: center; gap: 0; padding: 16px 0; flex-wrap: wrap; }
-.layer-box {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 10px 16px; border-radius: 10px; min-width: 70px; transition: all 0.3s;
-  background: rgba(255,255,255,0.02); border: 1.5px solid rgba(255,255,255,0.05);
-}
-.layer-box.active { background: rgba(100,180,255,0.12); border-color: rgba(100,180,255,0.4); }
-.layer-box .name { font-size: 11px; color: #666; font-weight: 600; transition: color 0.3s; }
-.layer-box.active .name { color: #64b4ff; }
-.layer-box .neurons { display: flex; gap: 5px; }
-.neuron {
-  width: 14px; height: 14px; border-radius: 50%;
-  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); transition: all 0.3s;
-}
-.layer-box.active .neuron { background: rgba(100,180,255,0.6); }
-.layer-box .label { font-size: 11px; color: #777; font-family: 'DM Mono', monospace; }
-.arrow { padding: 0 8px; color: #333; font-size: 18px; transition: color 0.3s; }
-.arrow.active { color: #64b4ff; }
+  .step-nav {
+    padding: 0 12px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  }
+  .step-nav-inner {
+    display: flex; gap: 4px; justify-content: center; padding-bottom: 4px;
+  }
+  .step-btn {
+    padding: 8px 10px; border-radius: 10px; border: none;
+    background: rgba(255,255,255,0.04); outline: 1px solid rgba(255,255,255,0.06);
+    cursor: pointer; text-align: center; min-width: 72px;
+    transition: all 0.2s; font-family: inherit;
+  }
+  .step-btn.active {
+    background: rgba(249,168,37,0.15); outline: 2px solid rgba(249,168,37,0.4);
+  }
+  .step-btn .icon { font-size: 16px; }
+  .step-btn .label {
+    font-size: 10px; font-weight: 500; color: rgba(245,245,240,0.4);
+    margin-top: 2px; white-space: nowrap;
+  }
+  .step-btn.active .label { font-weight: 700; color: #F9A825; }
 
-/* Buttons */
-.buttons { display: flex; justify-content: center; gap: 6px; margin: 16px 0; flex-wrap: wrap; }
-.btn {
-  padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
-  font-family: 'DM Sans', sans-serif; transition: all 0.2s; outline: none;
-  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); color: #888;
-}
-.btn:hover { background: rgba(255,255,255,0.06); }
-.btn.active { background: rgba(100,180,255,0.12); border: 1.5px solid rgba(100,180,255,0.5); color: #64b4ff; }
+  .subtitle-bar { text-align: center; padding: 12px 16px 4px; }
+  .subtitle-pill {
+    display: inline-block; padding: 6px 16px; border-radius: 20px;
+    background: rgba(249,168,37,0.08); border: 1px solid rgba(249,168,37,0.2);
+    font-size: 13px; font-weight: 700; color: #F9A825;
+  }
 
-/* Canvas */
-.canvas-wrap { text-align: center; margin-bottom: 6px; }
-.canvas-title { font-size: 15px; font-weight: 700; color: #e0e0e0; font-family: 'DM Mono', monospace; letter-spacing: 1px; }
-.canvas-subtitle { font-size: 12px; color: #888; margin-top: 2px; }
-canvas {
-  border-radius: 12px; background: rgba(15,15,25,0.6);
-  border: 1px solid rgba(255,255,255,0.06); display: block; margin: 0 auto; cursor: grab; max-width: 100%;
-}
-canvas:active { cursor: grabbing; }
-.drag-hint { text-align: center; font-size: 11px; color: #555; margin-top: 4px; }
+  .controls { display: flex; justify-content: center; gap: 6px; padding: 10px 16px 0; flex-wrap: wrap; }
+  .ctrl-btn {
+    padding: 5px 12px; border-radius: 8px; border: none;
+    background: rgba(255,255,255,0.06); color: rgba(245,245,240,0.4);
+    font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+    transition: all 0.2s;
+  }
+  .ctrl-btn.active { background: rgba(249,168,37,0.15); color: #F9A825; }
 
-/* Info boxes */
-.matrix-box {
-  margin: 16px auto; padding: 10px 16px; max-width: 460px; text-align: center;
-  background: rgba(167,139,250,0.06); border: 1px solid rgba(167,139,250,0.15);
-  border-radius: 8px; font-family: 'DM Mono', monospace; font-size: 13px; color: #a78bfa;
-}
-.desc-box {
-  margin: 0 auto; padding: 14px 18px; max-width: 460px;
-  background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 10px; font-size: 14px; line-height: 1.7; color: #bbb;
-}
-.legend {
-  display: flex; justify-content: center; gap: 24px; margin: 16px 0; font-size: 12px; color: #888;
-}
-.legend-item { display: flex; align-items: center; gap: 6px; }
-.legend-dot { width: 10px; height: 10px; border-radius: 50%; }
-.insight-box {
-  margin: 12px auto; padding: 14px 18px; max-width: 460px;
-  background: rgba(100,180,255,0.04); border: 1px solid rgba(100,180,255,0.1);
-  border-radius: 10px; font-size: 13px; line-height: 1.7; color: #8ab4d8;
-}
-.insight-title { font-weight: 700; margin-bottom: 4px; color: #64b4ff; }
+  .phase-bar { display: flex; justify-content: center; gap: 8px; padding: 10px 16px 0; align-items: center; }
+  .phase-dot {
+    width: 32px; height: 6px; border-radius: 3px; border: none;
+    background: rgba(255,255,255,0.1); cursor: pointer; transition: all 0.2s;
+  }
+  .phase-dot.filled { background: #F9A825; }
+  .phase-next-btn {
+    padding: 2px 12px; border-radius: 6px; border: none;
+    background: rgba(249,168,37,0.2); color: #F9A825;
+    font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit;
+  }
+  .phase-next-btn.done { background: rgba(255,255,255,0.06); color: rgba(245,245,240,0.3); }
+
+  .viz-area { padding: 8px 8px 0; display: flex; justify-content: center; }
+  .viz-area svg { width: 100%; max-width: 440px; }
+
+  .explanation {
+    padding: 12px 16px; max-width: 460px; margin: 0 auto;
+  }
+  .explanation-box {
+    padding: 14px 18px; border-radius: 12px;
+    background: rgba(249,168,37,0.06); border: 1px solid rgba(249,168,37,0.15);
+    font-size: 13px; line-height: 1.8; color: rgba(245,245,240,0.85);
+  }
+
+  .roadmap { padding: 0 16px 24px; max-width: 460px; margin: 0 auto; }
+  .roadmap-box {
+    padding: 14px 18px; border-radius: 12px;
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+  }
+  .roadmap-title { font-size: 11px; font-weight: 700; color: rgba(245,245,240,0.5); margin-bottom: 8px; }
+  .roadmap-item { font-size: 12px; line-height: 2.0; transition: all 0.3s; }
+  .roadmap-item.done { color: #F5F5F0; }
+  .roadmap-item.current { color: #F5F5F0; font-weight: 700; }
+  .roadmap-item.future { color: rgba(245,245,240,0.2); }
+
+  @keyframes pulse-ring {
+    0% { r: 26; opacity: 0.4; }
+    100% { r: 38; opacity: 0; }
+  }
+  @keyframes flow-dot {
+    0% { offset-distance: 0%; opacity: 1; }
+    100% { offset-distance: 100%; opacity: 0.3; }
+  }
+
+  text { user-select: none; }
 </style>
 </head>
 <body>
-<div class="container">
-  <h1>神经网络层间数据变换</h1>
-  <p class="subtitle">观察同一批样本在每一层坐标系中的位置如何变化</p>
 
-  <div class="network" id="networkDiagram"></div>
+<div class="header">
+  <h1>🧠 神经网络心智地图</h1>
+  <p>从一个神经元出发，一步步搭建到 Batch Normalization</p>
+</div>
 
-  <div class="buttons" id="buttons"></div>
+<div class="step-nav">
+  <div class="step-nav-inner" id="stepNav"></div>
+</div>
 
-  <div class="canvas-wrap">
-    <div class="canvas-title" id="canvasTitle"></div>
-    <div class="canvas-subtitle" id="canvasSubtitle"></div>
-  </div>
-  <canvas id="mainCanvas" width="460" height="380"></canvas>
-  <div class="drag-hint">拖拽旋转坐标系</div>
+<div class="subtitle-bar">
+  <div class="subtitle-pill" id="subtitle"></div>
+</div>
 
-  <div class="matrix-box" id="matrixBox"></div>
-  <div class="desc-box" id="descBox"></div>
+<div id="controlsArea"></div>
 
-  <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:rgba(255,107,107,0.8)"></div>类别 0（内圈）</div>
-    <div class="legend-item"><div class="legend-dot" style="background:rgba(100,180,255,0.8)"></div>类别 1（外圈）</div>
-  </div>
+<div class="viz-area" id="vizArea"></div>
 
-  <div class="insight-box">
-    <div class="insight-title">房间类比对应</div>
-    <div id="insightText"></div>
+<div class="explanation">
+  <div class="explanation-box" id="explanationBox"></div>
+</div>
+
+<div class="roadmap">
+  <div class="roadmap-box">
+    <div class="roadmap-title">🗺️ 你正在建立的心智地图</div>
+    <div id="roadmapList"></div>
   </div>
 </div>
 
 <script>
-// === Data Generation ===
-function generateData(n) {
-  const points = [];
-  for (let i = 0; i < n; i++) {
-    const label = i < n / 2 ? 0 : 1;
-    const r = label === 0 ? 0.3 + Math.random() * 0.4 : 1.0 + Math.random() * 0.5;
-    const angle = Math.random() * Math.PI * 2;
-    const x = r * Math.cos(angle) + (Math.random() - 0.5) * 0.15;
-    const y = r * Math.sin(angle) + (Math.random() - 0.5) * 0.15;
-    points.push({ x, y, label });
-  }
-  return points;
-}
-
-const relu = x => Math.max(0, x);
-const sigmoid = x => 1 / (1 + Math.exp(-x));
-
-// Pre-trained weights
-const W1 = [[2.5, 0.8], [0.6, 2.8], [-1.8, 1.5]];
-const b1 = [-1.2, -1.0, 0.3];
-const W2 = [[1.8, -1.2, 2.0], [-1.5, 2.2, -0.8]];
-const b2 = [-0.5, 0.3];
-const W3 = [[2.5, -2.0]];
-const b3 = [-0.3];
-
-function forwardLayer(input, W, b, act) {
-  return W.map((row, i) => {
-    let s = b[i];
-    for (let j = 0; j < row.length; j++) s += row[j] * input[j];
-    return act(s);
-  });
-}
-
-function transformAll(points) {
-  return points.map(p => {
-    const input = [p.x, p.y];
-    const h1 = forwardLayer(input, W1, b1, relu);
-    const h2 = forwardLayer(h1, W2, b2, relu);
-    const out = forwardLayer(h2, W3, b3, sigmoid);
-    return { input, h1, h2, out, label: p.label };
-  });
-}
-
-const rawData = generateData(80);
-const data = transformAll(rawData);
-
-// === Layer Info ===
-const layers = [
-  {
-    title: '输入层：原始特征空间', subtitle: '2个原始特征 → 2维坐标系',
-    axes: ['x₁', 'x₂'], dims: 2,
-    matrix: '每个样本是 [x₁, x₂]',
-    desc: '红蓝两类样本在原始特征空间中形成同心圆——一根木棍（直线）无法将它们分开。这就是为什么需要深度学习。',
-    insight: '这就是房间1的软木板——图钉钉死在原始特征坐标上，不会动。红蓝两类缠绕在一起，一根木棍（直线）无法分开。',
-    netNeurons: [2, 3, 2, 1], netLabels: ['x₁,x₂', 'h₁,h₂,h₃', 'z₁,z₂', 'ŷ'],
-    netNames: ['输入层', '隐藏层1', '隐藏层2', '输出层']
-  },
-  {
-    title: '隐藏层1：第一次坐标改写', subtitle: '3个神经元 → 3维坐标系',
-    axes: ['h₁', 'h₂', 'h₃'], dims: 3,
-    matrix: 'W₁[3×2] · [x₁,x₂]ᵀ + b₁ → ReLU → [h₁,h₂,h₃]',
-    desc: '3个神经元从不同角度"照射"原始数据，把2维的点变成3个标量再经过ReLU弯曲，拼成3维坐标。原来缠绕在一起的同心圆，在三维空间中被"拎"开了。',
-    insight: '这就是房间2的软木板——大头针的位置由房间1的3个神经元决定。注意红蓝两类在三维空间中开始分离了——这就是"坐标改写"的力量。拖拽旋转看看！'
-  },
-  {
-    title: '隐藏层2：第二次坐标改写', subtitle: '2个神经元 → 2维坐标系',
-    axes: ['z₁', 'z₂'], dims: 2,
-    matrix: 'W₂[2×3] · [h₁,h₂,h₃]ᵀ + b₂ → ReLU → [z₁,z₂]',
-    desc: '2个神经元再次改写坐标，把3维降回2维。此时红蓝两类已经被推到了可以被一根木棍分开的位置——前面两个房间的"翻译"工作做完了。',
-    insight: '这就是房间3之前的准备——大头针被进一步重新排列。红蓝两类已经几乎可以用一根木棍分开了。前面两个房间的"翻译"工作到此结束。'
-  },
-  {
-    title: '输出层：最终预测', subtitle: '1个神经元 → 1维坐标',
-    axes: ['ŷ'], dims: 1,
-    matrix: 'W₃[1×2] · [z₁,z₂]ᵀ + b₃ → σ → ŷ',
-    desc: '最后一层只有1个神经元，做的事和机器学习的逻辑回归一模一样——拿到整理好的特征，用sigmoid输出一个概率值。红色聚在0附近，蓝色聚在1附近。',
-    insight: '最后一个房间。只剩一个维度——概率值。红色样本被推向0，蓝色被推向1。弹簧（Loss）就连接在这里。这和机器学习中的逻辑回归一模一样。'
-  }
+const STEPS = [
+  { id: "single", title: "一个神经元", subtitle: "一个人 × 一个打分官 → 一个数字", icon: "①" },
+  { id: "layer", title: "一层神经网络", subtitle: "一个人 × 三个打分官 → 一张成绩单", icon: "②" },
+  { id: "batch", title: "一批样本", subtitle: "三个人 × 同一层网络 → 三张成绩单", icon: "③" },
+  { id: "matrix", title: "矩阵化", subtitle: "三张成绩单堆起来 → 一个矩阵", icon: "④" },
+  { id: "bn", title: "Batch Norm", subtitle: "竖着看每一列 → μ 和 σ 向量", icon: "⑤" },
 ];
 
-// === State ===
-let activeLayer = 0;
-let rotation = { x: -25, y: 35 };
-let isDragging = false;
-let lastPos = { x: 0, y: 0 };
+const SAMPLE_NAMES = ["张三", "李四", "王五"];
+const SAMPLE_COLORS = ["#E8634A", "#4A90D9", "#5CB85C"];
+const NEURON_NAMES = ["语文", "数学", "英语"];
+const NEURON_COLORS = ["#FF8A65", "#64B5F6", "#81C784"];
 
-// === UI Build ===
-function buildNetwork() {
-  const el = document.getElementById('networkDiagram');
-  const names = ['输入层', '隐藏层1', '隐藏层2', '输出层'];
-  const neurons = [2, 3, 2, 1];
-  const labels = ['x₁,x₂', 'h₁,h₂,h₃', 'z₁,z₂', 'ŷ'];
-  let html = '';
-  for (let i = 0; i < 4; i++) {
-    const cls = i === activeLayer ? 'layer-box active' : 'layer-box';
-    let dots = '';
-    for (let j = 0; j < neurons[i]; j++) dots += '<div class="neuron"></div>';
-    html += `<div class="${cls}"><div class="name">${names[i]}</div><div class="neurons">${dots}</div><div class="label">${labels[i]}</div></div>`;
-    if (i < 3) {
-      const acls = (i === activeLayer || i + 1 === activeLayer) ? 'arrow active' : 'arrow';
-      html += `<div class="${acls}">→</div>`;
+const INPUTS = [[2,5,3],[4,1,6],[3,3,2]];
+const WEIGHTS = [[10,8,6],[5,15,3],[8,4,12]];
+const BIAS = [5,-2,3];
+
+function computeZ(si, ni) {
+  const x = INPUTS[si], w = WEIGHTS[ni];
+  return x[0]*w[0] + x[1]*w[1] + x[2]*w[2] + BIAS[ni];
+}
+
+const Z_MATRIX = SAMPLE_NAMES.map((_,si) => NEURON_NAMES.map((_,ni) => computeZ(si,ni)));
+const MU = NEURON_NAMES.map((_,ni) => {
+  const s = Z_MATRIX.reduce((a,r) => a+r[ni], 0);
+  return Math.round(s/3*10)/10;
+});
+const SIGMA = NEURON_NAMES.map((_,ni) => {
+  const mu = MU[ni];
+  const v = Z_MATRIX.reduce((a,r) => a+(r[ni]-mu)**2, 0)/3;
+  return Math.round(Math.sqrt(v)*10)/10;
+});
+
+const EXPLANATIONS = {
+  single: [
+    "这是最基本的单元：一个神经元本质上就是一个线性回归。它接收输入，乘以权重，加上偏置，输出一个数字（标量）。",
+    "看！数据正在流入神经元。每条连线上都有一个权重 w，输入 x 和权重相乘后求和。",
+    "计算完成！一个神经元 × 一个样本 = 一个标量。这就是你最熟悉的线性回归，没有任何魔法。",
+  ],
+  layer: [
+    "现在，一层网络里有 3 个神经元同时工作。先聚焦第一个神经元——它独自给张三打了一个分。其他神经元暗着，还没轮到。",
+    "三个神经元同时点亮！每个神经元各自独立地给张三打了一个分。三个分数打包在一起，就组成了一个向量 z¹。这就是「成绩单」。",
+  ],
+  batch: "现在有三个人（一个 Batch）排队进入同一层网络。关键：三个人共用同一组权重 W¹！点击不同的人，看他们各自的成绩单。",
+  matrix: "把三个人的成绩单（向量）一行一行堆起来，就变成了矩阵。行=人，列=神经元。矩阵里每一格都对应「某个人在某个神经元的输出」。",
+  bn: "Batch Norm 的核心操作：竖着看每一列（同一个神经元，不同的人），算出这一列的均值 μ 和标准差 σ。所以 μ 和 σ 都是向量——每个神经元各有一个。",
+};
+
+let state = { step: 0, phase: 0, batchSample: 0, bnCol: -1 };
+
+function getMaxPhase() {
+  const id = STEPS[state.step].id;
+  if (id === "single") return 2;
+  if (id === "layer") return 1;
+  return 0;
+}
+
+function getExplanation() {
+  const id = STEPS[state.step].id;
+  const e = EXPLANATIONS[id];
+  return Array.isArray(e) ? e[state.phase] : e;
+}
+
+function setState(updates) {
+  Object.assign(state, updates);
+  render();
+}
+
+function render() {
+  renderStepNav();
+  renderSubtitle();
+  renderControls();
+  renderViz();
+  renderExplanation();
+  renderRoadmap();
+}
+
+function renderStepNav() {
+  const el = document.getElementById("stepNav");
+  el.innerHTML = STEPS.map((s,i) => `
+    <button class="step-btn ${i===state.step?'active':''}" onclick="setState({step:${i},phase:0,batchSample:0,bnCol:-1})">
+      <div class="icon">${s.icon}</div>
+      <div class="label">${s.title}</div>
+    </button>
+  `).join("");
+}
+
+function renderSubtitle() {
+  document.getElementById("subtitle").textContent = STEPS[state.step].subtitle;
+}
+
+function renderControls() {
+  const el = document.getElementById("controlsArea");
+  const id = STEPS[state.step].id;
+  let html = "";
+
+  const maxP = getMaxPhase();
+  if (maxP > 0) {
+    html += `<div class="phase-bar">`;
+    for (let i = 0; i <= maxP; i++) {
+      html += `<button class="phase-dot ${state.phase>=i?'filled':''}" onclick="setState({phase:${i}})"></button>`;
     }
+    const done = state.phase >= maxP;
+    html += `<button class="phase-next-btn ${done?'done':''}" onclick="setState({phase:Math.min(state.phase+1,${maxP})})">${done?'✓ 完成':'下一步 →'}</button>`;
+    html += `</div>`;
   }
+
+  if (id === "batch") {
+    html += `<div class="controls">`;
+    html += `<button class="ctrl-btn ${state.batchSample===-1?'active':''}" onclick="setState({batchSample:-1})">看全部</button>`;
+    SAMPLE_NAMES.forEach((s,i) => {
+      const ac = state.batchSample===i;
+      html += `<button class="ctrl-btn" style="background:${ac?SAMPLE_COLORS[i]+'25':'rgba(255,255,255,0.06)'};color:${ac?SAMPLE_COLORS[i]:'rgba(245,245,240,0.4)'}" onclick="setState({batchSample:${i}})">${s}</button>`;
+    });
+    html += `</div>`;
+  }
+
+  if (id === "bn") {
+    html += `<div class="controls">`;
+    html += `<button class="ctrl-btn" style="background:${state.bnCol===-1?'rgba(102,187,106,0.15)':'rgba(255,255,255,0.06)'};color:${state.bnCol===-1?'#66BB6A':'rgba(245,245,240,0.4)'}" onclick="setState({bnCol:-1})">全部列</button>`;
+    NEURON_NAMES.forEach((n,j) => {
+      const ac = state.bnCol===j;
+      html += `<button class="ctrl-btn" style="background:${ac?NEURON_COLORS[j]+'25':'rgba(255,255,255,0.06)'};color:${ac?NEURON_COLORS[j]:'rgba(245,245,240,0.4)'}" onclick="setState({bnCol:${j}})">${n}列</button>`;
+    });
+    html += `</div>`;
+  }
+
   el.innerHTML = html;
 }
 
-function buildButtons() {
-  const el = document.getElementById('buttons');
-  const names = ['输入层', '隐藏层1', '隐藏层2', '输出层'];
-  let html = '';
-  for (let i = 0; i < 4; i++) {
-    const cls = i === activeLayer ? 'btn active' : 'btn';
-    html += `<button class="${cls}" onclick="setLayer(${i})">${names[i]}</button>`;
-  }
-  el.innerHTML = html;
+function renderExplanation() {
+  document.getElementById("explanationBox").textContent = getExplanation();
 }
 
-function updateInfo() {
-  const info = layers[activeLayer];
-  document.getElementById('canvasTitle').textContent = info.title;
-  document.getElementById('canvasSubtitle').textContent = info.subtitle;
-  document.getElementById('matrixBox').textContent = info.matrix;
-  document.getElementById('descBox').textContent = info.desc;
-  document.getElementById('insightText').textContent = info.insight;
+function renderRoadmap() {
+  const el = document.getElementById("roadmapList");
+  el.innerHTML = STEPS.map((s,i) => {
+    let cls = i < state.step ? "done" : i === state.step ? "current" : "future";
+    let marker = i < state.step ? "✓" : i === state.step ? "→" : "○";
+    let markerColor = i < state.step ? "#66BB6A" : i === state.step ? "#F9A825" : "rgba(245,245,240,0.2)";
+    return `<div class="roadmap-item ${cls}"><span style="color:${markerColor}">${marker}</span> ${s.icon} ${s.subtitle}</div>`;
+  }).join("");
 }
 
-function setLayer(i) {
-  activeLayer = i;
-  buildNetwork();
-  buildButtons();
-  updateInfo();
-  draw();
+/* ========== SVG RENDERERS ========== */
+
+function svgCircle(cx,cy,r,fill,stroke,sw,extra="") {
+  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${extra}/>`;
+}
+function svgText(x,y,text,opts={}) {
+  const {size=12,weight=400,fill="#F5F5F0",anchor="middle",baseline="middle",family="",opacity=1} = opts;
+  const ff = family ? `font-family:${family};` : "";
+  return `<text x="${x}" y="${y}" text-anchor="${anchor}" dominant-baseline="${baseline}" font-size="${size}" font-weight="${weight}" fill="${fill}" style="${ff}opacity:${opacity}">${text}</text>`;
+}
+function svgLine(x1,y1,x2,y2,stroke,sw,opacity=1,dash="") {
+  const d = dash ? `stroke-dasharray="${dash}"` : "";
+  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${sw}" opacity="${opacity}" ${d}/>`;
+}
+function svgRect(x,y,w,h,rx,fill,stroke,sw,opacity=1,dash="") {
+  const d = dash ? `stroke-dasharray="${dash}"` : "";
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" opacity="${opacity}" ${d}/>`;
 }
 
-// === 3D Canvas ===
-function getValues(d) {
-  if (activeLayer === 0) return [d.input[0], d.input[1], 0];
-  if (activeLayer === 1) return [d.h1[0], d.h1[1], d.h1[2] || 0];
-  if (activeLayer === 2) return [d.h2[0], d.h2[1], 0];
-  return [d.out[0], 0, 0];
+function pulseRing(cx,cy,r,color) {
+  return `<circle cx="${cx}" cy="${cy}" r="${r+8}" fill="none" stroke="${color}" stroke-width="2" opacity="0.3">
+    <animate attributeName="r" from="${r+4}" to="${r+16}" dur="1.5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" from="0.4" to="0" dur="1.5s" repeatCount="indefinite"/>
+  </circle>`;
 }
 
-function draw() {
-  const canvas = document.getElementById('mainCanvas');
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
-  ctx.clearRect(0, 0, W, H);
+function flowDot(x1,y1,x2,y2,color) {
+  return `<circle r="3" fill="${color}">
+    <animateMotion dur="1.2s" repeatCount="indefinite" path="M${x1},${y1} L${x2},${y2}"/>
+  </circle>`;
+}
 
-  const info = layers[activeLayer];
-  const radX = rotation.x * Math.PI / 180;
-  const radY = rotation.y * Math.PI / 180;
-  const cosX = Math.cos(radX), sinX = Math.sin(radX);
-  const cosY = Math.cos(radY), sinY = Math.sin(radY);
+function renderViz() {
+  const el = document.getElementById("vizArea");
+  const id = STEPS[state.step].id;
+  let svg = "";
 
-  function project(x, y, z) {
-    const x1 = x * cosY - z * sinY;
-    const z1 = x * sinY + z * cosY;
-    const y1 = y * cosX - z1 * sinX;
-    const z2 = y * sinX + z1 * cosX;
-    return { px: W / 2 + x1 * 120, py: H / 2 - y1 * 120, depth: z2 };
-  }
+  if (id === "single") svg = renderSingle();
+  else if (id === "layer") svg = renderLayer();
+  else if (id === "batch") svg = renderBatch();
+  else if (id === "matrix") svg = renderMatrix();
+  else if (id === "bn") svg = renderBN();
 
-  // Ranges
-  const allVals = data.map(getValues);
-  const ranges = [0, 1, 2].map(i => {
-    const vals = allVals.map(v => v[i]);
-    const min = Math.min(...vals), max = Math.max(...vals);
-    return { min, max, range: (max - min) || 1 };
-  });
-  function normalize(vals) {
-    return vals.map((v, i) => ((v - ranges[i].min) / ranges[i].range) * 3 - 1.5);
-  }
+  el.innerHTML = svg;
+}
 
-  // Grid
-  ctx.strokeStyle = 'rgba(120,120,140,0.15)';
-  ctx.lineWidth = 0.5;
-  for (let i = -1.5; i <= 1.5; i += 0.5) {
-    let a = project(i, -1.5, 0), b = project(i, 1.5, 0);
-    ctx.beginPath(); ctx.moveTo(a.px, a.py); ctx.lineTo(b.px, b.py); ctx.stroke();
-    a = project(-1.5, i, 0); b = project(1.5, i, 0);
-    ctx.beginPath(); ctx.moveTo(a.px, a.py); ctx.lineTo(b.px, b.py); ctx.stroke();
-  }
+function renderSingle() {
+  const p = state.phase;
+  const w = WEIGHTS[0], x = INPUTS[0], z = computeZ(0,0);
+  const ix=[40,40,40], iy=[60,130,200], nx=200, ny=130, ox=340, oy=130, nr=22;
+  let s = `<svg viewBox="0 0 420 280" style="width:100%;max-width:420px">`;
 
-  // Axes
-  const axColors = ['#e74c3c', '#2ecc71', '#3498db'];
-  const axEnds = [[1.8, 0, 0], [0, 1.8, 0], [0, 0, 1.8]];
-  for (let i = 0; i < info.dims; i++) {
-    const o = project(0, 0, 0), e = project(...axEnds[i]);
-    ctx.strokeStyle = axColors[i]; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(o.px, o.py); ctx.lineTo(e.px, e.py); ctx.stroke();
-    ctx.fillStyle = axColors[i];
-    ctx.font = "bold 13px 'DM Mono', monospace";
-    ctx.fillText(info.axes[i] || '', e.px + 5, e.py - 5);
-  }
+  s += svgText(210,22,"张三 → 神经元1（语文打分官）→ ?",{size:13,weight:700,fill:"#F9A825"});
 
-  // Points
-  let projected = data.map((d, idx) => {
-    const vals = normalize(getValues(d));
-    const p = project(vals[0], vals[1], info.dims >= 3 ? vals[2] : 0);
-    return { ...p, label: d.label };
-  });
-  projected.sort((a, b) => a.depth - b.depth);
-
-  projected.forEach(p => {
-    const alpha = 0.5 + 0.4 * ((p.depth + 2) / 4);
-    const r = 5 + 2 * ((p.depth + 2) / 4);
-    ctx.beginPath();
-    ctx.arc(p.px, p.py, r, 0, Math.PI * 2);
-    if (p.label === 0) {
-      ctx.fillStyle = `rgba(255,107,107,${alpha})`;
-      ctx.strokeStyle = `rgba(200,60,60,${alpha})`;
+  for (let i=0;i<3;i++) {
+    // input nodes
+    s += svgCircle(ix[i],iy[i],18, p>=0?SAMPLE_COLORS[0]+"30":"rgba(255,255,255,0.06)", p>=0?SAMPLE_COLORS[0]:"rgba(255,255,255,0.15)", p>=0?2:1.5);
+    s += svgText(ix[i],iy[i],`x${i+1}=${x[i]}`,{size:10,weight:700,fill:p>=0?"#F5F5F0":"rgba(245,245,240,0.4)"});
+    // connections
+    if (p >= 1) {
+      s += svgLine(ix[i]+18,iy[i],nx-nr,ny, SAMPLE_COLORS[0], 1.5, 0.6);
+      const mx=(ix[i]+18+nx-nr)/2, my=(iy[i]+ny)/2-10;
+      s += svgText(mx,my,`w=${w[i]}`,{size:9,fill:"rgba(245,245,240,0.5)",family:"'JetBrains Mono',monospace"});
+      if (p===1) s += flowDot(ix[i]+18,iy[i],nx-nr,ny,SAMPLE_COLORS[0]);
     } else {
-      ctx.fillStyle = `rgba(100,180,255,${alpha})`;
-      ctx.strokeStyle = `rgba(40,120,200,${alpha})`;
+      s += svgLine(ix[i]+18,iy[i],nx-nr,ny, "rgba(255,255,255,0.08)", 1, 0.15);
     }
-    ctx.lineWidth = 1.5;
-    ctx.fill(); ctx.stroke();
-  });
+  }
+
+  // neuron
+  if (p===2) s += pulseRing(nx,ny,nr,NEURON_COLORS[0]);
+  s += svgCircle(nx,ny,nr, p>=1?NEURON_COLORS[0]:"rgba(255,255,255,0.06)", p>=1?NEURON_COLORS[0]:"rgba(255,255,255,0.15)", p>=1?2.5:1.5);
+  if (p<2) s += svgText(nx,ny,"Σ+b",{size:11,weight:700,fill:p>=1?"#1A1A1A":"rgba(245,245,240,0.4)"});
+  else s += svgText(nx,ny,z,{size:14,weight:800,fill:"#1A1A1A",family:"'JetBrains Mono',monospace"});
+  s += svgText(nx,ny+36,"神经元1 (语文)",{size:10,fill:NEURON_COLORS[0],weight:600});
+
+  // output
+  if (p>=2) {
+    s += svgLine(nx+nr,ny,ox-18,oy,"#F9A825",2,0.8);
+    s += flowDot(nx+nr,ny,ox-18,oy,"#F9A825");
+    s += pulseRing(ox,oy,18,"#F9A825");
+    s += svgCircle(ox,oy,18,"#F9A825","#F9A825",2);
+    s += svgText(ox,oy+1,z,{size:14,weight:800,fill:"#1A1A1A",family:"'JetBrains Mono',monospace"});
+    s += svgText(ox,oy+32,"标量！一个数",{size:11,fill:"#F9A825",weight:700});
+    s += svgText(210,262,`${x[0]}×${w[0]} + ${x[1]}×${w[1]} + ${x[2]}×${w[2]} + ${BIAS[0]} = ${z}`,{size:10,fill:"rgba(245,245,240,0.5)",family:"'JetBrains Mono',monospace"});
+  }
+
+  s += `</svg>`;
+  return s;
 }
 
-// === Mouse / Touch ===
-const canvas = document.getElementById('mainCanvas');
+function renderLayer() {
+  const p = state.phase;
+  const x_in = INPUTS[0];
+  const ix=40, iy_base=55, iy_gap=70, nx=210, ny_base=55, ny_gap=70, ox=370, nr=20;
+  let s = `<svg viewBox="0 0 440 280" style="width:100%;max-width:440px">`;
 
-canvas.addEventListener('mousedown', e => {
-  isDragging = true;
-  lastPos = { x: e.clientX, y: e.clientY };
-});
-window.addEventListener('mousemove', e => {
-  if (!isDragging) return;
-  rotation.x = Math.max(-89, Math.min(89, rotation.x + (e.clientY - lastPos.y) * 0.5));
-  rotation.y += (e.clientX - lastPos.x) * 0.5;
-  lastPos = { x: e.clientX, y: e.clientY };
-  draw();
-});
-window.addEventListener('mouseup', () => isDragging = false);
+  s += svgText(220,20,"张三的输入 → 三个神经元同时打分",{size:12,weight:700,fill:SAMPLE_COLORS[0]});
 
-canvas.addEventListener('touchstart', e => {
-  if (e.touches.length === 1) {
-    isDragging = true;
-    lastPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  // input nodes
+  for (let i=0;i<3;i++) {
+    s += svgCircle(ix,iy_base+i*iy_gap,16,SAMPLE_COLORS[0]+"30",SAMPLE_COLORS[0],1.5);
+    s += svgText(ix,iy_base+i*iy_gap,`x${i+1}=${x_in[i]}`,{size:10,weight:700,fill:"#F5F5F0"});
   }
-}, { passive: true });
-window.addEventListener('touchmove', e => {
-  if (!isDragging || e.touches.length !== 1) return;
-  rotation.x = Math.max(-89, Math.min(89, rotation.x + (e.touches[0].clientY - lastPos.y) * 0.5));
-  rotation.y += (e.touches[0].clientX - lastPos.x) * 0.5;
-  lastPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  draw();
-}, { passive: true });
-window.addEventListener('touchend', () => isDragging = false);
 
-// === Init ===
-buildNetwork();
-buildButtons();
-updateInfo();
-draw();
+  // neurons + connections
+  for (let ni=0;ni<3;ni++) {
+    const ny = ny_base + ni*ny_gap;
+    const z = computeZ(0,ni);
+    const isActive = p===0 ? ni===0 : true;
+    const isHL = p===0 && ni===0;
+    const op = isActive ? 1 : 0.12;
+
+    for (let ii=0;ii<3;ii++) {
+      s += svgLine(ix+16,iy_base+ii*iy_gap, nx-nr,ny, isActive?NEURON_COLORS[ni]:"rgba(255,255,255,0.08)", isActive?1.5:0.8, isActive?0.5:0.05);
+      if (isHL) s += flowDot(ix+16,iy_base+ii*iy_gap,nx-nr,ny,NEURON_COLORS[ni]);
+    }
+
+    if (isHL) s += pulseRing(nx,ny,nr,NEURON_COLORS[ni]);
+    s += svgCircle(nx,ny,nr, isActive?NEURON_COLORS[ni]:"rgba(255,255,255,0.06)", isActive?NEURON_COLORS[ni]:"rgba(255,255,255,0.15)", isActive?2:1.5, `opacity="${op}"`);
+    if (isActive) s += svgText(nx,ny+1,z,{size:13,weight:800,fill:"#1A1A1A",family:"'JetBrains Mono',monospace"});
+    s += svgText(nx+28,ny+4,NEURON_NAMES[ni],{size:10,fill:isActive?NEURON_COLORS[ni]:"rgba(245,245,240,0.2)",weight:600,anchor:"start"});
+
+    if (p>=1) {
+      s += svgLine(nx+nr,ny,ox-24,ny, NEURON_COLORS[ni], 1.5, 0.6);
+      if (p===1) s += flowDot(nx+nr,ny,ox-24,ny,NEURON_COLORS[ni]);
+    }
+  }
+
+  // output vector
+  if (p>=1) {
+    s += svgRect(ox-24,ny_base-24,48,ny_gap*2+48,10,"none","#F9A825",2,1,"4,3");
+    for (let ni=0;ni<3;ni++) {
+      const ny = ny_base+ni*ny_gap;
+      const z = computeZ(0,ni);
+      s += svgRect(ox-20,ny-14,40,28,6,NEURON_COLORS[ni]+"30",NEURON_COLORS[ni],1.5);
+      s += svgText(ox,ny+1,z,{size:13,weight:800,family:"'JetBrains Mono',monospace"});
+    }
+    s += svgText(ox,ny_base+ny_gap*2+38,"z¹ = 向量！",{size:11,fill:"#F9A825",weight:700});
+    s += svgText(ox,ny_base+ny_gap*2+52,"3个数打包在一起",{size:9,fill:"rgba(245,245,240,0.5)"});
+  }
+
+  s += `</svg>`;
+  return s;
+}
+
+function renderBatch() {
+  const as = state.batchSample;
+  const ix=30, nx=175, ox=320, sGap=88, nGap=42, nr=13;
+  let s = `<svg viewBox="0 0 440 310" style="width:100%;max-width:440px">`;
+
+  s += svgText(220,16,"三个人排队进入同一层网络（权重 W¹ 是共享的！）",{size:11,weight:700,fill:"rgba(245,245,240,0.7)"});
+
+  for (let si=0;si<3;si++) {
+    const by = 36+si*sGap;
+    const isActive = as===-1||as===si;
+    const isHL = as===si;
+    const op = isActive?1:0.12;
+
+    s += `<g opacity="${op}">`;
+    s += svgText(ix-6,by+nGap,SAMPLE_NAMES[si],{size:11,weight:700,fill:SAMPLE_COLORS[si]});
+    s += svgCircle(ix+16,by+nGap,10,SAMPLE_COLORS[si]+"40",SAMPLE_COLORS[si],1.5);
+
+    for (let ni=0;ni<3;ni++) {
+      const ny = by+ni*nGap+12;
+      s += svgLine(ix+26,by+nGap, nx-nr,ny, isHL?NEURON_COLORS[ni]:"rgba(255,255,255,0.15)", isHL?1.5:0.8, isHL?0.6:0.2);
+      s += svgCircle(nx,ny,nr, isHL?NEURON_COLORS[ni]:"rgba(255,255,255,0.06)", isHL?NEURON_COLORS[ni]:"rgba(255,255,255,0.15)", 1.5);
+      if (isHL) s += svgText(nx,ny+1,computeZ(si,ni),{size:10,weight:800,fill:"#1A1A1A",family:"'JetBrains Mono',monospace"});
+      s += svgLine(nx+nr,ny, ox-18,ny, isHL?NEURON_COLORS[ni]:"rgba(255,255,255,0.08)", isHL?1.5:0.5, isHL?0.5:0.1);
+    }
+
+    // output bracket
+    s += svgRect(ox-18,by-4,40,nGap*2+32,8,"none", isHL?SAMPLE_COLORS[si]:"rgba(255,255,255,0.1)", isHL?2:1, 1, isHL?"":"3,3");
+    for (let ni=0;ni<3;ni++) {
+      s += svgText(ox,by+ni*nGap+13,computeZ(si,ni),{size:12,weight:700,fill:isHL?"#F5F5F0":"rgba(245,245,240,0.3)",family:"'JetBrains Mono',monospace"});
+    }
+    const sup = ["¹","²","³"][si];
+    s += svgText(ox+32,by+nGap+2,`z${sup}`,{size:11,weight:700,fill:isHL?SAMPLE_COLORS[si]:"rgba(245,245,240,0.2)",anchor:"start"});
+    s += `</g>`;
+  }
+
+  // shared weights box
+  s += svgRect(nx-20,28,40,sGap*2+nGap*2+20,6,"none","rgba(249,168,37,0.3)",1,1,"6,4");
+  s += svgText(nx,sGap*2+nGap*2+58,"← 同一组权重 W¹",{size:9,fill:"#F9A825",weight:600});
+
+  s += `</svg>`;
+  return s;
+}
+
+function renderMatrix() {
+  const cW=56,cH=36,pad=8,sx=150,sy=60;
+  let s = `<svg viewBox="0 0 440 260" style="width:100%;max-width:440px">`;
+
+  s += svgText(220,20,"三张成绩单堆起来 → 矩阵 Z",{size:12,weight:700,fill:"rgba(245,245,240,0.7)"});
+
+  // col headers
+  for (let j=0;j<3;j++) {
+    const cx = sx+j*(cW+pad)+cW/2;
+    s += svgText(cx,sy-10,`神经元${j+1}`,{size:10,weight:700,fill:NEURON_COLORS[j]});
+    s += svgText(cx,sy,`(${NEURON_NAMES[j]})`,{size:8,fill:"rgba(245,245,240,0.4)"});
+  }
+
+  // rows
+  for (let i=0;i<3;i++) {
+    const ry = sy+20+i*(cH+pad);
+    s += svgText(sx-12,ry+cH/2,SAMPLE_NAMES[i],{size:11,weight:700,fill:SAMPLE_COLORS[i],anchor:"end"});
+    s += svgText(sx-12,ry+cH/2+12,`z${"¹²³"[i]}→`,{size:9,fill:"rgba(245,245,240,0.4)",anchor:"end"});
+    for (let j=0;j<3;j++) {
+      const cx = sx+j*(cW+pad);
+      s += svgRect(cx,ry,cW,cH,6,SAMPLE_COLORS[i]+"15",SAMPLE_COLORS[i],1);
+      s += svgText(cx+cW/2,ry+cH/2+1,Z_MATRIX[i][j],{size:14,weight:800,family:"'JetBrains Mono',monospace"});
+    }
+  }
+
+  // annotations
+  s += svgLine(sx-2,sy+16, sx-2,sy+20+2*(cH+pad)+cH, SAMPLE_COLORS[0],2,0.4);
+  s += svgLine(sx,sy+14, sx+2*(cW+pad)+cW,sy+14, NEURON_COLORS[0],2,0.4);
+  s += `<text x="${sx+(cW+pad)+cW/2}" y="${sy+7}" text-anchor="middle" font-size="9" fill="rgba(245,245,240,0.4)">列=神经元(科目)</text>`;
+  s += `<text x="${sx-20}" y="${sy+20+(cH+pad)+cH/2}" text-anchor="middle" font-size="9" fill="rgba(245,245,240,0.4)" transform="rotate(-90,${sx-20},${sy+20+(cH+pad)+cH/2})">行=样本(人)</text>`;
+
+  // insight box
+  s += svgRect(60,208,320,40,8,"rgba(249,168,37,0.08)","rgba(249,168,37,0.25)",1);
+  s += svgText(220,225,"矩阵的每一格 = 第 i 个人在第 j 个神经元的输出",{size:11,weight:700,fill:"#F9A825"});
+  s += svgText(220,240,'Z[i][j] = "张三的语文分" 这种东西',{size:10,fill:"rgba(245,245,240,0.5)"});
+
+  s += `</svg>`;
+  return s;
+}
+
+function renderBN() {
+  const fc = state.bnCol;
+  const cW=56,cH=34,pad=6,sx=130,sy=44;
+  let s = `<svg viewBox="0 0 440 330" style="width:100%;max-width:440px">`;
+
+  s += svgText(220,18,"Batch Norm：竖着看每一列，求 μ 和 σ",{size:11,weight:700,fill:"rgba(245,245,240,0.7)"});
+  const hint = fc===-1?"点击上方按钮选某一列看详细计算":`正在看：神经元${fc+1}（${NEURON_NAMES[fc]}）这一列`;
+  s += svgText(220,32,hint,{size:9,fill:"rgba(245,245,240,0.4)"});
+
+  // col headers
+  for (let j=0;j<3;j++) {
+    const ac = fc===-1||fc===j;
+    s += svgText(sx+j*(cW+pad)+cW/2,sy,NEURON_NAMES[j],{size:10,weight:700,fill:ac?NEURON_COLORS[j]:"rgba(245,245,240,0.15)"});
+  }
+
+  // cells
+  for (let i=0;i<3;i++) {
+    const ry = sy+14+i*(cH+pad);
+    s += svgText(sx-8,ry+cH/2,SAMPLE_NAMES[i],{size:10,weight:600,fill:fc===-1?SAMPLE_COLORS[i]:"rgba(245,245,240,0.2)",anchor:"end"});
+    for (let j=0;j<3;j++) {
+      const ac = fc===-1||fc===j;
+      const cx = sx+j*(cW+pad);
+      s += svgRect(cx,ry,cW,cH,5, fc===j?NEURON_COLORS[j]+"20":"rgba(255,255,255,0.04)", fc===j?NEURON_COLORS[j]:"rgba(255,255,255,0.1)", fc===j?2:1, ac?1:0.12);
+      s += svgText(cx+cW/2,ry+cH/2+1,Z_MATRIX[i][j],{size:13,weight:700,family:"'JetBrains Mono',monospace",opacity:ac?1:0.12});
+    }
+  }
+
+  // arrows
+  for (let j=0;j<3;j++) {
+    const ac = fc===-1||fc===j;
+    const cx = sx+j*(cW+pad)+cW/2;
+    const arrowY = sy+14+3*(cH+pad)-2;
+    if (ac) {
+      s += svgLine(cx,arrowY,cx,arrowY+18,NEURON_COLORS[j],2);
+      s += `<polygon points="${cx-5},${arrowY+14} ${cx+5},${arrowY+14} ${cx},${arrowY+22}" fill="${NEURON_COLORS[j]}"/>`;
+    }
+  }
+
+  // μ row
+  const muY = sy+14+3*(cH+pad)+22;
+  s += svgText(sx-8,muY+cH/2,"μ",{size:12,weight:800,fill:"#F9A825",anchor:"end"});
+  for (let j=0;j<3;j++) {
+    const ac = fc===-1||fc===j;
+    const cx = sx+j*(cW+pad);
+    s += svgRect(cx,muY,cW,cH,5,"rgba(249,168,37,0.15)","#F9A825",2,ac?1:0.1);
+    s += svgText(cx+cW/2,muY+cH/2+1,MU[j],{size:13,weight:800,fill:"#F9A825",family:"'JetBrains Mono',monospace",opacity:ac?1:0.1});
+  }
+
+  // σ row
+  const sigY = muY+cH+pad;
+  s += svgText(sx-8,sigY+cH/2,"σ",{size:12,weight:800,fill:"#66BB6A",anchor:"end"});
+  for (let j=0;j<3;j++) {
+    const ac = fc===-1||fc===j;
+    const cx = sx+j*(cW+pad);
+    s += svgRect(cx,sigY,cW,cH,5,"rgba(102,187,106,0.15)","#66BB6A",2,ac?1:0.1);
+    s += svgText(cx+cW/2,sigY+cH/2+1,SIGMA[j],{size:13,weight:800,fill:"#66BB6A",family:"'JetBrains Mono',monospace",opacity:ac?1:0.1});
+  }
+
+  // focused calculation
+  if (fc>=0) {
+    s += svgRect(30,274,380,48,8,"rgba(255,255,255,0.03)","rgba(255,255,255,0.1)",1);
+    const vals = Z_MATRIX.map(r=>r[fc]);
+    s += svgText(220,290,`μ = (${vals.join(" + ")}) / 3 = ${MU[fc]}`,{size:10,weight:600,fill:NEURON_COLORS[fc],family:"'JetBrains Mono',monospace"});
+    const sigCalc = vals.map(v=>`(${v}-${MU[fc]})²`).join(" + ");
+    s += svgText(220,308,`σ = √[(${sigCalc}) / 3] = ${SIGMA[fc]}`,{size:9,fill:"rgba(245,245,240,0.5)",family:"'JetBrains Mono',monospace"});
+  }
+
+  // result label
+  s += svgRect(sx+3*(cW+pad)+8,muY,100,cH*2+pad,8,"none","rgba(249,168,37,0.3)",1,1,"4,3");
+  s += svgText(sx+3*(cW+pad)+58,muY+cH,"都是向量！",{size:10,weight:700,fill:"rgba(245,245,240,0.6)"});
+  s += svgText(sx+3*(cW+pad)+58,muY+cH+14,"每个神经元一个值",{size:8,fill:"rgba(245,245,240,0.4)"});
+
+  s += `</svg>`;
+  return s;
+}
+
+// Initial render
+render();
 </script>
+
 </body>
 </html>

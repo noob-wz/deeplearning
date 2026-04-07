@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>列向量视角下，BatchNorm 为什么按行统计？</title>
+<style>
+  :root{
+    --bg:#0f1115;
+    --bg2:#171b24;
+    --panel:#141821;
+    --panel-2:#1b212c;
+    --line:rgba(255,255,255,.08);
+    --line-strong:rgba(255,255,255,.14);
+    --text:#f3f4f7;
+    --muted:rgba(243,244,247,.68);
+    --faint:rgba(243,244,247,.34);
+    --accent:#ffb648;
+    --accent-soft:rgba(255,182,72,.13);
+    --green:#79d38f;
+    --blue:#74bcff;
+    --red:#ff7e67;
+    --s1:#ff7e67;
+    --s2:#74bcff;
+    --s3:#79d38f;
+    --n1:#ff9d6e;
+    --n2:#79c6ff;
+    --n3:#95df8b;
+    --shadow:0 20px 64px rgba(0,0,0,.32);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{
+    min-height:100%;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(121,198,255,.10), transparent 26%),
+      radial-gradient(circle at 100% 0%, rgba(255,182,72,.10), transparent 24%),
+      linear-gradient(180deg, #131722 0%, #0f1115 56%);
+    color:var(--text);
+    font-family:system-ui,-apple-system,'PingFang SC','Microsoft YaHei','Noto Sans CJK SC',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  body{padding:24px 18px 40px}
+  .page{max-width:1240px;margin:0 auto}
+  .hero,.viewer,.info-grid,.roadmap{background:rgba(20,24,33,.78);backdrop-filter: blur(12px);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:26px}
+  .hero{padding:28px;position:relative;overflow:hidden}
+  .hero::after{
+    content:"";position:absolute;right:-120px;top:-120px;width:300px;height:300px;border-radius:50%;
+    background:radial-gradient(circle, rgba(255,182,72,.16), transparent 68%);pointer-events:none;
+  }
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:var(--accent-soft);border:1px solid rgba(255,182,72,.22);color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.04em}
+  h1{margin-top:14px;font-size:clamp(28px,4vw,48px);line-height:1.08;font-weight:900;letter-spacing:-.04em;max-width:960px}
+  .hero p{margin-top:16px;max-width:980px;font-size:16px;line-height:1.85;color:var(--muted)}
+  .formula-strip{margin-top:22px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .formula-card{padding:16px 18px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid var(--line)}
+  .formula-card h3{font-size:14px;font-weight:800;margin-bottom:8px;color:var(--text)}
+  .formula-card p{font-size:14px;line-height:1.8;color:var(--muted)}
+  .formula-card code{font-family:'SFMono-Regular',Consolas,'Liberation Mono',monospace;font-size:13px;color:#ffd996}
+
+  .viewer{margin-top:18px;padding:20px}
+  .nav-title{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:800}
+  .step-nav{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .step-btn{
+    border:none;cursor:pointer;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.04);color:var(--muted);
+    border:1px solid var(--line);font:inherit;min-width:175px;text-align:left;transition:.18s transform,.18s background,.18s border-color;
+  }
+  .step-btn:hover{transform:translateY(-1px);color:var(--text)}
+  .step-btn.active{background:var(--accent-soft);border-color:rgba(255,182,72,.28);color:var(--accent)}
+  .step-btn b{display:block;font-size:15px;line-height:1.2}
+  .step-btn small{display:block;margin-top:5px;font-size:12px;color:inherit;opacity:.88;line-height:1.5}
+
+  .step-head{margin-top:18px;padding:18px 20px;border-radius:20px;background:linear-gradient(180deg, rgba(255,182,72,.10), rgba(255,182,72,.05));border:1px solid rgba(255,182,72,.16)}
+  .step-head h2{font-size:26px;line-height:1.2;font-weight:900;letter-spacing:-.02em}
+  .step-head p{margin-top:10px;font-size:15px;line-height:1.85;color:#ffe1ad;max-width:980px}
+
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;min-height:42px}
+  .ctrl-btn{
+    border:none;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--muted);padding:8px 12px;border-radius:12px;
+    cursor:pointer;font:inherit;font-size:13px;font-weight:800;transition:.18s background,.18s border-color,.18s color;
+  }
+  .ctrl-btn.active{background:var(--accent-soft);border-color:rgba(255,182,72,.28);color:var(--accent)}
+  .ctrl-btn.s1.active{background:rgba(255,126,103,.12);border-color:rgba(255,126,103,.26);color:var(--s1)}
+  .ctrl-btn.s2.active{background:rgba(116,188,255,.12);border-color:rgba(116,188,255,.26);color:var(--s2)}
+  .ctrl-btn.s3.active{background:rgba(121,211,143,.12);border-color:rgba(121,211,143,.26);color:var(--s3)}
+  .ctrl-btn.n1.active{background:rgba(255,157,110,.12);border-color:rgba(255,157,110,.26);color:var(--n1)}
+  .ctrl-btn.n2.active{background:rgba(121,198,255,.12);border-color:rgba(121,198,255,.26);color:var(--n2)}
+  .ctrl-btn.n3.active{background:rgba(149,223,139,.12);border-color:rgba(149,223,139,.26);color:var(--n3)}
+
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid var(--line)}
+  .legend-item{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+  .dot{width:10px;height:10px;border-radius:50%}
+
+  .viz-wrap{margin-top:16px;background:linear-gradient(180deg,#181d27 0%, #121620 100%);border:1px solid var(--line);border-radius:22px;padding:18px;overflow:hidden}
+  .viz-wrap svg{display:block;width:100%;height:auto}
+
+  .info-grid{margin-top:18px;padding:18px;display:grid;grid-template-columns:1.05fr .95fr;gap:16px}
+  .card{padding:18px;border-radius:20px;background:rgba(255,255,255,.03);border:1px solid var(--line)}
+  .card h3{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:800;margin-bottom:10px}
+  .card p{font-size:14px;line-height:1.85;color:var(--muted)}
+  .card strong{color:var(--text)}
+  .answer{background:linear-gradient(180deg, rgba(121,211,143,.10), rgba(121,211,143,.04));border-color:rgba(121,211,143,.16)}
+  .answer strong{color:#c7f4d2}
+
+  .roadmap{margin-top:18px;padding:18px}
+  .roadmap h3{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:800;margin-bottom:12px}
+  .roadmap-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+  .road-item{padding:14px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid var(--line)}
+  .road-item .num{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.06);color:var(--faint);font-size:13px;font-weight:900}
+  .road-item b{display:block;margin-top:10px;font-size:14px;line-height:1.4}
+  .road-item p{margin-top:6px;font-size:12px;line-height:1.7;color:var(--muted)}
+  .road-item.active{border-color:rgba(255,182,72,.26);background:var(--accent-soft)}
+  .road-item.active .num{background:rgba(255,182,72,.18);color:var(--accent)}
+  .road-item.done .num{background:rgba(121,211,143,.18);color:var(--green)}
+
+  .mono{font-family:'SFMono-Regular',Consolas,'Liberation Mono',monospace}
+  .svg-label{letter-spacing:.01em}
+  .float-slow{animation:bob 5s ease-in-out infinite}
+  .float-mid{animation:bob 4.2s ease-in-out infinite}
+  .float-fast{animation:bob 3.6s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+
+  @media (max-width: 1040px){
+    .formula-strip,.info-grid,.roadmap-list{grid-template-columns:1fr}
+  }
+  @media (max-width: 760px){
+    body{padding:14px 10px 26px}
+    .hero,.viewer,.info-grid,.roadmap{border-radius:20px}
+    .hero,.viewer,.info-grid,.roadmap{padding:14px}
+    .step-btn{min-width:unset;flex:1 1 calc(50% - 10px)}
+    .step-head h2{font-size:22px}
+    .viz-wrap{padding:8px}
+    .legend{gap:10px}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <section class="hero">
+    <span class="eyebrow">🧭 这一页在回答什么问题</span>
+    <h1>当每个样本都写成<strong style="color:var(--accent)">列向量</strong>时，<br>BatchNorm 为什么要沿着<strong style="color:var(--accent)">同一神经元 across batch</strong>去统计？</h1>
+    <p>
+      这一页固定采用同一套记号：<strong>每个样本是一个列向量</strong>，多个样本并排组成输入矩阵 <span class="mono">X = [x(1), x(2), x(3), ...]</span>，
+      一层线性映射写成 <span class="mono">Z = W·X + b</span>。在这套写法里，<strong>列表示样本，行表示神经元 / 特征</strong>。
+      所以进入 BatchNorm 之后，真正要放在一起统计的，不是“一个样本内部的所有分量”，而是<strong>同一行上、来自不同样本的那些值</strong>。
+    </p>
+    <div class="formula-strip">
+      <div class="formula-card">
+        <h3>约定 1：样本写成列向量</h3>
+        <p>单个样本记成 <code>x(i)</code>，它本身就是一列。多个样本放在一起，就不是“往下堆”，而是<strong>并排排成多列</strong>。</p>
+      </div>
+      <div class="formula-card">
+        <h3>约定 2：一层网络用左乘表示</h3>
+        <p>这一层的权重矩阵写成 <code>W</code>，整批样本一起前向传播写成 <code>Z = W·X + b</code>。</p>
+      </div>
+      <div class="formula-card">
+        <h3>约定 3：统计轴由记号决定</h3>
+        <p>既然 <strong>列是样本</strong>、<strong>行是神经元</strong>，那 BatchNorm 在这页里就应当<strong>按行看</strong>。如果你把样本排成行，统计轴才会变成按列。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="viewer">
+    <div class="nav-title">逐步建立这套坐标系</div>
+    <div class="step-nav" id="stepNav"></div>
+    <div class="step-head">
+      <h2 id="stepTitle"></h2>
+      <p id="stepSubtitle"></p>
+    </div>
+    <div class="controls" id="controlsArea"></div>
+    <div class="legend" id="legendArea"></div>
+    <div class="viz-wrap" id="vizArea"></div>
+  </section>
+
+  <section class="info-grid">
+    <div class="card">
+      <h3>当前图想表达什么</h3>
+      <p id="explanationBox"></p>
+    </div>
+    <div class="card answer">
+      <h3>这一步的直接结论</h3>
+      <p id="answerBox"></p>
+    </div>
+  </section>
+
+  <section class="roadmap">
+    <h3>理解路线</h3>
+    <div class="roadmap-list" id="roadmapList"></div>
+  </section>
+</div>
+
+<script>
+const STEPS = [
+  {
+    id:'single',
+    nav:'① 一个神经元',
+    short:'先确认最小单元',
+    title:'一个样本列向量进入一个神经元，只得到一个标量',
+    subtitle:'这里先不谈 batch。先把“列向量样本”与“单个神经元输出”的关系钉住：一个样本 × 一个神经元 = 一个数。',
+    expl:'<strong>这张图只做一件事：</strong>把单样本、单神经元的关系讲清楚。样本 <span class="mono">x(1)</span> 是一列输入；神经元把它与一组权重做加权求和，再加偏置，得到一个输出值。因为神经元只有一个，所以输出一定是<strong>标量</strong>。',
+    answer:'<strong>一个样本列向量经过一个神经元 → 输出是标量。</strong><br>现在还没有“多个样本并排”的 batch 维度，因此也还没有 BatchNorm 的统计对象。'
+  },
+  {
+    id:'layer',
+    nav:'② 一层网络',
+    short:'一个样本过一整层',
+    title:'一个样本列向量经过一层网络，得到的是一个输出列向量 z(i)',
+    subtitle:'当神经元从 1 个扩展到一层时，同一个样本会同时被多个神经元处理，所以输出不再是一个数，而是一列表示。',
+    expl:'<strong>这一步在说明“列向量是怎么延续下去的”。</strong>因为每个神经元都会给样本产出一个标量，所以多个神经元的输出自然叠成一列。这就是 <span class="mono">z(1)</span>：它仍然是<strong>列向量</strong>，只不过它表示的是这一层提取出来的 3 个神经元响应。',
+    answer:'<strong>一个样本经过一层网络 → 得到一个输出列向量 z(i)。</strong><br>所以当你看到很多 <span class="mono">z(i)</span> 时，要想到它们本来就应该是并排摆放的多列。'
+  },
+  {
+    id:'batch',
+    nav:'③ 一个 Batch',
+    short:'多个样本并排进入同一层',
+    title:'多个样本列向量并排组成 X，共享同一层权重 W',
+    subtitle:'这里不再把样本拆成三套独立小网络，而是把它们叠放到同一层前后去看：输入不同，权重相同，前向传播是并行发生的。',
+    expl:'<strong>这一步在强调“共享同一层”。</strong>3 个样本都进入同一组权重 <span class="mono">W</span>，只是它们分别占据输入矩阵 <span class="mono">X</span> 的不同列。你现在看到的是一个 batch 的前向传播，而不是三张互不相关的网络示意图。',
+    answer:'<strong>Batch = 多个样本列向量并排放在一起，共用同一组 W。</strong><br>在这一页的记号里：<span class="mono">X</span> 的每一列是一个样本。'
+  },
+  {
+    id:'matrix',
+    nav:'④ 矩阵乘法',
+    short:'把图翻译成 W·X = Z',
+    title:'把并排样本翻译成矩阵：Z = W·X + b',
+    subtitle:'现在正式进入数学图例：X 的列是样本，W 左乘 X 之后，Z 的列仍然是样本，Z 的行对应这一层的神经元 / 特征。',
+    expl:'<strong>这一步是在统一图像直觉和数学写法。</strong>如果每个样本都是列向量，那么多个样本并排以后自然得到矩阵 <span class="mono">X</span>；再由 <span class="mono">W</span> 左乘，就得到输出矩阵 <span class="mono">Z</span>。此时 <strong>Z 的列 = 样本</strong>，<strong>Z 的行 = 神经元</strong>。',
+    answer:'<strong>在列向量约定下，Z 的每一列对应一个样本的输出列向量；Z 的每一行对应同一个神经元 across batch。</strong>'
+  },
+  {
+    id:'bn',
+    nav:'⑤ BatchNorm',
+    short:'在这套约定下按行统计',
+    title:'因此 BatchNorm 在这页里要按“行”统计 μ 和 σ',
+    subtitle:'因为这页固定使用“样本是列向量”的约定，所以同一个神经元 across batch 落在同一行上，BatchNorm 应当按行做统计。',
+    expl:'<strong>这里是整页的最终落点。</strong>第 j 个神经元面对的是 <span class="mono">Z[j,1], Z[j,2], Z[j,3], ...</span> 这一整行值：它们语义相同，唯一的差别只是来自不同样本。因此均值和标准差都应该沿这一行计算。<br><br><strong>也就是说：</strong>如果样本写成列向量，就按行统计；如果样本排成行，就按列统计。变的是记号，不变的是“始终沿着同一神经元 across batch 统计”。',
+    answer:'<strong>本页结论：</strong>在 <span class="mono">Z = W·X + b</span> 且“样本是列”的写法里，BatchNorm 对 <strong>每一行</strong>求统计量。<br><strong>μ 与 σ 仍然是按神经元组织的向量</strong>，只是这里更适合写成竖着的一列。'
+  }
+];
+
+const SNAMES = ['张三','李四','王五'];
+const SCOLS = ['#ff7e67','#74bcff','#79d38f'];
+const NNAMES = ['神经元1','神经元2','神经元3'];
+const NCOLS = ['#ff9d6e','#79c6ff','#95df8b'];
+const INPUTS = [[2,5,3],[4,1,6],[3,3,2]];
+const WTS = [[10,8,6],[5,15,3],[8,4,12]];
+const BIAS = [5,-2,3];
+
+function zOf(sampleIndex, neuronIndex){
+  const x = INPUTS[sampleIndex], w = WTS[neuronIndex];
+  return x[0]*w[0] + x[1]*w[1] + x[2]*w[2] + BIAS[neuronIndex];
+}
+const ZCOLS = INPUTS.map((_, sampleIndex) => NNAMES.map((_, neuronIndex) => zOf(sampleIndex, neuronIndex)));
+const ZROWS = NNAMES.map((_, neuronIndex) => INPUTS.map((_, sampleIndex) => zOf(sampleIndex, neuronIndex)));
+const MU = ZROWS.map(row => round1(row.reduce((a,b)=>a+b,0)/row.length));
+const SIGMA = ZROWS.map((row,i)=>{
+  const m = MU[i];
+  const v = row.reduce((acc,val)=>acc + (val-m)*(val-m),0)/row.length;
+  return round1(Math.sqrt(v));
+});
+
+function round1(v){ return Math.round(v*10)/10; }
+
+const state = { step:0, batchFocus:-1, rowFocus:-1 };
+
+function goStep(i){
+  state.step = i;
+  if(STEPS[i].id !== 'batch') state.batchFocus = -1;
+  if(STEPS[i].id !== 'bn') state.rowFocus = -1;
+  render();
+}
+function setBatchFocus(i){ state.batchFocus = i; render(); }
+function setRowFocus(i){ state.rowFocus = i; render(); }
+
+function render(){
+  renderNav();
+  const step = STEPS[state.step];
+  document.getElementById('stepTitle').textContent = step.title;
+  document.getElementById('stepSubtitle').innerHTML = step.subtitle;
+  document.getElementById('explanationBox').innerHTML = step.expl;
+  document.getElementById('answerBox').innerHTML = step.answer;
+  renderControls();
+  renderLegend();
+  renderRoadmap();
+  renderViz();
+}
+
+function renderNav(){
+  document.getElementById('stepNav').innerHTML = STEPS.map((step,i)=>`
+    <button class="step-btn ${i===state.step?'active':''}" onclick="goStep(${i})">
+      <b>${step.nav}</b>
+      <small>${step.short}</small>
+    </button>
+  `).join('');
+}
+function renderControls(){
+  const step = STEPS[state.step].id;
+  let html = '';
+  if(step === 'batch'){
+    html += `<button class="ctrl-btn ${state.batchFocus===-1?'active':''}" onclick="setBatchFocus(-1)">全部样本一起看</button>`;
+    SNAMES.forEach((name,i)=>{
+      html += `<button class="ctrl-btn s${i+1} ${state.batchFocus===i?'active':''}" onclick="setBatchFocus(${i})">聚焦 ${name}</button>`;
+    });
+  }
+  if(step === 'bn'){
+    html += `<button class="ctrl-btn ${state.rowFocus===-1?'active':''}" onclick="setRowFocus(-1)">全部行</button>`;
+    NNAMES.forEach((name,i)=>{
+      html += `<button class="ctrl-btn n${i+1} ${state.rowFocus===i?'active':''}" onclick="setRowFocus(${i})">聚焦 ${name}</button>`;
+    });
+  }
+  document.getElementById('controlsArea').innerHTML = html;
+}
+function renderLegend(){
+  document.getElementById('legendArea').innerHTML = `
+    <span class="legend-item"><i class="dot" style="background:var(--s1)"></i>张三</span>
+    <span class="legend-item"><i class="dot" style="background:var(--s2)"></i>李四</span>
+    <span class="legend-item"><i class="dot" style="background:var(--s3)"></i>王五</span>
+    <span class="legend-item"><i class="dot" style="background:var(--n1)"></i>神经元1</span>
+    <span class="legend-item"><i class="dot" style="background:var(--n2)"></i>神经元2</span>
+    <span class="legend-item"><i class="dot" style="background:var(--n3)"></i>神经元3</span>
+    <span class="legend-item"><i class="dot" style="background:var(--accent)"></i>统计 / 公式说明</span>
+  `;
+}
+function renderRoadmap(){
+  document.getElementById('roadmapList').innerHTML = STEPS.map((step,i)=>{
+    const cls = i < state.step ? 'done' : (i === state.step ? 'active' : '');
+    return `
+      <div class="road-item ${cls}">
+        <div class="num">${i < state.step ? '✓' : (i+1)}</div>
+        <b>${step.nav}</b>
+        <p>${step.short}</p>
+      </div>
+    `;
+  }).join('');
+}
+function renderViz(){
+  const step = STEPS[state.step].id;
+  let svg = '';
+  if(step === 'single') svg = vizSingle();
+  if(step === 'layer') svg = vizLayer();
+  if(step === 'batch') svg = vizBatch();
+  if(step === 'matrix') svg = vizMatrix();
+  if(step === 'bn') svg = vizBN();
+  document.getElementById('vizArea').innerHTML = svg;
+}
+
+function defs(){
+  return `
+    <defs>
+      <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="4" result="blur"></feGaussianBlur>
+        <feMerge>
+          <feMergeNode in="blur"></feMergeNode>
+          <feMergeNode in="SourceGraphic"></feMergeNode>
+        </feMerge>
+      </filter>
+      <linearGradient id="panelGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="rgba(255,255,255,.04)" />
+        <stop offset="100%" stop-color="rgba(255,255,255,.02)" />
+      </linearGradient>
+    </defs>
+  `;
+}
+function t(x,y,txt,size=16,weight=600,fill='#fff',anchor='middle',extra=''){
+  return `<text x="${x}" y="${y}" text-anchor="${anchor}" dominant-baseline="middle" font-size="${size}" font-weight="${weight}" fill="${fill}" ${extra}>${txt}</text>`;
+}
+function line(x1,y1,x2,y2,stroke,width=2,opacity=1,dash=''){
+  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${width}" opacity="${opacity}" ${dash?`stroke-dasharray="${dash}"`:''}/>`;
+}
+function rect(x,y,w,h,rx,fill,stroke='none',sw=1,opacity=1,extra=''){
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" opacity="${opacity}" ${extra}/>`;
+}
+function circle(x,y,r,fill,stroke='none',sw=1,opacity=1,extra=''){
+  return `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" opacity="${opacity}" ${extra}/>`;
+}
+function flow(path,color,delay=0,dur=2.4,r=4,op=0.95){
+  return `<circle r="${r}" fill="${color}" opacity="${op}" filter="url(#glow)">
+    <animateMotion path="${path}" begin="${delay}s" dur="${dur}s" repeatCount="indefinite" />
+    <animate attributeName="opacity" values="0;1;1;0" dur="${dur}s" begin="${delay}s" repeatCount="indefinite" />
+  </circle>`;
+}
+function pulse(x,y,r,color,delay=0){
+  return `<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="${color}" stroke-width="2" opacity="0.45">
+    <animate attributeName="r" values="${r};${r+14}" dur="2.2s" begin="${delay}s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.42;0" dur="2.2s" begin="${delay}s" repeatCount="indefinite"/>
+  </circle>`;
+}
+function vectorCard(x,y,w,h,title,border,rows,subtitle='',ghost=false, floatClass='float-slow'){
+  const body = rows.map((row,i)=>{
+    const ry = y + 58 + i*48;
+    return `
+      ${rect(x+14, ry-18, w-28, 34, 10, 'rgba(255,255,255,.03)', 'rgba(255,255,255,.06)', 1, ghost?.48:1)}
+      ${t(x+34, ry, row.label, 13, 800, 'rgba(243,244,247,.56)', 'start')}
+      ${t(x+w-28, ry, row.value, 16, 800, '#f3f4f7', 'end', 'style="font-family:JetBrains Mono, monospace"')}
+    `;
+  }).join('');
+  return `
+    <g class="${floatClass}" opacity="${ghost?0.28:1}">
+      ${rect(x, y, w, h, 20, 'rgba(15,17,21,.92)', border, ghost?1.2:2)}
+      ${rect(x+12, y+12, w-24, 28, 12, border.replace(')', ',.12)').replace('rgb','rgba'), 'none', 1, 0)}
+      ${rect(x+12, y+12, w-24, 28, 12, 'rgba(255,255,255,.04)', 'rgba(255,255,255,.05)', 1, ghost?.5:1)}
+      ${t(x+18, y+26, title, 13, 900, border, 'start')}
+      ${subtitle ? t(x+w/2, y+h-18, subtitle, 12, 700, 'rgba(243,244,247,.48)') : ''}
+      ${body}
+    </g>
+  `;
+}
+function neuronNode(x,y,label,color,sub='共享同一层'){ 
+  return `
+    ${pulse(x,y,42,color,0)}
+    ${circle(x,y,40, color.replace(')', ',.14)').replace('rgb','rgba'), color, 3, 1)}
+    ${t(x,y-4,label,15,900,color)}
+    ${t(x,y+20,sub,12,700,'rgba(243,244,247,.52)')}
+  `;
+}
+function smallTag(x,y,w,h,text,fill,stroke,color){
+  return `${rect(x,y,w,h,14,fill,stroke,1.4)}${t(x+w/2,y+h/2+1,text,13,800,color)}`;
+}
+function matrixCell(x,y,w,h,val,label,border,fill){
+  return `
+    ${rect(x,y,w,h,16,fill,border,1.6)}
+    ${t(x+w/2,y+28,val,22,900,'#f3f4f7','middle','style="font-family:JetBrains Mono, monospace"')}
+    ${t(x+w/2,y+54,label,12,700,'rgba(243,244,247,.44)')}
+  `;
+}
+
+function vizSingle(){
+  const x = INPUTS[0];
+  const z = zOf(0,0);
+  let s = `<svg viewBox="0 0 1180 620">${defs()}`;
+  s += t(590,40,'单样本列向量 → 单神经元 → 单个标量',28,900,'#ffb648');
+  s += t(590,76,'先只看最小单元：还没有 batch，因此不会出现“按行 / 按列统计”的问题',15,500,'rgba(243,244,247,.64)');
+
+  s += vectorCard(110,150,180,220,'x(1)', '#ff7e67', [
+    {label:'x1', value:x[0]}, {label:'x2', value:x[1]}, {label:'x3', value:x[2]}
+  ], '一个样本列向量', false, 'float-mid');
+
+  s += pulse(580,260,66,'#ff9d6e',0.3);
+  s += circle(580,260,58,'rgba(255,157,110,.16)','#ff9d6e',3);
+  s += t(580,248,'Σ(wx)+b',22,900,'#ff9d6e');
+  s += t(580,286,'单个神经元',14,800,'#ffd8c5');
+  s += smallTag(500,352,160,40,'只产出 1 个数', 'rgba(255,182,72,.10)','rgba(255,182,72,.22)', '#ffd998');
+
+  s += rect(880,186,160,148,24,'rgba(255,182,72,.08)','rgba(255,182,72,.28)',2.2);
+  s += pulse(960,260,34,'#ffb648',1);
+  s += t(960,248,String(z),28,900,'#ffb648','middle','style="font-family:JetBrains Mono, monospace"');
+  s += t(960,292,'标量输出',15,800,'#ffe3ad');
+
+  const paths = [
+    'M290 208 C370 208, 440 230, 522 246',
+    'M290 256 C370 256, 440 256, 522 258',
+    'M290 304 C370 304, 440 282, 522 274'
+  ];
+  paths.forEach((path,i)=>{
+    s += `<path d="${path}" fill="none" stroke="rgba(255,126,103,.34)" stroke-width="2.4"/>`;
+    s += flow(path,'#ff7e67',i*.34,2.4,4,0.95);
+  });
+  s += `<path d="M638 260 C740 260, 804 260, 880 260" fill="none" stroke="rgba(255,182,72,.46)" stroke-width="3"/>`;
+  s += flow('M638 260 C740 260, 804 260, 880 260','#ffb648',0.25,2.0,5,1);
+
+  s += rect(126,420,930,110,20,'rgba(255,255,255,.03)','rgba(255,255,255,.08)',1.2);
+  s += t(591,456,`${x[0]}×10 + ${x[1]}×8 + ${x[2]}×6 + 5 = ${z}`,22,800,'#f3f4f7','middle','style="font-family:JetBrains Mono, monospace"');
+  s += t(591,498,'这里的输出只有一个数，所以 BatchNorm 还没有可以统计的“批内同类值”。',14,500,'rgba(243,244,247,.54)');
+  s += `</svg>`;
+  return s;
+}
+
+function vizLayer(){
+  let s = `<svg viewBox="0 0 1180 650">${defs()}`;
+  s += t(590,40,'一个样本经过一整层网络，输出仍然保持列向量形状',28,900,'#ffb648');
+  s += t(590,76,'每个神经元给这个样本打一个分，这些分数竖着排起来，就得到 z(1)',15,500,'rgba(243,244,247,.64)');
+
+  s += vectorCard(84,160,180,220,'x(1)', '#ff7e67', [
+    {label:'x1', value:INPUTS[0][0]}, {label:'x2', value:INPUTS[0][1]}, {label:'x3', value:INPUTS[0][2]}
+  ], '输入列向量', false, 'float-slow');
+
+  const ny = [170, 290, 410];
+  ny.forEach((y,j)=>{
+    s += neuronNode(548,y,NNAMES[j],NCOLS[j], '对同一个样本响应');
+    s += line(586,y,760,y,NCOLS[j],2.6,0.9);
+    s += flow(`M586 ${y} C650 ${y}, 710 ${y}, 760 ${y}`, NCOLS[j], 0.18*j, 2.3, 4, 0.95);
+  });
+
+  [0,1,2].forEach((i)=>{
+    ny.forEach((y,j)=>{
+      const path = `M264 ${208+i*48} C360 ${208+i*48}, 430 ${y}, 508 ${y}`;
+      s += `<path d="${path}" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="1.9"/>`;
+      if(j === i) s += flow(path, '#ff7e67', 0.22*i, 2.5, 4, 0.9);
+    });
+  });
+
+  s += vectorCard(804,160,200,250,'z(1)', '#ffb648', [
+    {label:'z1', value:ZCOLS[0][0]}, {label:'z2', value:ZCOLS[0][1]}, {label:'z3', value:ZCOLS[0][2]}
+  ], '这一层的输出列向量', false, 'float-mid');
+
+  s += smallTag(440,506,216,42,'一层网络 = 多个神经元并排工作', 'rgba(255,182,72,.10)','rgba(255,182,72,.22)', '#ffd998');
+  s += smallTag(756,506,280,42,'所以一个样本会得到一个新的列向量 z(1)', 'rgba(255,255,255,.04)','rgba(255,255,255,.10)', '#f3f4f7');
+  s += `</svg>`;
+  return s;
+}
+
+function vizBatch(){
+  const focus = state.batchFocus;
+  let s = `<svg viewBox="0 0 1180 680">${defs()}`;
+  s += t(590,40,'多个样本并排组成 X，共享同一层 W',28,900,'#ffb648');
+  s += t(590,76,'这里把 batch 叠放到同一层前后去看：看到的是一层网络同时处理三列样本',15,500,'rgba(243,244,247,.64)');
+
+  const inXs = [70, 130, 190];
+  const outXs = [900, 960, 1020];
+  const baseY = [220, 180, 140];
+  const colors = SCOLS;
+  const rgb = ['255,126,103','116,188,255','121,211,143'];
+
+  s += rect(398,118,384,420,28,'rgba(255,255,255,.02)','rgba(255,182,72,.16)',1.5);
+  s += t(590,146,'共享的一层网络 W',20,900,'#ffd998');
+  s += t(590,174,'所有样本都经过同一组权重；差异只来自输入列向量不同',13,500,'rgba(243,244,247,.56)');
+
+  const ny = [220, 330, 440];
+  ny.forEach((y,j)=>{
+    s += neuronNode(590, y, NNAMES[j], NCOLS[j], '同一组参数');
+  });
+
+  [0,1,2].forEach(i=>{
+    const active = focus === -1 || focus === i;
+    const ghost = focus !== -1 && focus !== i;
+    const rowsIn = INPUTS[i].map((v,j)=>({label:`x${j+1}`,value:v}));
+    const rowsOut = ZCOLS[i].map((v,j)=>({label:`z${j+1}`,value:v}));
+    s += vectorCard(inXs[i], baseY[i], 150, 210, `x(${i+1})`, colors[i], rowsIn, '', ghost, i===0?'float-slow':i===1?'float-mid':'float-fast');
+    s += vectorCard(outXs[i], baseY[i], 150, 210, `z(${i+1})`, colors[i], rowsOut, '', ghost, i===0?'float-fast':i===1?'float-slow':'float-mid');
+
+    ny.forEach((y,j)=>{
+      const yIn = baseY[i] + 75 + j*48;
+      const yOut = baseY[i] + 75 + j*48;
+      const p1 = `M${inXs[i]+150} ${yIn} C${inXs[i]+240} ${yIn}, 470 ${y}, 548 ${y}`;
+      const p2 = `M632 ${y} C710 ${y}, ${outXs[i]-90} ${yOut}, ${outXs[i]} ${yOut}`;
+      s += `<path d="${p1}" fill="none" stroke="${active ? colors[i] : 'rgba(255,255,255,.06)'}" stroke-width="${active?2.1:1}" opacity="${ghost?.18:.72}"/>`;
+      s += `<path d="${p2}" fill="none" stroke="${active ? colors[i] : 'rgba(255,255,255,.06)'}" stroke-width="${active?2.1:1}" opacity="${ghost?.18:.72}"/>`;
+      if(active){
+        s += flow(p1, colors[i], 0.28*j + 0.16*i, 2.7, 3.8, ghost?0.28:0.9);
+        s += flow(p2, colors[i], 0.34*j + 0.18*i, 2.6, 3.8, ghost?0.28:0.9);
+      }
+    });
+  });
+
+  s += smallTag(430,570,208,40,'左边三列并排 = 输入矩阵 X', 'rgba(255,255,255,.04)','rgba(255,255,255,.10)', '#f3f4f7');
+  s += smallTag(664,570,284,40,'右边三列并排 = 输出矩阵 Z 的各列', 'rgba(255,182,72,.10)','rgba(255,182,72,.22)', '#ffd998');
+  s += t(146,600,'输入列向量们',16,800,'rgba(243,244,247,.78)');
+  s += t(1012,600,'输出列向量们',16,800,'rgba(243,244,247,.78)');
+  s += `</svg>`;
+  return s;
+}
+
+function drawMatrix(x,y,w,h,data,colLabels,rowLabels,mode='input'){
+  const cw = 104, ch = 68, gap = 10;
+  let s = '';
+  s += rect(x,y,w,h,24,'rgba(255,255,255,.02)','rgba(255,255,255,.08)',1.2);
+  if(colLabels){
+    colLabels.forEach((lab,i)=>{
+      s += t(x+110+i*(cw+gap), y+22, lab, 14, 900, SCOLS[i]);
+    });
+  }
+  if(rowLabels){
+    rowLabels.forEach((lab,i)=>{
+      s += t(x+36, y+74+i*(ch+gap), lab, 13, 800, NCOLS[i], 'middle');
+    });
+  }
+  for(let r=0;r<3;r++){
+    for(let c=0;c<3;c++){
+      const cellX = x+78+c*(cw+gap), cellY = y+42+r*(ch+gap);
+      const border = mode==='weight' ? 'rgba(255,182,72,.30)' : (mode==='input' ? SCOLS[c] : NCOLS[r]);
+      const fill = mode==='weight' ? 'rgba(255,182,72,.06)' : (mode==='input' ? `rgba(${c===0?'255,126,103':c===1?'116,188,255':'121,211,143'},.08)` : `rgba(${r===0?'255,157,110':r===1?'121,198,255':'149,223,139'},.08)`);
+      s += matrixCell(cellX, cellY, cw, ch, data[r][c], mode==='output' ? `Z[${r+1},${c+1}]` : mode==='input' ? `X[${r+1},${c+1}]` : `W[${r+1},${c+1}]`, border, fill);
+      if(mode==='output'){
+        s += `<rect x="${cellX}" y="${cellY}" width="${cw}" height="${ch}" rx="16" fill="none" stroke="${NCOLS[r]}" stroke-width="1.5" opacity="0.16">
+          <animate attributeName="opacity" values="0.12;0.34;0.12" dur="${2.2 + c*0.3}s" begin="${r*0.25}s" repeatCount="indefinite"/>
+        </rect>`;
+      }
+    }
+  }
+  return s;
+}
+
+function vizMatrix(){
+  const XMAT = [
+    [INPUTS[0][0], INPUTS[1][0], INPUTS[2][0]],
+    [INPUTS[0][1], INPUTS[1][1], INPUTS[2][1]],
+    [INPUTS[0][2], INPUTS[1][2], INPUTS[2][2]]
+  ];
+  const WMAT = [
+    [WTS[0][0], WTS[0][1], WTS[0][2]],
+    [WTS[1][0], WTS[1][1], WTS[1][2]],
+    [WTS[2][0], WTS[2][1], WTS[2][2]]
+  ];
+  const ZMAT = [
+    [ZROWS[0][0], ZROWS[0][1], ZROWS[0][2]],
+    [ZROWS[1][0], ZROWS[1][1], ZROWS[1][2]],
+    [ZROWS[2][0], ZROWS[2][1], ZROWS[2][2]]
+  ];
+
+  let s = `<svg viewBox="0 0 1460 700">${defs()}`;
+  s += t(640,42,'把并排样本翻译成矩阵乘法：Z = W·X + b',30,900,'#ffb648');
+  s += t(640,80,'这一页固定采用列向量记法，所以 X 和 Z 都是“列是样本，行是神经元 / 特征”的坐标系',15,500,'rgba(243,244,247,.64)');
+
+  s += drawMatrix(30,156,420,340,WMAT,['输入1','输入2','输入3'],['神经元1','神经元2','神经元3'],'weight');
+  s += t(240,126,'W：这一层的权重矩阵',18,900,'#ffd998');
+  s += smallTag(122,520,240,42,'W 负责把输入映射到 3 个神经元', 'rgba(255,182,72,.10)','rgba(255,182,72,.22)', '#ffd998');
+
+  s += t(482,328,'×',42,900,'rgba(243,244,247,.72)');
+
+  s += drawMatrix(518,156,420,340,XMAT,['x(1)','x(2)','x(3)'],['输入1','输入2','输入3'],'input');
+  s += t(728,126,'X：把样本列向量并排起来',18,900,'#f3f4f7');
+  s += smallTag(602,520,252,42,'X 的每一列就是一个样本', 'rgba(255,255,255,.04)','rgba(255,255,255,.10)', '#f3f4f7');
+
+  s += t(970,328,'=',42,900,'rgba(243,244,247,.72)');
+
+  s += drawMatrix(1000,156,420,340,ZMAT,['z(1)','z(2)','z(3)'],['神经元1','神经元2','神经元3'],'output');
+  s += t(1210,126,'Z：输出矩阵',18,900,'#f3f4f7');
+  s += smallTag(1074,520,274,42,'Z 的列是样本，Z 的行是神经元', 'rgba(121,211,143,.10)','rgba(121,211,143,.24)', '#c8f4d0');
+
+  s += rect(80,586,1300,78,20,'rgba(255,255,255,.03)','rgba(255,255,255,.08)',1.2);
+  s += t(730,618,'关键对应关系：前面图里的“并排样本” = 这里 X 的多列；同理，右侧输出列向量们 = 这里 Z 的多列。',16,800,'#f3f4f7');
+  s += t(730,646,'因此后面要找“同一个神经元 across batch”，就应该在 Z 里沿着同一行去看。',14,500,'#ffd998');
+  s += `</svg>`;
+  return s;
+}
+
+function vizBN(){
+  const focus = state.rowFocus;
+  let s = `<svg viewBox="0 0 1260 740">${defs()}`;
+  s += t(630,42,'在这套列向量约定下，BatchNorm 要按行统计',30,900,'#ffb648');
+  s += t(630,80,'因为同一个神经元 across batch 落在同一行，所以 μ 与 σ 应该从每一行提取',15,500,'rgba(243,244,247,.64)');
+
+  const x0 = 136, y0 = 194, cw = 150, ch = 78, gap = 12;
+  const rowCenters = [];
+
+  s += t(630,124,'Z 的列 = 样本    ｜    Z 的行 = 同一个神经元 across batch',18,800,'rgba(243,244,247,.78)');
+  s += t(386,156,'输出矩阵 Z',16,900,'#f3f4f7');
+  s += t(807,156,'μ 向量',16,900,'#ffd998');
+  s += t(993,156,'σ 向量',16,900,'#c8f4d0');
+  s += t(1157,156,'统计轴说明',16,900,'#f3f4f7');
+
+  SNAMES.forEach((name,c)=>{
+    s += t(x0 + 110 + c*(cw+gap), 176, name, 15, 900, SCOLS[c]);
+  });
+  NNAMES.forEach((name,r)=>{
+    const cy = y0 + 38 + r*(ch+gap);
+    rowCenters.push(cy);
+    s += t(54, cy, name, 15, 900, NCOLS[r], 'start');
+    s += t(54, cy+26, `第 ${r+1} 行`, 12, 700, 'rgba(243,244,247,.48)', 'start');
+  });
+
+  for(let r=0;r<3;r++){
+    const active = focus === -1 || focus === r;
+    const op = active ? 1 : 0.16;
+    const bandY = y0 + r*(ch+gap) - 10;
+    s += `<rect x="118" y="${bandY}" width="520" height="${ch+20}" rx="22" fill="rgba(${r===0?'255,157,110':r===1?'121,198,255':'149,223,139'},.08)" stroke="${NCOLS[r]}" stroke-width="2" opacity="${focus===-1?0:0.22}"></rect>`;
+    if(focus === -1){
+      s += `<rect x="118" y="${bandY}" width="520" height="${ch+20}" rx="22" fill="rgba(${r===0?'255,157,110':r===1?'121,198,255':'149,223,139'},.08)" stroke="${NCOLS[r]}" stroke-width="2" opacity="0.06">
+        <animate attributeName="opacity" values="0.06;0.28;0.06" dur="3.6s" begin="${r*1.0}s" repeatCount="indefinite"/>
+      </rect>`;
+    }
+    for(let c=0;c<3;c++){
+      const x = x0 + c*(cw+gap), y = y0 + r*(ch+gap);
+      s += rect(x,y,cw,ch,18,`rgba(${r===0?'255,157,110':r===1?'121,198,255':'149,223,139'},.08)`,NCOLS[r],1.8,op);
+      s += t(x+cw/2,y+29,ZROWS[r][c],24,900,'#f3f4f7','middle',`opacity="${op}" style="font-family:JetBrains Mono, monospace"`);
+      s += t(x+cw/2,y+58,`Z[${r+1},${c+1}]`,12,700,'rgba(243,244,247,.44)','middle',`opacity="${op}"`);
+    }
+    const rowPath = `M${x0+cw/2} ${rowCenters[r]} C${x0+cw+60} ${rowCenters[r]}, ${x0+2*cw+40} ${rowCenters[r]}, ${x0+2*(cw+gap)+cw/2} ${rowCenters[r]}`;
+    if(active) s += flow(rowPath, NCOLS[r], 0.2*r, 2.8, 4.5, focus===-1?0.9:1);
+  }
+
+  s += smallTag(182,522,392,42,'每一行里的 3 个值：语义相同，只是来自不同样本', 'rgba(255,182,72,.10)','rgba(255,182,72,.22)', '#ffd998');
+
+  s += t(678,260,'→',34,900,'rgba(243,244,247,.72)');
+  s += t(678,358,'→',34,900,'rgba(243,244,247,.72)');
+  s += t(678,456,'→',34,900,'rgba(243,244,247,.72)');
+
+  // mu and sigma column vectors
+  s += rect(736,184,142,294,22,'rgba(255,182,72,.06)','rgba(255,182,72,.24)',1.8);
+  MU.forEach((m,r)=>{
+    const active = focus === -1 || focus === r;
+    s += rect(758,208 + r*94, 98, 64, 16, 'rgba(255,182,72,.12)', '#ffb648', 2, active?1:.14);
+    s += t(807,236 + r*94, m, 24, 900, '#ffd998','middle',`opacity="${active?1:.14}" style="font-family:JetBrains Mono, monospace"`);
+    s += t(807,260 + r*94, `μ${r+1}`, 12, 800, '#ffd998','middle',`opacity="${active?1:.14}"`);
+  });
+
+  s += rect(922,184,142,294,22,'rgba(121,211,143,.06)','rgba(121,211,143,.24)',1.8);
+  SIGMA.forEach((m,r)=>{
+    const active = focus === -1 || focus === r;
+    s += rect(944,208 + r*94, 98, 64, 16, 'rgba(121,211,143,.12)', '#79d38f', 2, active?1:.14);
+    s += t(993,236 + r*94, m, 24, 900, '#c8f4d0','middle',`opacity="${active?1:.14}" style="font-family:JetBrains Mono, monospace"`);
+    s += t(993,260 + r*94, `σ${r+1}`, 12, 800, '#c8f4d0','middle',`opacity="${active?1:.14}"`);
+  });
+
+  s += rect(1094,184,126,294,22,'rgba(255,255,255,.03)','rgba(255,255,255,.08)',1.2);
+  s += t(1157,228,'样本写成列向量',14,800,'#f3f4f7');
+  s += t(1157,260,'→',22,900,'#ffb648');
+  s += t(1157,294,'同一神经元 across batch',14,800,'#ffd998');
+  s += t(1157,326,'落在同一行',14,800,'#f3f4f7');
+  s += t(1157,380,'所以本页按行统计',16,900,'#c8f4d0');
+  s += t(1157,420,'如果换成“样本在行里”',13,700,'rgba(243,244,247,.58)');
+  s += t(1157,446,'那统计轴才会改成按列',13,700,'rgba(243,244,247,.58)');
+
+  s += rect(114,578,1100,100,22,'rgba(255,255,255,.03)','rgba(255,255,255,.08)',1.2);
+  if(focus >= 0){
+    const vals = ZROWS[focus];
+    s += t(664,612,`${NNAMES[focus]} 这一行 = [${vals.join(', ')}]`,18,900,NCOLS[focus],'middle',`style="font-family:JetBrains Mono, monospace"`);
+    s += t(664,644,`μ${focus+1} = (${vals.join(' + ')}) / 3 = ${MU[focus]}    ｜    σ${focus+1} = std(${vals.join(', ')}) = ${SIGMA[focus]}`,15,800,'#f3f4f7','middle',`style="font-family:JetBrains Mono, monospace"`);
+  } else {
+    s += t(664,614,'这一步真正要记住的是：BatchNorm 永远是沿着“同一神经元 across batch”去统计。',17,800,'#f3f4f7');
+    s += t(664,646,'在本页的列向量记号里，这条轴刚好表现成“按行”；如果你换一种排布，行列会交换，但本质不会变。',14,500,'#ffd998');
+  }
+
+  s += `</svg>`;
+  return s;
+}
+
+render();
+</script>
+</body>
+</html>

@@ -41,3 +41,5 @@ for epoch in range(1):
         print(f"  x_batch shape: {x_batch.shape}") # (32, 3, 224, 224)
         print(f"  y_batch shape: {y_batch.shape}") # (32,)
         break # 我们只打印第一个批次验证一下
+    
+    

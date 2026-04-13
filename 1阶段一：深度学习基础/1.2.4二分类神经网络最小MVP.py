@@ -1,3 +1,16 @@
+"""要区分逻辑回归和二分类神经网络：
+
+逻辑回归可以看成“最简单的二分类神经网络”，但不是所有二分类神经网络都是逻辑回归。
+
+在这个例子中： x --> linear --> relu --> linear --> sigmoid，所以下面的模型是多层复合函数。逻辑
+回归是没有隐藏层的二分类神经网络，有了隐藏层和非线性之后，就不再叫逻辑回归，而是神经网络分类器。
+
+逻辑回归虽然它最后用了 sigmoid，但它真正决定分类边界的是：wx+b=0，所以逻辑回归是线性分类器。而多层神经
+网络是非线性分类器
+
+"""
+
+
 import torch
 import torch.nn as nn
 from sklearn.datasets import make_moons
@@ -39,3 +52,4 @@ for epoch in range(100):
     
     if epoch % 10 == 0:
         print(f"第{epoch}轮的loss为：{loss.item()}") 
+        

@@ -19,7 +19,10 @@ true_w = torch.tensor([2, -3.4])
 # 这种情况下 X @ w生成的维度是(num_examples,)
 
 # 偏置的维度一般是一维向量，长度等于输出特征的数量。进行加法是在各个神经元基础上加，所以是一维向量或者写成一个标量
-# 因为前面的w写的是向量，考虑到维度匹配，b要写成标量。如果w写的是矩阵，那么b就要写成向量
-true_b = torch.tensor(4.2)
+# 因为前面的w写的是向量，考虑到维度匹配，b要写成标量或者包含一个元素的向量。如果w写的是矩阵，那么b就要写成向量或者(1,n)矩阵
+true_b = torch.tensor([4.2])
 
 features, labels = synthetic_data(true_w, true_b, 1000)
+
+
+print(features, labels)

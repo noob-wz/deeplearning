@@ -18,6 +18,10 @@ X, y = make_moons(n_samples=200, noise=0.1, random_state=42)
 X = torch.tensor(X, dtype=torch.float32)                 # shape: (200, 2)
 y = torch.tensor(y, dtype=torch.float32).view(-1, 1)    # shape: (200, 1)
 
+# 这里需要注意的有两个地方：
+# （1）y必须设置dtype=torch.float32, 如果不设置，底层在计算损失函数的时候会自动进行类型提升，但意味着开辟新空间，如果数据量非常多，开辟的新空间非常多，损耗内存。另外，如果是官方的API，比如交叉熵损失函数BCELoss()传入的参数数据类型必须严格统一，因为它们严格不支持自动类型提升
+# （2）设置view(-1,1)，保证真实值和预测值绝对的形状对齐
+
 print("X.shape =", X.shape)
 print("y.shape =", y.shape)
 

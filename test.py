@@ -1,41 +1,7 @@
-import torch
-import torch.nn as nn
-from sklearn.datasets import make_moons
-import torch.optim as optim
+import numpy as np
+import torch.nn
 
-X, y = make_moons(n_samples=(150,50), noise=0.2, random_state=42)
+X = torch.randn(200, 2)
+y = X[:,0]**2 + X[:, 1] + torch.randn(1,2)*0.01
 
-X = torch.tensor(X, dtype=torch.float32)
-y = torch.tensor(y, dtype=torch.float32).view(-1, 1)
-
-class Regression(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.fc1 = nn.Linear(2, 64)
-        self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(64, 1)
-        self.sigmoid = nn.Sigmoid()
-        
-    def forward(self, x):
-        x = self.fc1(x)
-        x = self.relu(x)
-        x = self.fc2(x)
-        x = self.sigmoid(x)
-        return x
-    
-model = Regression()
-
-criterion = nn.BCELoss()
-optimizer = optim.SGD(model.parameters(), lr=0.01)
-
-for epoch in range(100):
-    y_pred = model(X)
-    loss = criterion(y_pred, y)
-    
-    loss.backward()
-    
-    optimizer.step()
-    optimizer.zero_grad()
-    
-    if epoch % 10 == 0:
-        print(f"第{epoch}轮的loss为：{loss.item()}") 
+nn.Sigmoid

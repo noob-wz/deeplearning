@@ -62,19 +62,19 @@
 
 **任务**：创建文件 `day01_types.py`，完成以下内容——
 
-1. 定义以下 5 个变量并打印每个变量的值和类型：
+✅ 1. 定义以下 5 个变量并打印每个变量的值和类型：
    - `node_id = 42`（int）
    - `x_coord = 3.14159`（float）
    - `label = "node_A"`（str）
    - `coords = [1.0, 2.5, 0.0]`（list，代表 x/y/z 坐标）
    - `properties = {"E": 200.0, "nu": 0.3}`（dict，代表材料属性）
 
-2. 对 `coords` 做切片，分别取出：
+✅ 2. 对 `coords` 做切片，分别取出：
    - 第一个元素（x 坐标）
    - 最后一个元素（z 坐标）
    - 前两个元素（x 和 y）
 
-3. 对 `properties` 字典做遍历，按"键: 值"格式打印每一对。
+✅ 3. 对 `properties` 字典做遍历，按"键: 值"格式打印每一对。
 
 **验收标准**：脚本无报错运行，输出中每个变量的类型名称正确（例如 `<class 'int'>`），切片结果正确，字典遍历能打印两行。
 
@@ -84,7 +84,7 @@
 
 **任务**：创建文件 `day02_control.py`——
 
-1. 写函数 `classify_strain(epsilon)`：
+✅ 1. 写函数 `classify_strain(epsilon)`：
    - 输入：一个浮点数（代表应变值）
    - 规则：epsilon < 0.001 返回 "elastic"；0.001 ≤ epsilon < 0.01 返回 "small_plastic"；epsilon ≥ 0.01 返回 "large_plastic"
    - 调用并打印：`classify_strain(0.0005)`、`classify_strain(0.005)`、`classify_strain(0.02)` 的结果

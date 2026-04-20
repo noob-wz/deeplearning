@@ -123,7 +123,7 @@ print(relu(z))      # 应为 [0.0, 0.0, 2.0]
 
 **实践任务**（约 90 分钟）：创建文件 `week01/day03_forward_layer.py`
 
-**任务 1**：完整的单神经元前向传播（带激活）
+✅ **任务 1**：完整的单神经元前向传播（带激活）
 ```
 函数签名：forward(x, w, b, activation_fn) -> float
   x: shape=(n_features,)
@@ -133,7 +133,7 @@ print(relu(z))      # 应为 [0.0, 0.0, 2.0]
 返回：a = activation_fn(w·x + b)
 ```
 
-**任务 2**：扩展到"一层多神经元"
+✅ **任务 2**：扩展到"一层多神经元"
 ```
 函数签名：forward_layer(x, W, b, activation_fn) -> np.ndarray
   x: shape=(n_in,)           输入特征向量
@@ -164,12 +164,12 @@ print(a)  # 应输出 [2.5, 4.0, 2.0]
 
 **为什么是 MSE**：你的目标方向是回归任务——预测位移场、应变场、应力场。回归任务的标准损失函数是 MSE。平方项放大大误差的惩罚，这对物理场预测是合理的——宁可整体平均误差大一点，也不要有局部点误差巨大（后者在 FEM 后处理里会被立刻看到）。
 
-**理论任务**（约 20 分钟）：
-- 在笔记上写出 MSE 公式：`MSE = (1/N) * Σ (y_pred_i - y_true_i)²`
-- 用自己的话回答：为什么不用"误差绝对值的平均"（MAE）而用平方？
+**理论任务**（约 20 分钟）：  
+- ✅ 在笔记上写出 MSE 公式：`MSE = (1/N) * Σ (y_pred_i - y_true_i)²`
+- ✅ 用自己的话回答：为什么不用"误差绝对值的平均"（MAE）而用平方？
   - 参考：平方处处可导（MAE 在 0 点不可导，不方便梯度下降）；平方对大误差惩罚更重
 
-**实践任务**（约 40 分钟）：创建文件 `week01/day04_mse.py`
+✅ **实践任务**（约 40 分钟）：创建文件 `week01/day04_mse.py`
 
 ```
 函数签名：mse_loss(y_pred, y_true) -> float
@@ -198,7 +198,7 @@ print(mse_loss(y_pred, y_true))  # 应为 0.02
 
 **本周的闭环**：现在你有了前向传播（Day 3）和损失函数（Day 4），可以组合成一个完整的"给定参数 → 预测 → 计算损失"的流程。虽然还不能训练（下周的事），但能直观感受"参数好坏"对 Loss 的影响。
 
-**任务**：创建文件 `week01/weekend_forward_pipeline.py`
+✅ **任务**：创建文件 `week01/weekend_forward_pipeline.py`
 
 **Step 1**：生成合成数据（线性关系 + 少量噪声）
 ```python
@@ -241,10 +241,10 @@ print(f"正确参数下 Loss: {loss_good:.4f}")
 
 ### Week 1 完成标准（进入 Week 2 前）
 
-- [ ] 能参考 Day 3 的文档，45 分钟内独立写出 `forward_layer(x, W, b, activation_fn)` 函数
-- [ ] 能不看参考，15 分钟内独立写出 `mse_loss(y_pred, y_true)` 函数
-- [ ] 能用自己的话向别人解释：什么是前向传播、为什么要加激活函数
-- [ ] 理解为什么 sigmoid(0)=0.5、ReLU(-5)=0
+- [✅] 能参考 Day 3 的文档，45 分钟内独立写出 `forward_layer(x, W, b, activation_fn)` 函数
+- [✅] 能不看参考，15 分钟内独立写出 `mse_loss(y_pred, y_true)` 函数
+- [✅] 能用自己的话向别人解释：什么是前向传播、为什么要加激活函数
+- [✅] 理解为什么 sigmoid(0)=0.5、ReLU(-5)=0
 
 **如果没达到上述标准，不要进入 Week 2**。本周内容是地基，重复写一遍代码、重看一遍视频、再练一练比"硬推进"更有价值。
 
@@ -269,10 +269,10 @@ print(f"正确参数下 Loss: {loss_good:.4f}")
 **衔接补零期 P3 的数学直觉**：你已经理解"导数是斜率、梯度指向上升最快方向"。今天把这个直觉用到神经网络训练上。
 
 **理论任务**（约 1 小时）：
-- 看 3Blue1Brown "Gradient descent, how neural networks learn"
-- 看吴恩达 Course 1 Week 2 的"Gradient Descent"视频
-- 在笔记本上画一张图：一个 U 形的 Loss 曲线，起点在山坡上，画出该点的梯度方向（指向上）和参数更新方向（反方向）
-- 用自己的话回答三个问题并写下来：
+- ✅ 看 3Blue1Brown "Gradient descent, how neural networks learn"
+- ✅ 看吴恩达 Course 1 Week 2 的"Gradient Descent"视频
+- ✅ 在笔记本上画一张图：一个 U 形的 Loss 曲线，起点在山坡上，画出该点的梯度方向（指向上）和参数更新方向（反方向）
+- ✅ 用自己的话回答三个问题并写下来：
   1. "梯度下降是在做什么"（一句话）
   2. 学习率太大会怎样？
   3. 学习率太小会怎样？
@@ -282,7 +282,7 @@ print(f"正确参数下 Loss: {loss_good:.4f}")
 2. 太大会跨过最低点，可能震荡甚至发散
 3. 太小收敛极慢，需要大量迭代
 
-**实践任务**（约 40 分钟）：创建文件 `week02/day01_1d_gradient.py`
+✅ **实践任务**（约 40 分钟）：创建文件 `week02/day01_1d_gradient.py`
 
 从最简单的一维例子开始，把"梯度下降"这个抽象概念具象化。
 
@@ -294,9 +294,9 @@ print(f"正确参数下 Loss: {loss_good:.4f}")
   w = 0.0        # 起点
   lr = 0.1       # 学习率
   for step in range(20):
+      f = (w - 3) ** 2
       grad = 2 * (w - 3)   # 计算梯度（已知公式）
       w = w - lr * grad    # 更新参数
-      f = (w - 3) ** 2
       print(f"step {step}: w={w:.4f}, f(w)={f:.6f}")
 ```
 
@@ -314,13 +314,13 @@ print(f"正确参数下 Loss: {loss_good:.4f}")
 **理论任务**（约 1.5 小时，必须在纸上写，不要只用眼看）：
 
 假设有 N 个样本，对每个样本 i：
-- 预测：`y_pred_i = w * x_i + b`（先考虑单特征、无激活，之后 Week 3 再推多层）
-- 单样本 Loss：`L_i = (y_pred_i - y_true_i)²`
-- 总 Loss：`L = (1/N) * Σ L_i`
+- ✅ 预测：`y_pred_i = w * x_i + b`（先考虑单特征、无激活，之后 Week 3 再推多层）
+- ✅ 单样本 Loss：`L_i = (y_pred_i - y_true_i)²`
+- ✅ 总 Loss：`L = (1/N) * Σ L_i`
 
 用链式法则推导 `∂L/∂w` 和 `∂L/∂b`。
 
-**推导步骤**（在纸上写一遍）：
+✅ **推导步骤**（在纸上写一遍）：
 ```
 ∂L_i/∂y_pred_i = 2*(y_pred_i - y_true_i)   （二次函数的导数）
 ∂y_pred_i/∂w = x_i                          （w 的系数）
@@ -341,7 +341,7 @@ print(f"正确参数下 Loss: {loss_good:.4f}")
 
 ### Day 3–4 | 完整训练循环
 
-**实践任务**（每天约 1.5 小时）：创建文件 `week02/day34_training_loop.py`
+✅ **实践任务**（每天约 1.5 小时）：创建文件 `week02/day34_training_loop.py`
 
 ```python
 # Step 1: 生成数据
@@ -397,7 +397,7 @@ print(f"最终 b = {b:.4f}（期望约 1.0）")
 
 ### Day 5–6（周末）| 学习率实验
 
-**任务**：创建文件 `week02/weekend_lr_experiment.py`
+✅ **任务**：创建文件 `week02/weekend_lr_experiment.py`
 
 用 Day 3-4 的同样数据和训练循环，测试 4 种学习率：
 - lr = 0.001（太小）
@@ -423,10 +423,10 @@ print(f"最终 b = {b:.4f}（期望约 1.0）")
 
 ### Week 2 完成标准
 
-- [ ] 能在纸上独立推导线性回归的 `∂L/∂w` 和 `∂L/∂b` 公式，解释每一步
-- [ ] 能在 30 分钟内不看参考写出完整的 NumPy 训练循环代码
-- [ ] 能用自己的话解释"梯度下降是如何让模型学习的"，完全不用公式
-- [ ] 能通过 Loss 曲线判断：训练是否收敛、学习率是否合适
+- [✅] 能在纸上独立推导线性回归的 `∂L/∂w` 和 `∂L/∂b` 公式，解释每一步
+- [✅] 能在 30 分钟内不看参考写出完整的 NumPy 训练循环代码
+- [✅] 能用自己的话解释"梯度下降是如何让模型学习的"，完全不用公式
+- [✅] 能通过 Loss 曲线判断：训练是否收敛、学习率是否合适
 
 ---
 
@@ -450,8 +450,8 @@ print(f"最终 b = {b:.4f}（期望约 1.0）")
 ### Day 1 | 从 1 层到 2 层：为什么需要多层
 
 **理论任务**（约 1.5 小时）：
-- 看吴恩达 Course 1 Week 3 的前 3 个视频
-- 在纸上画出 2 层网络的结构图，**严格标注每一步的 shape**
+- ✅ 看吴恩达 Course 1 Week 3 的前 3 个视频
+- ✅ 在纸上画出 2 层网络的结构图，**严格标注每一步的 shape**
 
 具体例子（以下就是你要画的图内容）：
 ```
@@ -474,7 +474,7 @@ print(f"最终 b = {b:.4f}（期望约 1.0）")
 - 为什么回归任务的最后一层不加激活函数？
   - 参考：激活函数（如 ReLU、sigmoid）会限制输出范围，但物理量（应力、位移）可能是任意值，最后一层不加激活才能输出无限制的实数
 
-**实践任务**（约 1 小时）：创建文件 `week03/day01_mlp_forward.py`
+✅ **实践任务**（约 1 小时）：创建文件 `week03/day01_mlp_forward.py`
 
 实现 2 层 MLP 的前向传播，输入 batch 数据（不是单个样本）。
 
@@ -519,14 +519,14 @@ print(y_pred.shape)  # 应输出 (5, 1)
 2. **从代码上**看懂每一行反向传播代码在算哪个梯度
 
 **理论任务**（约 1.5 小时）：
-- 看 3Blue1Brown "What is backpropagation really doing?"
-- 在笔记上画一张"误差信号回传"示意图
-- 用自己的话回答：
+- ✅ 看 3Blue1Brown "What is backpropagation really doing?"
+- ✅ 在笔记上画一张"误差信号回传"示意图
+- ✅ 用自己的话回答：
   1. 反向传播要算的是什么？（Loss 对每一个参数的偏导数，即梯度）
   2. 为什么叫"反向"？（从输出层往输入层方向，一层层往回算梯度）
   3. 链式法则在其中起什么作用？（每一层的梯度 = 后一层传回的梯度 × 本层的局部梯度）
 
-**实践任务**（约 1 小时）：创建文件 `week03/day02_backprop_reading.py`
+✅ **实践任务**（约 1 小时）：创建文件 `week03/day02_backprop_reading.py`
 
 这是一个"读代码"练习。下面的反向传播代码已写好，你的任务是**给每一行写中文注释**，说明这行算的是什么。
 
@@ -580,7 +580,7 @@ dL_db1 = dL_dZ1.sum(axis=0)
 
 ### Day 3–4 | 用 NumPy 实现 2 层 MLP 训练（拟合 sin 函数）
 
-**实践任务**（每天约 2 小时）：创建文件 `week03/day34_mlp_sin.py`
+✅ **实践任务**（每天约 2 小时）：创建文件 `week03/day34_mlp_sin.py`
 
 **Step 1**：生成非线性数据
 ```python
@@ -651,7 +651,7 @@ for epoch in range(2000):
 
 ### Day 5–6（周末）| 隐藏层宽度实验 + 本周巩固
 
-**Day 5 任务**：创建 `week03/day5_width_experiment.py`
+✅ **Day 5 任务**：创建 `week03/day5_width_experiment.py`
 
 用 Day 3-4 的同样代码，尝试不同隐藏层宽度：`n_hid = 8, 32, 128`
 
@@ -662,24 +662,24 @@ for epoch in range(2000):
 画一张 3×1 的 subplot 图（`width_comparison.png`），每个 subplot 展示一个宽度下的拟合效果（散点 + 曲线）。
 
 **观察任务**（写在脚本末尾作为注释）：
-- 宽度 8 时，拟合曲线有哪些地方偏离真实 sin？
-- 宽度 32 vs 128，你觉得哪个更好？为什么（训练时间？拟合质量？）？
+- ✅ 宽度 8 时，拟合曲线有哪些地方偏离真实 sin？
+- ✅ 宽度 32 vs 128，你觉得哪个更好？为什么（训练时间？拟合质量？）？
 
 **Day 6 任务**：本周巩固
 
-- 对着反向传播代码（Day 2 的），不看参考能说出每一行在算什么
-- 不看参考，从零写出 MLP 的 forward 代码（Day 1 的版本）
-- 把本周写的所有代码整理进项目结构：`week03/` 目录下分 `day01/`, `day02/`, ...
+- ✅ 对着反向传播代码（Day 2 的），不看参考能说出每一行在算什么
+- ✅ 不看参考，从零写出 MLP 的 forward 代码（Day 1 的版本）
+- ✅ 把本周写的所有代码整理进项目结构：`week03/` 目录下分 `day01/`, `day02/`, ...
 
 ---
 
 ### Week 3 完成标准
 
-- [ ] 理解 2 层 MLP 的参数 shape 和前向传播流程
-- [ ] 能看懂反向传播代码每一行在算什么（**不要求独立推导**）
-- [ ] 能跑通 sin 函数拟合，看到非线性表达的意义
-- [ ] 能通过拟合曲线和 Loss 曲线判断训练效果
-- [ ] 能用自己的话解释：为什么要多层？为什么要有激活函数？反向传播在做什么？
+- [✅] 理解 2 层 MLP 的参数 shape 和前向传播流程
+- [✅] 能看懂反向传播代码每一行在算什么（**不要求独立推导**）
+- [✅] 能跑通 sin 函数拟合，看到非线性表达的意义
+- [✅] 能通过拟合曲线和 Loss 曲线判断训练效果
+- [✅] 能用自己的话解释：为什么要多层？为什么要有激活函数？反向传播在做什么？
 
 ---
 
@@ -705,7 +705,7 @@ for epoch in range(2000):
 
 **核心概念**：PyTorch Tensor ≈ NumPy ndarray + GPU 加速 + 自动求导支持（后者下周才启用）。
 
-**实践任务**（约 1.5 小时）：创建文件 `week04/day01_tensor_basics.py`
+✅ **实践任务**（约 1.5 小时）：创建文件 `week04/day01_tensor_basics.py`
 
 ```python
 import torch
@@ -743,7 +743,7 @@ print(type(b_np))                       # <class 'numpy.ndarray'>
 
 **实践任务**（约 1.5 小时）：创建文件 `week04/day02_tensor_ops.py`
 
-**任务 1**：基本运算（对比 NumPy 的语法基本一致）
+✅ **任务 1**：基本运算（对比 NumPy 的语法基本一致）
 ```python
 a = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
 b = torch.tensor([[5.0, 6.0], [7.0, 8.0]])
@@ -761,7 +761,7 @@ print(a.mean())    # 2.5
 print(a.sum(dim=0))   # 沿着第0维求和（列求和），shape=(2,)
 ```
 
-**任务 2**：reshape 和维度操作
+✅ **任务 2**：reshape 和维度操作
 ```python
 x = torch.arange(12).float()    # shape=(12,)
 x_2d = x.reshape(3, 4)          # shape=(3,4)
@@ -775,7 +775,7 @@ v_col = v.unsqueeze(1)              # shape=(3, 1) 列向量
 v_back = v_col.squeeze()            # shape=(3,)
 ```
 
-**任务 3**：索引与切片（和 NumPy 基本一致）
+✅ **任务 3**：索引与切片（和 NumPy 基本一致）
 ```python
 X = torch.randn(10, 5)          # 10 个样本，5 个特征
 row_0 = X[0]                    # 第一个样本，shape=(5,)
@@ -808,8 +808,8 @@ z_np = z_cpu.numpy()                       # 转 NumPy（只能在 CPU 上做）
 ```
 
 **如果你只有 CPU**：
-- 只需要知道有这个概念，写代码时习惯性加 `.to(device)`
-- 前期用 CPU 跑完全没问题，不影响学习
+- ✅ 只需要知道有这个概念，写代码时习惯性加 `.to(device)`
+- ✅ 前期用 CPU 跑完全没问题，不影响学习
 
 **验收标准**：了解 `device` 概念；写代码时能正确添加 `.to(device)`。
 
@@ -821,7 +821,7 @@ z_np = z_cpu.numpy()                       # 转 NumPy（只能在 CPU 上做）
 
 **为什么这样安排**：直接跳到 autograd 和 nn.Module 会让你跳过"Tensor 的运算特性"这个基础。这几天先让你熟悉 Tensor 的运算语法，下周再引入 autograd。
 
-**实践任务**：创建文件 `week04/day456_pytorch_sin.py`
+✅ **实践任务**：创建文件 `week04/day456_pytorch_sin.py`
 
 **Step 1**：把 Week 3 的 sin 数据改成 Tensor
 ```python
@@ -893,10 +893,10 @@ plt.savefig('sin_pytorch.png')
 
 ### Week 4 完成标准
 
-- [ ] 能说出 Tensor 和 ndarray 的关系（几乎一样，多了 GPU 和 autograd 支持）
-- [ ] 能熟练做 Tensor 的创建、索引、reshape、矩阵乘法
-- [ ] 能用 `torch.from_numpy()` 和 `.numpy()` 互相转换
-- [ ] 能用 Tensor 语法写一遍 sin 拟合（手动前向 + 手动反向）
+- [✅] 能说出 Tensor 和 ndarray 的关系（几乎一样，多了 GPU 和 autograd 支持）
+- [✅] 能熟练做 Tensor 的创建、索引、reshape、矩阵乘法
+- [✅] 能用 `torch.from_numpy()` 和 `.numpy()` 互相转换
+- [✅] 能用 Tensor 语法写一遍 sin 拟合（手动前向 + 手动反向）
 
 ---
 

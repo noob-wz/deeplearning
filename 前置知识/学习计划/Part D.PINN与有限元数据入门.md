@@ -19,14 +19,26 @@ Week 16 的训练用的是**人工合成标签**——`ux = F*x/(E*A)` 这种一
 4. **GNN + 物理约束的融合（本阶段核心）**：把 Part B 的"物理约束 Loss"嵌入到 Part C 的"GNN 架构"里——这就是 PhyFENet 的核心思想
 
 **完成标准（进入第二阶段前）**：
-- 能独立实现 2D 弹性问题的 PINN 求解
+- 能用 PINN 求解 2D Laplace 问题（带解析解验证）
+- （选修）能用 PINN 求解 2D 弹性力学问题
 - 能把任意单元类型（三角形/四边形）的网格转成 PyG 图
 - 能解析 FEM 文本数据（节点/单元/材料/边界/结果）
 - 能在 GNN 的 Loss 里嵌入几何方程和本构方程约束（论文 §2.3 的完整形态）
 - 能实现子网络预训练 + 主网络联合训练（论文 §2.3.5）
 - 在合成数据集上跑通"mesh → graph → PhyFENet with physics loss → predict"完整流程
 
-**时间预期**：**6-9 周**，基线 6 周，实际很可能需要 7-9 周。Week 20（GNN + 物理 Loss 融合）和 Week 21（多级网络）是 Part D 的密集区——也是整个第一阶段最难的两周，因为你第一次要同时处理 GNN 的结构复杂度和 PINN 的求导复杂度。如果感觉吃力，每周可延长到 1.5-2 周。
+**时间预期**：**8-12 周，基线 8 周**。
+
+诚实的评估：Part D 的内容密度明显高于 Part B/C。Part B 用 3 周做 1D PINN，Part C 用 6 周学 GNN，而 Part D 要在 6 周里做 2D PINN + FEM 解析 + 不规则网格 + GNN+物理 Loss 融合 + 多级网络。即使每个子模块都精简过，整体仍然是**接近研究原型的强度**。
+
+**三个密集难点**（每个都可能卡住你 1-2 周）：
+- **Week 17 Day 4 的 2D 弹性 PINN**：位移场 + 应变 + 应力 + 平衡方程 + 4 段边界条件，无解析解。这已经是一个完整专题，不是练习。原文把它作为 Day 4 一天任务是不合理的，修正后降为**选修扩展**。
+- **Week 20 的 batch 实现**：单图上跑通 GNN + 物理 Loss 相对可行；但处理多图 batch 时，单元聚合矩阵要 block-diagonal 拼接、子网络输入要从 batched node tensor 正确切出单元对应节点——这些不是"容易"的事。修正后明确先单图再 batch。
+- **Week 21 的多级网络**：展开单元级数据集 + 预训练两个子网络 + 嵌入主网络 + 联合微调 + 小样本实验——这是完整研究方案的工作量。修正后分"达标线"和"进阶线"两级。
+
+**如果你感觉吃力，任何一周都可以延长到 1.5-2 周**。Part D 是"理解 + 跑通"比"按时完成"更重要的阶段——这里任何一个模块卡住导致的放弃，损失都比"多花几周"大得多。
+
+**关于延长的心态**：看到你计划延长，不要自责。Part D 的强度对新手来说就是偏高的，真正做过类似工作的人也需要时间。按自己的节奏走。
 
 **本阶段是第一阶段的收尾**：Week 22 结束时，你应该能在合成数据上跑通一个完整的 PhyFENet 风格系统。第二阶段（Week 23+）才引入真实 FEM 数据（FEniCS/HyperMesh/LS-DYNA）、不规则工业网格、更复杂的工程问题。
 
@@ -38,12 +50,17 @@ Week 16 的训练用的是**人工合成标签**——`ux = F*x/(E*A)` 这种一
 
 **衔接**：Part B Week 10 你做了 1D 弹性杆——用 `du/dx` 算应变、`E·ε` 算应力、`dσ/dx=0` 作为平衡方程 Loss。但实际工程问题（比如论文第三章的带孔板）是 2D 的。本周把 PINN 从 1D 扩展到 2D。
 
-**本周目标**：
-- 能写 2D PINN 求解拉普拉斯方程（最简单的 2D PDE）
-- 能写 2D PINN 求解 2D 弹性力学（为 Part D 后续打基础）
-- 重新审视权重平衡问题（Part B Week 10 已经讲过，这周升级实验）
+**本周目标**（必修）：
+- 能写 2D 偏导和拉普拉斯算子的工具函数
+- 能用 PINN 求解 2D 拉普拉斯方程（带解析解验证）
+- 能做权重配置的对比实验（2D Laplace 上做）
 
-**本周不做**：GNN 相关内容。本周纯粹是 PINN 的 2D 扩展，让你熟悉多变量偏导数的工程写法。
+**本周扩展目标**（选修，推荐但不作为 Week 18 准入门槛）：
+- 能用 PINN 求解 2D 弹性力学问题
+
+**为什么 2D 弹性 PINN 是选修**：这个问题**同时**需要位移场 + 应变 + 应力 + 平衡方程 + 4 段边界条件，且无解析解。对新手来说这已经是一个完整专题，不适合作为 Week 17 的硬门槛。Week 20 会把"位移 → 应变 → 应力 → 平衡方程"的流水线**在 GNN 上**重新做一遍——那时 Week 17 的选修会变成铺垫。**如果 Week 17 做了扩展目标，Week 20 会轻松很多；如果没做，Week 20 自己也能走通**。
+
+**本周不做**：GNN 相关内容。本周纯粹是 PINN 的 2D 扩展。
 
 ---
 
@@ -259,7 +276,13 @@ plt.tight_layout(); plt.savefig('week17_laplace.png', dpi=100)
 
 ---
 
-### Day 4 | 2D 弹性力学 PINN（本周重点）
+### Day 4–6（选修扩展）| 2D 弹性力学 PINN
+
+> **选修说明**：本节是 Week 17 的选修扩展内容，**不做不影响进入 Week 18**。
+> 
+> 如果你的 Day 1-3（2D Laplace）做得顺利、还有余力，强烈推荐做这一节——它会为 Week 20 打下很好的铺垫。
+> 
+> 如果 2D Laplace 本身就花了 5-6 天，跳过本节直接进入 Week 17 周末的权重平衡实验是完全合理的。不要为了"完成所有内容"硬推。
 
 **衔接你的方向**：论文第三章 §3.1.3 就是 2D 带孔板的弹性问题。今天做一个**去掉孔的简化版**——矩形板单向拉伸——作为你第一次接触 2D 弹性力学 PINN。
 
@@ -290,7 +313,7 @@ plt.tight_layout(); plt.savefig('week17_laplace.png', dpi=100)
 
 **注意**：这个问题**没有简单的解析解**（除非做单向拉伸的一维近似），所以我们的验证方式是：检查 PINN 的解在物理上是否合理（位移趋势对不对、平衡是否满足、边界条件是否满足）。这比严格求误差难一些，但**这才是工程中 PINN 真正要做的**——很多时候就没有解析解。
 
-**实践任务**（约 3 小时）：创建文件 `week17/day04_2d_elasticity.py`
+**实践任务**（约 8-12 小时，分 2-3 天完成）：创建文件 `week17/day04_2d_elasticity.py`
 
 **Step 1**：定义模型（输出 2 维：ux 和 uy）
 ```python
@@ -485,27 +508,31 @@ for epoch in range(20000):
 
 ---
 
-### Day 5–6（周末）| 权重平衡实验升级
+### Day 5–6（周末，主线）| 权重平衡实验（2D Laplace 上）
 
-**衔接 Part B Week 10 Day 3-4**：你已经试过固定权重和动态权重策略。本周在 2D 弹性问题上再做一次实验。
+**衔接 Part B Week 10 Day 3-4**：你已经试过固定权重和动态权重策略。本周在 2D Laplace 问题上再做一次实验。
+
+> **为什么不在 2D 弹性上做**：2D 弹性是选修，未必每个人都做了。在 2D Laplace 上做权重实验，**每个人都能完成**，且 2D Laplace 有解析解，实验结果更容易验证。
+> 
+> 如果你完成了 2D 弹性选修，可以**额外**在 2D 弹性上也做一次权重实验作为对比——但这不是本周的硬门槛。
 
 **任务**：创建文件 `week17/weekend_weight_balance.py`
 
-测试 4 组权重配置在 Day 4 的 2D 弹性问题上的表现：
+测试 4 组权重配置在 Day 2-3 的 2D Laplace 问题上的表现：
 - 固定 `(w_pde=1, w_bc=1)`
-- 固定 `(w_pde=1, w_bc=10)`（Day 4 用的）
+- 固定 `(w_pde=1, w_bc=10)`（Day 2-3 用的）
 - 固定 `(w_pde=1, w_bc=100)`
-- 动态平衡（每 200 epoch 按 `w_i = 1/L_i` 更新，参考 Part B Week 10 Day 4）
+- 动态平衡（每 200 epoch 按 `w_i = 1/L_i` 更新）
 
 对每组记录：
 - 最终 L_pde 值
 - 最终 L_bc 值
-- `σxx` 平均值（应接近 1.0）
-- `ux(L, H/2)` 的值（中线右端点的 x 位移，应接近 1.0）
+- `u(x=0.5, y=0.5)` 的值（与解析值对比）
+- 平均绝对误差 `|u_true - u_pred|.mean()`
 
 填写对比表格（写在脚本末尾的注释里），回答：
 1. 权重对 L_pde 和 L_bc 最终量级的影响？
-2. 哪组配置下的物理一致性（σxx 平均值、ux 最大值）最好？
+2. 哪组配置下的解析解逼近最好（中心点值、平均绝对误差）？
 3. 动态平衡相对于固定权重的优势和劣势？
 
 **验收标准**：
@@ -517,17 +544,23 @@ for epoch in range(20000):
 
 ### Week 17 完成标准
 
+**必修**：
 - [ ] 能实现 2D 偏导数和拉普拉斯算子的工具函数
 - [ ] 能用 PINN 求解 2D 拉普拉斯方程（带解析解验证）
+- [ ] 能对权重配置做系统实验和分析（在 2D Laplace 上）
+- [ ] 理解 "PDE 残差 + 边界条件"组合的物理意义
+
+**选修（加分项）**：
 - [ ] 能用 PINN 求解 2D 弹性力学问题（位移 → 应变 → 应力 → 平衡方程）
-- [ ] 能对权重配置做系统实验和分析
-- [ ] 理解 "MLP → 位移 → 应变 → 应力 → 平衡方程残差"这个流水线（这是 Part D 后面的核心流程）
+- [ ] 理解 "MLP → 位移 → 应变 → 应力 → 平衡方程残差"这个流水线
+
+**如果选修没做，Week 20 的开头会再回到这个流水线**——那时可以用 GNN 替代 MLP，效果类似。但**先做过选修**的话，Week 20 对你会明显轻松。
 
 ---
 
 ---
 
-## Week 18: FEM 数据结构与文本解析
+## Week 18:## Week 18: FEM 数据结构与文本解析
 
 **衔接**：Part C Week 11 你从零构造了规则网格（9 个节点 + 4 个单元），节点坐标和单元都是 Python 里的变量。但真实 FEM 求解器（Abaqus, LS-DYNA）输出的是**文本文件**（`.inp`, `.k` 等格式）。本周学习理解这种文本数据的结构，并用 Python 解析。
 
@@ -1256,6 +1289,23 @@ if __name__ == '__main__':
 
 **为什么叫"物理自洽"**：Part C Week 16 的合成数据是拍脑袋公式，标签之间不严格满足物理方程。本周末做得更好一点——让位移、应变、应力在**简化模型**下数学上自洽。
 
+> **⚠️ 数据边界说明（Part D 剩余所有周重要）**：
+> 
+> 你现在用的合成数据满足几何方程 + 本构方程的**自洽**，但**不严格满足平衡方程**（因为用的是简化位移场，不是真实 FEM 求解得到的）。
+> 
+> **这意味着什么**：
+> - ✅ 合成数据可以用来**验证架构能否跑通**、**验证节点/单元双输出流程**、**验证子网络机制**
+> - ❌ 合成数据**不能用来得出强结论**——比如"物理约束真的提升了精度 XX%"、"多级网络比从零训练 MAE 低 XX%"
+> - ❌ 任何在合成数据上得到的数字，**不要在面试时当成"我的方法比 baseline 好"的证据**
+> 
+> **正确的面试表述**：
+> - ❌ 错误："我用物理约束让 MSE 降低了 20%"
+> - ✅ 正确："我在合成数据上**验证了**物理约束机制能正确训练，模型能收敛到物理一致的解。真实 FEM 数据上的评估在第二阶段"
+> 
+> 真实的性能评估需要真实 FEM 数据（FEniCS/LS-DYNA 生成），这是第二阶段 Part E 的内容。在那之前，Part D 的所有实验都**只是机制验证**。
+> 
+> 这种区分不是迂腐，是**诚实**——也是你未来在公司里做 AI 项目必须有的习惯：区分"机制验证"和"性能验证"。
+
 **简化模型假设**：均匀单轴拉伸板，只用最简单的线弹性关系。
 
 **实践任务**：创建文件 `week19/weekend_synth_dataset.py`
@@ -1409,7 +1459,41 @@ if __name__ == '__main__':
 
 ## Week 20: GNN + 物理约束 Loss 融合（Part D 核心周）
 
+> **⚠️ 数据边界说明（Part D 剩余所有周重要）**：
+> 
+> 你现在用的合成数据满足几何方程 + 本构方程的**自洽**，但**不严格满足平衡方程**（因为用的是简化位移场，不是真实 FEM 求解得到的）。
+> 
+> **这意味着什么**：
+> - ✅ 合成数据可以用来**验证架构能否跑通**、**验证节点/单元双输出流程**、**验证子网络机制**
+> - ❌ 合成数据**不能用来得出强结论**——比如"物理约束真的提升了精度 XX%"、"多级网络比从零训练 MAE 低 XX%"
+> - ❌ 任何在合成数据上得到的数字，**不要在面试时当成"我的方法比 baseline 好"的证据**
+> 
+> **正确的面试表述**：
+> - ❌ 错误："我用物理约束让 MSE 降低了 20%"
+> - ✅ 正确："我在合成数据上**验证了**物理约束机制能正确训练，模型能收敛到物理一致的解。真实 FEM 数据上的评估在第二阶段"
+> 
+> 真实的性能评估需要真实 FEM 数据（FEniCS/LS-DYNA 生成），这是第二阶段 Part E 的内容。在那之前，Part D 的所有实验都**只是机制验证**。
+> 
+> 这种区分不是迂腐，是**诚实**——也是你未来在公司里做 AI 项目必须有的习惯：区分"机制验证"和"性能验证"。
+
 **本周定位**：这是整个第一阶段最重要的一周——你第一次把 **Part B 的物理约束 Loss** 嵌入到 **Part C 的 GNN 架构**中。这就是 PhyFENet 的核心思想（论文 §2.3）。
+
+> **实现分阶段说明（非常重要）**：
+> 
+> PhyFENet 式训练涉及多个容易踩坑的实现细节：
+> - 单元聚合矩阵需要按 batch 图块拼接（block-diagonal 形式）
+> - 子网络输入要从 batched node tensor 里正确切出每个单元对应的节点
+> - 不同图的 `elem_list` 的节点索引需要偏移对齐
+> - 混合单元类型（S3/S4）需要 padding 或 mask 处理
+> 
+> 以上任何一项在 batch 训练下都可能让你卡 2-3 天。
+> 
+> **本周明确分三阶段**：
+> - **Day 1-4：单图训练（batch_size=1）**。物理约束机制先在单图上跑通，**这是本周的必修门槛**。
+> - **Day 5-6：小 batch 训练（batch_size=2）**。处理聚合矩阵拼接等工程细节。**如果时间紧张，这部分可以延到下周末再做**。
+> - **Week 22 最终 pipeline**：完整多图训练 + 多样本评估。
+> 
+> 这种分阶段是有意的。跳过"单图跑通"直接搞 batch，你会在多个陌生复杂度上同时卡住，**最容易放弃的就是这种叠加状态**。
 
 **衔接**：
 - Part B Week 10：1D PINN（MLP + 物理 Loss）
@@ -1424,7 +1508,7 @@ GNN(mesh) → 节点位移场 u
 （或者通过单元聚合矩阵 → 单元位移 → 单元应变）
 ε 通过胡克定律 → 应力 σ
 (1) 纯数据 Loss：‖u_pred - u_true‖²
-(2) 几何方程 Loss：‖ε_pred - f(u_pred)‖²
+(2) 几何一致性 Loss（Geometric Consistency Loss）：‖ε_pred - StrainNet(u_pred)‖²
 (3) 本构方程 Loss：‖σ_pred - g(ε_pred)‖²
 ```
 
@@ -1479,8 +1563,12 @@ dataset = torch.load('week19_dataset.pt')
 train_data = dataset[:15]
 val_data = dataset[15:]
 
-train_loader = DataLoader(train_data, batch_size=2, shuffle=True)
+# Week 20 前半段：单图训练，batch_size=1
+# 这样 elem_list 和聚合矩阵不需要跨图拼接，实现简单
+train_loader = DataLoader(train_data, batch_size=1, shuffle=True)
 val_loader = DataLoader(val_data, batch_size=1)
+# batch_size=2+ 的多图训练涉及聚合矩阵 block-diagonal 拼接、
+# 节点索引偏移等复杂性，放到 Day 5-6 或 Week 22 处理。
 
 # 模型：输入 node_feat=5（x,y,z,E,F），边特征 4，隐藏 64，节点输出 2（ux,uy），单元输出 3（σxx,σyy,σxy）
 model = PhyFENet_WithElement(
@@ -1513,14 +1601,26 @@ def train_step(batch, model, criterion, use_physics=False):
 
 ---
 
-### Day 2–3 | 几何方程约束：让应变与位移梯度一致
+### Day 2–3 | 几何一致性约束：用子网络近似位移-应变关系
 
-**核心思想**（论文 §3.2.2 式 3.41-3.42）：
+**核心思想**：
 - GNN 预测了节点位移 `u_pred`
 - GNN 预测了单元应变 `ε_pred`
-- 数学上：应变应该 = 位移的某种空间导数（几何方程 B·u）
-- 如果两者不一致，说明网络还没学到正确的物理关系
-- 把 "**ε_pred 和从 u_pred 算出来的应变**" 之间的差作为 Loss 的一项
+- 数学上：应变应该与位移的某种空间导数一致（几何方程 `ε = B·u`，B 是离散微分算子）
+- 但在图神经网络的离散设定下，很难直接写出 B 算子（这涉及有限元的形函数导数）
+- 工程折衷：用一个小的"应变估计网络"（StrainSubNet）学习这个映射，然后约束"主网络预测的应变"与"子网络从位移估计的应变"一致
+
+**这叫什么**：这是一个**几何一致性约束**（Geometric Consistency Constraint），不是严格的几何方程残差。两者的区别：
+
+| | 严格几何方程残差 | 几何一致性约束（本周实现） |
+|---|---|---|
+| 公式 | `L = ‖ε - B·u‖²`，B 是显式离散算子 | `L = ‖ε_pred - StrainNet(u_pred)‖²` |
+| 来源 | 有限元形函数的导数（经典理论） | 让神经网络学习映射 |
+| 论文对应 | 论文 §3.2.2 式 3.42 的理想形式 | 论文 §2.3.5 子网络的实际实现 |
+
+**为什么这个区分重要**：面试时被问到"你的几何方程 loss 具体怎么实现"，你应该能精确回答："我用的是**几何一致性损失**——通过一个子网络学习位移到应变的映射，约束主网络输出与子网络估计一致。严格意义的 `ε - B·u` 需要显式写出 B 算子（有限元的应变-位移矩阵），我的实现是**子网络近似版**。"
+
+这种精确描述是面试加分项——既显示了你理解论文，也显示了你懂自己代码的实际边界。
 
 **实现方式**：引入一个小的"应变估计网络"（简化版子网络）
 
@@ -1568,12 +1668,22 @@ class StrainSubNet(nn.Module):
 
 **几何方程 Loss**：
 ```python
-def geometric_loss(strain_pred_from_gnn, strain_pred_from_subnet):
+def geometric_consistency_loss(strain_pred_from_gnn, strain_pred_from_subnet):
     """
-    论文 §3.2.2 式 3.42: L_b = ‖ε_pred - Bu‖²
-    在这里：
-      strain_pred_from_gnn: GNN 主网络直接预测的应变
-      strain_pred_from_subnet: 子网络从位移估计的应变
+    几何一致性损失（Geometric Consistency Loss）
+    
+    约束：主网络预测的单元应变 与 子网络从位移估计的单元应变 一致
+    
+    参数：
+      strain_pred_from_gnn: GNN 主网络的单元应变输出
+      strain_pred_from_subnet: 子网络从位移+坐标估计的单元应变
+    返回：
+      标量 loss
+    
+    注意：这是论文 §2.3.5 子网络机制的实现；与论文 §3.2.2 式 3.42 的
+    严格几何方程残差 ‖ε - B·u‖² 不完全等价——区别是这里用神经网络
+    近似 B 算子，而不是用有限元的显式形函数导数。面试时要能说清楚
+    这个区别。
     """
     return ((strain_pred_from_gnn - strain_pred_from_subnet) ** 2).mean()
 ```
@@ -1598,7 +1708,7 @@ for epoch in range(200):
         L_data_strain = criterion(elem_strain_pred, batch.y_elem_strain)
         
         # 几何方程 loss
-        L_geom = geometric_loss(elem_strain_pred, strain_from_disp)
+        L_geom = geometric_consistency_loss(elem_strain_pred, strain_from_disp)
         
         # 总 loss
         loss = L_data_node + L_data_strain + 0.1 * L_geom
@@ -1662,33 +1772,106 @@ loss = L_data_node + L_data_strain + L_data_stress + \
 
 ---
 
-### Day 6 | 本周总结 + 物理一致性定义
+### Day 5–6（周末）| 从单图到 batch：工程细节处理
 
-**任务**：在 `week20/summary.md` 里写本周的总结，回答以下问题：
+**本节的目标**：把 Day 1-4 的单图训练代码扩展到 batch_size=2 的多图训练。**如果时间紧张，这部分可以延到 Week 22 再做**。
 
-1. 纯数据、+几何、+本构 三种配置下，节点位移、应变、应力的 MAE 分别是多少？
-2. "物理一致性"如何量化？（建议指标：几何方程残差 `‖ε_pred - B·u_pred‖` 的均值、本构方程残差 `‖σ_pred - D·ε_pred‖` 的均值）
-3. 加物理约束后，哪些指标改善了？哪些没变或变差了？
-4. 权重配置（`w_geom`, `w_const`）如何影响训练？
+**要解决的 3 个技术细节**：
 
-**关键体会**（写下来）：物理约束不一定会让"数据拟合 MAE"更小，但通常会让**物理一致性**更好。两者是不同维度的评估。
+**细节 1：单元聚合矩阵的 block-diagonal 拼接**
 
----
+当 batch 里有 2 个图，每个图 15 节点 8 单元时：
+- batch 后节点总数 = 30（PyG 会自动把两个图拼起来）
+- batch 后单元总数 = 16
+- 期望的聚合矩阵 `C` shape = (16, 30)
+- 但图 1 的单元只应该聚合图 1 的节点，图 2 的单元只应该聚合图 2 的节点
+- 所以 C 应该是 **block-diagonal** 形式：
+  ```
+  C = [C_1   0  ]
+      [ 0   C_2 ]
+  ```
+  其中 C_1 shape=(8, 15)，C_2 shape=(8, 15)
+
+**实现思路**：
+```python
+from torch_geometric.data import Batch
+
+def build_batch_aggregation_matrix(batch):
+    """为 batched PyG data 构造 block-diagonal 聚合矩阵"""
+    total_elems = sum(len(data.elem_list) for data in batch.to_data_list())
+    total_nodes = batch.num_nodes
+    C = torch.zeros(total_elems, total_nodes)
+    
+    node_offset = 0
+    elem_offset = 0
+    for data in batch.to_data_list():
+        for local_elem_id, elem in enumerate(data.elem_list):
+            for local_node_id in elem['indices']:
+                global_node_id = node_offset + local_node_id
+                global_elem_id = elem_offset + local_elem_id
+                C[global_elem_id, global_node_id] = 1.0 / len(elem['indices'])
+        node_offset += data.num_nodes
+        elem_offset += len(data.elem_list)
+    
+    return C
+```
+
+**细节 2：子网络输入的切分**
+- 需要给 StrainSubNet 每个单元的节点位移 + 坐标
+- batched 节点张量 shape=(30, *)，需要按 `elem['indices']`（已经偏移过的全局索引）切出
+
+**细节 3：标签的拼接**
+- `batch.y` 已经自动拼接（PyG 自动做）
+- `batch.y_elem` 和 `batch.y_elem_strain` 也需要拼接，但 PyG 默认不会为非标准字段做拼接——需要在构造时用 `follow_batch=['y_elem']` 或自己处理
 
 ### Week 20 完成标准
 
-- [ ] 跑通纯数据驱动的 GNN baseline（Week 19 合成数据上）
-- [ ] 实现几何方程约束 loss（配合子网络估计应变）
-- [ ] 实现本构方程约束 loss（用 Week 17 的 `strain_to_stress`）
-- [ ] 能对比三种训练配置的性能
+**必修（本周门槛）**：
+- [ ] 跑通纯数据驱动的 GNN baseline（单图训练，batch_size=1）
+- [ ] 实现几何一致性 loss（Geometric Consistency Loss）
+- [ ] 实现本构方程 loss（用 Week 17 的 strain_to_stress）
+- [ ] 能对比三种训练配置（纯数据 / +几何一致性 / +几何+本构）的性能
 - [ ] 能区分"数据拟合 MAE"和"物理一致性指标"
-- [ ] 理解论文 §2.3 式 2.23 的 `Loss = ω·L_PDE + ω·L_BC + ω·L_Data` 在实际实现中是什么样子
+
+**进阶（可延后到 Week 22 做）**：
+- [ ] batch_size=2+ 的多图训练
+- [ ] 单元聚合矩阵的 block-diagonal 拼接
+- [ ] 子网络输入在 batched tensor 上的切分
 
 ---
 
 ---
 
-## Week 21: 多级网络（论文 §2.3.5）
+## Week 21:多级网络（论文 §2.3.5）
+
+> **本周分层要求说明**：
+> 
+> 多级网络是论文 §2.3.5 的核心思想，必须理解。但完整实现（两个子网络 + 联合微调 + 小样本实验）是研究级工作量，对第一阶段偏重。
+> 
+> **本周分两个层级**：
+> - **达标线（必做）**：理解思路 + 跑通最小版——预训练 **一个** StrainSubNet，嵌入主网络，单图上训练，观察物理一致性是否改善。
+> - **进阶线（强烈推荐但可选）**：完整预训练 StrainSubNet + StressSubNet，多图联合微调，小样本对比实验。
+> 
+> 如果你 Week 20 的内容已经让你很累了，**做到达标线就是合格的**——进阶线可以放到第二阶段再补。
+> 
+> 面试时，"理解多级网络思想 + 跑通最小版"就已经是加分项。"完整复现 + 小样本验证"是顶级加分项，但没有也不影响你有东西讲。
+
+> **⚠️ 数据边界说明（Part D 剩余所有周重要）**：
+> 
+> 你现在用的合成数据满足几何方程 + 本构方程的**自洽**，但**不严格满足平衡方程**（因为用的是简化位移场，不是真实 FEM 求解得到的）。
+> 
+> **这意味着什么**：
+> - ✅ 合成数据可以用来**验证架构能否跑通**、**验证节点/单元双输出流程**、**验证子网络机制**
+> - ❌ 合成数据**不能用来得出强结论**——比如"物理约束真的提升了精度 XX%"、"多级网络比从零训练 MAE 低 XX%"
+> - ❌ 任何在合成数据上得到的数字，**不要在面试时当成"我的方法比 baseline 好"的证据**
+> 
+> **正确的面试表述**：
+> - ❌ 错误："我用物理约束让 MSE 降低了 20%"
+> - ✅ 正确："我在合成数据上**验证了**物理约束机制能正确训练，模型能收敛到物理一致的解。真实 FEM 数据上的评估在第二阶段"
+> 
+> 真实的性能评估需要真实 FEM 数据（FEniCS/LS-DYNA 生成），这是第二阶段 Part E 的内容。在那之前，Part D 的所有实验都**只是机制验证**。
+> 
+> 这种区分不是迂腐，是**诚实**——也是你未来在公司里做 AI 项目必须有的习惯：区分"机制验证"和"性能验证"。
 
 **衔接 Week 20**：你已经在单个 PhyFENet 模型里嵌入了几何和本构 loss。但论文 §2.3.5 提出了一个更精细的架构——**多级网络**：
 - **子网络**（StrainNet, StressNet）：独立预训练，学习单元级的几何和本构关系
@@ -1710,7 +1893,7 @@ loss = L_data_node + L_data_strain + L_data_stress + \
 
 ---
 
-### Day 1–2 | 预训练 StrainNet
+### Day 1–2 | 预训练 StrainSubNet（达标线）
 
 **数据生成**：从 Week 19 的数据集里，把所有样本的所有单元展开，得到一个**单元级数据集**。
 
@@ -1770,9 +1953,20 @@ for epoch in range(500):
 - StrainNet 能收敛到低 MAE（< 1e-4，因为合成数据是自洽的）
 - 保存预训练好的 StrainNet 权重：`torch.save(strain_net.state_dict(), 'strain_net_pretrained.pth')`
 
+**达标验收**：
+- 单元级数据集展开成功
+- StrainSubNet 能收敛到低 MAE
+- 权重保存到 `strain_subnet_pretrained.pth`
+
 ---
 
-### Day 3 | 预训练 StressNet
+### Day 3（进阶）| 预训练 StressSubNet
+
+> **本节是进阶内容**。如果时间紧张，可以跳过，直接用 Week 17 的 `strain_to_stress_plane_stress` 解析函数代替 StressSubNet——这样做的好处是：
+> 1. StressSubNet 只是学习胡克定律，而胡克定律**已经是解析公式**，用解析函数更准确
+> 2. 跳过这一天不影响 Day 4 的嵌入实验——Day 4 只需要 StrainSubNet
+> 
+> **什么情况下值得做 StressSubNet**：如果你想探索"非线性本构模型"（比如弹塑性，论文第三章），StressSubNet 就有意义——因为弹塑性本构没有简单解析式，需要网络学习。这是第二阶段的内容。
 
 类似 StrainNet，但输入是"单元应变 + 材料参数"，输出是"单元应力"。
 
@@ -1797,7 +1991,36 @@ class StressSubNet(nn.Module):
 
 ---
 
-### Day 4 | 多级网络联合训练
+### Day 4 | 多级网络联合训练（达标线）
+
+**达标线版本**（单图 + 只用 StrainSubNet + 解析胡克定律）：
+
+```python
+class PhyFENet_Multilevel_Minimal(nn.Module):
+    """达标线版本：主 GNN + 预训练的 StrainSubNet + 解析应力公式"""
+    def __init__(self, main_gnn, strain_net, E, nu):
+        super().__init__()
+        self.main = main_gnn
+        self.strain_net = strain_net
+        # 解析应力函数（不学习）
+        self.E = E
+        self.nu = nu
+    
+    def forward(self, data):
+        disp = self.main(data)                             # (N, 2)
+        strain = self.strain_net(disp, data.x[:, :2], 
+                                  data.elem_list)           # (E, 3)
+        stress = strain_to_stress_plane_stress(
+            strain, self.E, self.nu)                       # (E, 3)
+        return disp, strain, stress
+```
+
+**达标验收**：
+- 能在单图数据上跑通联合训练
+- 对比"从零训练 PhyFENet（Week 20 的）"和"达标线多级版本"的收敛速度
+- 记录前 50 epoch 两者的 loss，做对比图
+
+**进阶版本**（多图 + StrainSubNet + StressSubNet）：
 
 **核心思路**：
 ```
@@ -1864,7 +2087,9 @@ for epoch in range(200):
 
 ---
 
-### Day 5–6（周末）| 小样本场景下多级网络的优势
+### Day 5–6（周末，进阶）| 小样本场景下多级网络的优势
+
+> **本节全部是进阶内容**。Week 21 的达标线到 Day 4 为止。本节如果做不完，不影响 Week 22。
 
 **衔接论文**：论文 §3.2.3 重点讨论了"数据少时物理约束的价值"。本周末做这个对比实验。
 
@@ -1886,11 +2111,16 @@ for epoch in range(200):
 
 ### Week 21 完成标准
 
+**达标线（必做）**：
 - [ ] 能展开 GNN 数据集到单元级数据集
-- [ ] 能独立预训练 StrainNet 和 StressNet
-- [ ] 能构造多级网络把子网络嵌入主网络
-- [ ] 能对比"从零训练"和"多级预训练+微调"的收敛速度和最终性能
-- [ ] 能做小样本场景实验
+- [ ] 能独立预训练 StrainSubNet（或类似结构的一个子网络）
+- [ ] 能构造最小版多级网络（主 GNN + 预训练的 StrainSubNet + 解析应力函数），在单图上训练
+- [ ] 能对比"从零训练"和"达标线多级版本"的收敛速度
+
+**进阶线（强烈推荐但可选）**：
+- [ ] 独立预训练 StressSubNet，替代解析应力函数
+- [ ] 多图联合微调（需要 Week 20 进阶部分的 batch 处理）
+- [ ] 小样本场景实验（3, 5, 10, 15 个训练样本对比）
 
 ---
 
@@ -1964,7 +2194,7 @@ Part C：
 Part D：
 10. 物理约束 Loss 的意义（尤其在小样本场景）？
 11. 多级网络（子网络+主网络）的设计动机？
-12. 几何方程 Loss 和本构方程 Loss 分别约束什么？
+12. 几何一致性 Loss（Geometric Consistency Loss）和本构方程 Loss 分别约束什么？能说清楚"几何一致性 Loss"和严格"几何方程残差"的区别吗？
 
 **代码题**（限时完成，不看参考）：
 - （30 min）从零写 2 层 MLP + 训练循环（Part A）

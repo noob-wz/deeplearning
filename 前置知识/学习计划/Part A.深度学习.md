@@ -4,7 +4,7 @@
 
 **衔接补零期**：补零期你学会了用 Python 处理数据、用 NumPy 做数组运算、用 Matplotlib 画图、建立了"导数/梯度"的几何直觉。工具手感有了，问题变成：如何构造一个函数，让它能从数据中"学"出规律？这就是神经网络要做的事情。
 
-**本阶段目标**：从零理解神经网络的工作原理（神经元、前向传播、梯度下降、反向传播），用 NumPy 手写实现简单网络，然后过渡到 PyTorch，最终能用 PyTorch 搭建 MLP 并训练多特征回归任务，能通过 Loss 曲线诊断训练问题。
+**本阶段目标**：从零理解神经网络的工作原理（神经元、前向传播、梯度下降、反向传播），用 NumPy 手写实现简单网络,然后过渡到 PyTorch，最终能用 PyTorch 搭建 MLP 并训练多特征回归任务，能通过 Loss 曲线诊断训练问题。
 
 **为什么先用 NumPy 再用 PyTorch**：PyTorch 虽然方便，但它把反向传播等细节自动化了。如果一开始就用 PyTorch，你会把神经网络当成"黑盒 API"。先用 NumPy 手写一遍前向传播和梯度下降，你会真正理解"参数更新"在做什么，后面用 PyTorch 时才不会迷糊，也能看懂之后 GNN 和 PINN 里复杂的自定义计算。
 
@@ -83,9 +83,33 @@ print(z)  # 应输出 5.0
   2. 什么情况下不该用 Sigmoid？
   3. ReLU(-5) = ?  ReLU(3) = ?  Sigmoid(0) = ?（自测）
 
-参考答案：(1) 计算快、正区间梯度恒为1不消失；(2) 深层网络不要全用 Sigmoid，会梯度消失；(3) 0, 3, 0.5
+**参考答案**：
+1. **为什么 ReLU 最常用？**
+   > 计算快（只是 max(0, z)）；正区间梯度恒为 1 不消失；比 Sigmoid 能训练更深的网络
 
-✅ **实践任务**（约 60 分钟）：创建文件 `week01/day02_activations.py`
+2. **什么情况下不该用 Sigmoid？**
+   > 深层网络不要全用 Sigmoid，会梯度消失（Sigmoid 的导数最大只有 0.25，每层乘一下指数级衰减）
+
+3. **ReLU(-5) = 0, ReLU(3) = 3, Sigmoid(0) = 0.5**
+
+**（新增补充）ReLU 的一个坑：死神经元（dying ReLU）**
+
+这个问题先了解，后面 Part B 讲 PINN 时会再回来：
+- 如果某个神经元因为权重初始化或训练过程中的某次大梯度更新，导致它对所有训练数据的输出都是负数
+- 那么 ReLU 输出永远是 0，梯度也永远是 0——这个神经元"死了"，再也不会被更新
+- 实际训练中如果看到"隐藏层很大一部分神经元输出都是 0"，就是发生了这个
+- 解决方法：
+  - 用 He 初始化（Week 3 会讲）而不是简单的小随机数
+  - 降低学习率
+  - 换成 Leaky ReLU（`max(0.01*z, z)`，负区间也有小梯度）
+
+**为什么这件事对你方向重要**（记住这条线索，Part B 会用到）：
+- Part B 讲 PINN 时你会发现论文用的是 Tanh 激活（不是 ReLU）
+- 原因之一：PINN 需要对输入求高阶导数，ReLU 的二阶导数处处为 0（除了原点），高阶导数完全消失
+- 原因之二：ReLU 在 0 点不可导（左右导数不一致），PINN 里容易出数值问题
+- 但纯数据驱动的 GNN（Part C）用 ReLU 没问题
+
+✅ **实践任务**(约 60 分钟）：创建文件 `week01/day02_activations.py`
 
 ```
 函数1：sigmoid(z) 
@@ -245,6 +269,7 @@ print(f"正确参数下 Loss: {loss_good:.4f}")
 - [✅] 能不看参考，15 分钟内独立写出 `mse_loss(y_pred, y_true)` 函数
 - [✅] 能用自己的话向别人解释：什么是前向传播、为什么要加激活函数
 - [✅] 理解为什么 sigmoid(0)=0.5、ReLU(-5)=0
+- [✅] 知道 ReLU 有"死神经元"问题（知道即可，后面会再讲）
 
 **如果没达到上述标准，不要进入 Week 2**。本周内容是地基，重复写一遍代码、重看一遍视频、再练一练比"硬推进"更有价值。
 
@@ -386,6 +411,12 @@ plt.savefig('training_loss.png')
 print(f"\n最终 w = {w:.4f}（期望约 2.5）")
 print(f"最终 b = {b:.4f}（期望约 1.0）")
 ```
+
+> **关于"epoch"这个词**（本 Part 后面会反复出现）：
+> 
+> 这里每一轮 `for epoch in range(200)` 代表"整个数据集过一遍"。因为本例用的是 **full batch**（一次把所有 100 个样本全部用于计算梯度），所以 1 epoch = 1 次参数更新。
+> 
+> Week 6 你会学到 mini-batch，那时 1 epoch 里会有多次参数更新（每个 batch 更新一次）。**先记住**："epoch = 整个数据集过一遍"。
 
 **验收标准**：
 - 最终 w ∈ [2.45, 2.55]
@@ -578,6 +609,68 @@ dL_db1 = dL_dZ1.sum(axis=0)
 
 ---
 
+### Day 2.5（新增，约 30 分钟） | 为什么权重不能全初始化为 0？He 初始化是什么？
+
+**这一节是 Day 3-4 代码的前置铺垫**。Day 3-4 的代码里有这样一行：
+
+```python
+W1 = np.random.randn(n_hid, n_in) * np.sqrt(2.0 / n_in)
+```
+
+这个 `np.sqrt(2.0 / n_in)` 不是随便乘的。搞清楚为什么。
+
+---
+
+**思考实验 1：如果权重全初始化为 0 会怎样？**
+
+假设 W1 = 全 0，前向传播时：
+- Z1 = X @ W1.T + b1 = 0（所有隐藏层输出都是 0）
+- A1 = ReLU(0) = 0
+- 所有隐藏神经元输出完全相同——实际上网络退化成"一个神经元"
+
+反向传播时，所有隐藏神经元梯度也完全相同——永远没办法学到不同的特征。这叫**对称性问题**（symmetry breaking）。
+
+**结论 1**：权重必须随机初始化，让每个神经元起点不同。
+
+**思考实验 2：如果权重全设为随机大数（比如 randn × 10）会怎样？**
+
+前向传播时 Z1 会变得很大（可能上百），ReLU 激活后也很大。下一层的 Z2 更大——**激活值爆炸**。梯度反向传播时也会爆炸。
+
+**思考实验 3：如果权重很小（比如 randn × 0.01）会怎样？**
+
+Z1 很小，ReLU 过滤掉一半变成 0。下一层再缩小一次，再过滤——**激活值逐层衰减到 0**。梯度也衰减到 0，网络学不动。
+
+**结论 2**：初始化的**量级**很关键，既不能太大也不能太小。
+
+---
+
+**He 初始化是什么**（核心直觉）：
+
+数学上可以推出一个合适的量级。对于 ReLU 激活，He 等人（论文作者）推出：
+```
+std = sqrt(2 / n_in)     其中 n_in 是该层输入维度
+```
+
+具体为什么是 `sqrt(2/n_in)` 不需要记——直觉是：输入维度越大（n_in 大），每个权重应该越小，这样累加后量级才合适。
+
+**对你现在的任务**：
+- 用 NumPy 手写时按照公式写即可（Day 3-4 就这么做）
+- 后面用 PyTorch 时 `nn.Linear` **默认就用了类似的合理初始化**（用的是 Kaiming uniform，是 He 的变种），不需要你手动做
+- 这是为什么你在 Week 4-5 用 `nn.Linear` 时"不用管初始化就能训练"——PyTorch 在背后帮你做了
+
+**回头看 Week 1 Day 2 的"死神经元"问题**：
+- 当时提到"死神经元"的一个解决方法是"用 He 初始化"
+- 现在你明白了：因为 He 初始化保证了权重量级合适，神经元的初始输入不会过度偏向负区间，从源头降低了"死掉"的概率
+
+**口头自测**：
+1. 为什么权重不能全初始化为 0？
+2. 为什么 `sqrt(2/n_in)` 里有 `n_in`？
+3. 用 PyTorch `nn.Linear` 时你需要手动初始化吗？为什么？
+
+**验收标准**：能回答以上三个问题。
+
+---
+
 ### Day 3–4 | 用 NumPy 实现 2 层 MLP 训练（拟合 sin 函数）
 
 ✅ **实践任务**（每天约 2 小时）：创建文件 `week03/day34_mlp_sin.py`
@@ -593,12 +686,12 @@ y_true = np.sin(x) + np.random.randn(N, 1) * 0.05  # sin 波形 + 微量噪声
 **Step 2**：完整训练代码（提供模板，你要能看懂并跑通）
 
 ```python
-# 初始化参数（小随机数，用 He 初始化的简化版）
+# 初始化参数（用 He 初始化，见 Day 2.5）
 np.random.seed(0)
 n_in, n_hid, n_out = 1, 32, 1
-W1 = np.random.randn(n_hid, n_in) * np.sqrt(2.0 / n_in)
+W1 = np.random.randn(n_hid, n_in) * np.sqrt(2.0 / n_in)   # He 初始化
 b1 = np.zeros(n_hid)
-W2 = np.random.randn(n_out, n_hid) * np.sqrt(2.0 / n_hid)
+W2 = np.random.randn(n_out, n_hid) * np.sqrt(2.0 / n_hid)  # He 初始化
 b2 = np.zeros(n_out)
 
 lr = 0.01
@@ -679,6 +772,7 @@ for epoch in range(2000):
 - [✅] 能看懂反向传播代码每一行在算什么（**不要求独立推导**）
 - [✅] 能跑通 sin 函数拟合，看到非线性表达的意义
 - [✅] 能通过拟合曲线和 Loss 曲线判断训练效果
+- [✅] 能解释 He 初始化为什么是 `sqrt(2/n_in)`，为什么权重不能全初始化为 0
 - [✅] 能用自己的话解释：为什么要多层？为什么要有激活函数？反向传播在做什么？
 
 ---
@@ -835,9 +929,9 @@ y_true = torch.sin(x) + torch.randn(N, 1) * 0.05
 **Step 2**：把参数改成 Tensor（不加 requires_grad，下周再加）
 ```python
 n_in, n_hid, n_out = 1, 32, 1
-W1 = torch.randn(n_hid, n_in) * (2.0 / n_in) ** 0.5
+W1 = torch.randn(n_hid, n_in) * (2.0 / n_in) ** 0.5   # He 初始化（见 Week 3 Day 2.5）
 b1 = torch.zeros(n_hid)
-W2 = torch.randn(n_out, n_hid) * (2.0 / n_hid) ** 0.5
+W2 = torch.randn(n_out, n_hid) * (2.0 / n_hid) ** 0.5  # He 初始化
 b2 = torch.zeros(n_out)
 ```
 
@@ -876,13 +970,15 @@ for epoch in range(2000):
 import matplotlib.pyplot as plt
 x_np = x.numpy()
 y_true_np = y_true.numpy()
-y_pred_np = y_pred.detach().numpy()    # 必须 .detach()（下周解释为什么）
+y_pred_np = y_pred.detach().numpy()    # 必须 .detach()（下周 Week 5 讲原理）
 
 plt.scatter(x_np, y_true_np, s=5, label='True')
 plt.plot(x_np, y_pred_np, 'r-', label='Predicted')
 plt.legend(); plt.title('sin(x) fit with PyTorch Tensor')
 plt.savefig('sin_pytorch.png')
 ```
+
+> **关于这里的 `.detach()`**：你现在**没有**给参数加 `requires_grad=True`，理论上不加 `.detach()` 也能跑。但这是一个习惯——养成"把 Tensor 转 NumPy 前先 detach"的肌肉记忆。下周讲 autograd 时你会明白"为什么计算图里的 Tensor 必须先 detach 才能转 NumPy"。
 
 **验收标准**：
 - 代码能跑通，Loss 最终 < 0.01
@@ -921,7 +1017,7 @@ plt.savefig('sin_pytorch.png')
 - `loss.backward()`：自动算 loss 对所有 `requires_grad=True` 的 tensor 的梯度
 - 算完后，梯度存储在 `tensor.grad` 属性中
 
-**实践任务 Day 1**（约 1.5 小时）：创建 `week05/day01_autograd_intro.py`
+✅ **实践任务 Day 1**（约 1.5 小时）：创建 `week05/day01_autograd_intro.py`
 
 ```python
 import torch
@@ -951,11 +1047,14 @@ print(w.grad)                # 应输出 4.0（dy/dw = 2w = 4）
 
 **验收标准**：每个例子的梯度和手算结果一致。
 
-**实践任务 Day 2**（约 1.5 小时）：创建 `week05/day02_autograd_gotchas.py`
+✅ **实践任务 Day 2**（约 1.5 小时）：创建 `week05/day02_autograd_gotchas.py`
 
 autograd 有几个容易踩的坑，这节专门练。
 
+---
+
 **坑 1**：梯度会累加，每次 backward 前要清零
+
 ```python
 w = torch.tensor(2.0, requires_grad=True)
 y1 = w * 3
@@ -973,22 +1072,81 @@ y2.backward()
 print(w.grad)                # 现在是 5.0
 ```
 
-**坑 2**：把 Tensor 转成 NumPy 前要 detach
+---
+
+**坑 2**：把带 requires_grad 的 Tensor 转成 NumPy 前必须 detach
+
+**先看为什么会报错**：
 ```python
 w = torch.tensor([1.0, 2.0], requires_grad=True)
-y = w * 2
-# y.numpy()   # 会报错！因为 y 在计算图里
-y_np = y.detach().numpy()    # 正确做法：先 detach
+y = w * 2       # y 继承了 requires_grad，y 也在"计算图"里
+y.numpy()       # RuntimeError: Can't call numpy() on Tensor that requires grad
 ```
 
+**为什么 PyTorch 要阻止你**：
+- `y` 携带了"我是从 w 算出来的"这个历史信息（autograd 需要）
+- 如果允许 `y.numpy()`，你就把它变成了一个 NumPy 数组，之后你做的运算 PyTorch 完全看不见
+- 但 `w` 还在计算图里等着接收梯度——PyTorch 担心你无意中破坏了梯度追踪
+- 所以它直接不让——**逼你主动声明"我知道我在做什么，这个 Tensor 不再需要追踪梯度"**
+
+**detach 做了什么**：
+```python
+y_detached = y.detach()
+# y_detached 是一个新的 Tensor：
+# - 数值和 y 完全一样
+# - 但它不在计算图里，requires_grad=False
+# - 可以安全转成 NumPy
+y_np = y_detached.numpy()
+```
+
+**一个简单的判断规则**：
+- 训练时：**不要** detach（会切断梯度流，模型学不动）
+- 要画图、保存结果、打印日志：**必须** detach（这些操作不需要梯度）
+- 用 `torch.no_grad()` 包裹的代码块里：也不需要 detach（这个区域本身就不追踪梯度）
+
+**回看 Week 4 Day 4-6 的代码**：你当时写了 `y_pred.detach().numpy()` 是为了画图。那时 `y_pred` 虽然没加 `requires_grad=True`（参数没启用 autograd），但下周你加了之后这行代码就是**必须的**——养成肌肉记忆。
+
+---
+
 **坑 3**：更新参数时要用 `torch.no_grad()` 包裹，否则 PyTorch 会把更新操作也记录到计算图里
+
 ```python
 with torch.no_grad():
     w -= 0.01 * w.grad       # 正确的更新方式
     w.grad.zero_()
 ```
 
-**验证任务**：用 autograd 手动算一个二层网络的梯度，和 Week 3 手推的结果对比
+---
+
+**坑 4**：记录标量值要用 `.item()`
+
+```python
+loss = ((y_pred - y_true) ** 2).mean()
+# loss 是一个标量 Tensor（shape=()，只有一个值），不是 Python float
+
+# 错误做法：
+losses.append(loss)                    # 追加的是 Tensor，不是数值
+# 问题：loss 还在计算图里（requires_grad=True），反复追加会占用大量内存
+# 更严重的问题：每次 append 的 loss 实际上还是和计算图绑定的
+
+# 正确做法：
+losses.append(loss.item())             # .item() 把标量 Tensor 转成 Python float
+# .item() 只能用于标量（单个值）的 Tensor
+# 如果是多元素 Tensor，用 .detach().cpu().numpy() 或 .tolist()
+```
+
+**何时需要 `.item()`**：
+- 要记录到 list 里做可视化
+- 要打印 print
+- 要和 Python 数值比较（`if loss.item() < 0.01`）
+
+**何时不需要 `.item()`**：
+- 继续用于计算 backward（保留 Tensor 形式）
+- 要在 Tensor 之间做运算（仍保留在 GPU 或计算图里）
+
+---
+
+✅ **验证任务**：用 autograd 手动算一个二层网络的梯度，和 Week 3 手推的结果对比
 
 ```python
 # 一个样本的前向（为了简化）
@@ -1025,7 +1183,7 @@ print(b2.grad)
 - `.to(device)` 一次性把所有参数搬到 GPU
 - 结构清晰，便于保存和加载
 
-**实践任务**（约 2 小时）：创建 `week05/day03_nn_module.py`
+✅ **实践任务**（约 2 小时）：创建 `week05/day03_nn_module.py`
 
 ```python
 import torch
@@ -1069,11 +1227,53 @@ print(y_pred.shape)          # 应为 (10, 1)
 
 ---
 
+**（延伸 10 分钟）nn.Linear 背后的 nn.Parameter 机制**：
+
+你可能好奇——`nn.Linear(in_dim, out_dim)` 里说"自动创建 W 和 b"，这个"自动"是什么机制？
+
+看源码大致是这样的：
+```python
+# 大致等价于：
+class Linear(nn.Module):
+    def __init__(self, in_features, out_features):
+        super().__init__()
+        # 关键：用 nn.Parameter 包裹，告诉 PyTorch "这是可学习参数"
+        self.weight = nn.Parameter(torch.randn(out_features, in_features))
+        self.bias = nn.Parameter(torch.zeros(out_features))
+    
+    def forward(self, x):
+        return x @ self.weight.T + self.bias
+```
+
+**关键点**：`nn.Parameter` 是一个"标记"——它告诉 `nn.Module` "这个 Tensor 是可学习参数"。
+- `model.parameters()` 会自动找到所有被 `nn.Parameter` 标记的 Tensor
+- 这些 Tensor 会自动 `requires_grad=True`
+- optimizer 靠这个机制拿到所有要更新的参数
+
+**什么时候你需要自己用 `nn.Parameter`**：
+- **定义自定义层**（后面 Part C 的 GNN 会用到）
+- **在 PINN 里定义可学习的物理参数**（Part B 会用到）：
+
+```python
+class PINN(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.fc = nn.Linear(1, 32)
+        # 假设弹性模量 E 作为可学习参数（反演问题）
+        self.E = nn.Parameter(torch.tensor(1.0))  # 必须用 nn.Parameter！
+```
+
+如果写成 `self.E = torch.tensor(1.0)`，optimizer 就看不到它，永远不会被更新。
+
+**本周你不需要自定义层**（直接用 nn.Linear 就够了）——但提前知道这个机制，后面 Part B 和 Part C 遇到时就不会踏空。
+
+---
+
 ### Day 4–6 | 用 nn.Module + autograd 重写 sin 拟合
 
 **这是本周的闭环任务**：把所有零散的知识点整合成一个"标准 PyTorch 训练流程"。
 
-**实践任务**：创建 `week05/day456_mlp_sin_autograd.py`
+✅ **实践任务**：创建 `week05/day456_mlp_sin_autograd.py`
 
 ```python
 import torch
@@ -1104,7 +1304,7 @@ for epoch in range(2000):
     # 前向
     y_pred = model(x)
     loss = ((y_pred - y_true) ** 2).mean()
-    losses.append(loss.item())
+    losses.append(loss.item())        # .item() 把标量 Tensor 转 float（Day 2 坑 4）
     
     # 反向（autograd 自动算梯度）
     loss.backward()
@@ -1127,7 +1327,7 @@ plt.xlabel('Epoch'); plt.ylabel('Loss'); plt.title('Training Loss')
 
 plt.subplot(1,2,2)
 x_np = x.numpy(); y_true_np = y_true.numpy()
-y_pred_np = model(x).detach().numpy()
+y_pred_np = model(x).detach().numpy()   # detach 转 NumPy（Day 2 坑 2）
 plt.scatter(x_np, y_true_np, s=5, label='True')
 plt.plot(x_np, y_pred_np, 'r-', label='Pred')
 plt.legend(); plt.title('Fit')
@@ -1149,10 +1349,12 @@ plt.tight_layout(); plt.savefig('week05_sin.png')
 
 ### Week 5 完成标准
 
-- [ ] 能解释 `requires_grad`、`backward()`、`.grad` 的作用
-- [ ] 知道 autograd 的 3 个坑：梯度累加、detach、torch.no_grad()
-- [ ] 能从零定义一个继承 `nn.Module` 的 MLP 类
-- [ ] 能用 autograd + nn.Module 替代 NumPy 版本的 sin 拟合
+- [✅] 能解释 `requires_grad`、`backward()`、`.grad` 的作用
+- [✅] 知道 autograd 的 4 个坑：梯度累加、detach、torch.no_grad()、loss.item()
+- [✅] 能解释为什么必须 detach、detach 做了什么
+- [✅] 了解 `nn.Parameter` 是什么、什么时候要用（可学习物理参数会用）
+- [✅] 能从零定义一个继承 `nn.Module` 的 MLP 类
+- [✅] 能用 autograd + nn.Module 替代 NumPy 版本的 sin 拟合
 
 ---
 
@@ -1172,14 +1374,48 @@ plt.tight_layout(); plt.savefig('week05_sin.png')
 
 ### Day 1 | Optimizer：SGD 和 Adam
 
-**核心概念**：
+#### 实践前先理解：SGD 和 Adam 的核心差异（约 30 分钟）
+
+**Week 2 你手写过梯度下降**：
+```
+w = w - lr * grad
+```
+所有参数共用一个 `lr`，梯度多大就走多远。这就是 **SGD**（随机梯度下降，Stochastic Gradient Descent）的核心。
+
+**SGD 的问题**：
+- 所有参数共享同一个学习率——但真实网络里有些参数梯度大（变化快）、有些梯度小（变化慢）
+- 大梯度的参数步子太大容易震荡，小梯度的参数步子太小收敛太慢
+- 只能靠你手动调一个"折衷的 lr"，调起来很痛苦
+
+**Adam 的核心思想**（不需要看论文，理解直觉即可）：
+- 每个参数**独立维护**一个"有效学习率"
+- 对梯度大的参数自动缩小步子；对梯度小的参数自动放大步子
+- 这样即使你设的 `lr=1e-3` 不是"最优"，Adam 也能自适应调整，通常都不会崩
+
+**一句话对比**：
+- SGD：所有参数同样速度走，lr 调不好就崩
+- Adam：每个参数按自己的情况走，lr 差点也没事
+
+**为什么实践中先用 Adam**：**不是因为它精度更高**（精调后的 SGD 在某些任务上更好），而是因为它**调起来省心**。作为新手你的时间应该花在理解模型、诊断问题上，不是纠结 lr。PhyFENet 论文用 Adam 也是这个原因。
+
+**不用深入推导 Adam 的数学**——它涉及一阶动量（梯度的移动平均）和二阶动量（梯度平方的移动平均），这些细节你到需要时再查。现在只要记住：
+- **默认用 Adam，lr 先设 1e-3 或 1e-4**
+- **SGD 作为对照实验**（本 Day 的对比实验会让你直观看到差别）
+
+**口头自测**（继续前必须回答）：
+1. 为什么 Adam 在实践中通常比 SGD 好调？
+2. 什么时候可能会用 SGD 而不是 Adam？
+   > 参考：某些任务精调后的 SGD 泛化性更好；但这不是新手该纠结的
+
+---
+
+#### 核心 API
+
 - `torch.optim.SGD(model.parameters(), lr=0.01)`：最基础的随机梯度下降
 - `torch.optim.Adam(model.parameters(), lr=0.001)`：自适应学习率，对大多数任务效果更好
 - 用法：`optimizer.step()` 替代手动 `param -= lr * param.grad`；`optimizer.zero_grad()` 替代 `param.grad.zero_()`
 
-**为什么 Adam 常作为默认选择**：Adam 为每个参数维护一个自适应学习率，不需要你精细调 lr 就能有不错的结果。PhyFENet 论文里也是用 Adam。
-
-**实践任务**（约 1.5 小时）：创建 `week06/day01_optimizer.py`
+✅ **实践任务**（约 1.5 小时）：创建 `week06/day01_optimizer.py`
 
 把 Week 5 的手动参数更新改成用 optimizer：
 
@@ -1203,6 +1439,19 @@ y_true = torch.sin(x) + torch.randn(N, 1) * 0.05
 
 model = MLP()
 criterion = nn.MSELoss()                            # 内置 MSE
+# 注意：这是先创建一个"Loss 对象"，再用它计算 loss
+# 等价于之前你写的 ((y_pred - y_true) ** 2).mean()
+# 
+# 为什么 PyTorch 要把 Loss 设计成类？
+# - 因为有些 Loss 有"可学参数"（比如带权重的分类 Loss）
+# - 类的形式能统一处理带参数和不带参数的 Loss
+# - 对 MSE 来说三种写法完全等价：
+#   loss_a = criterion(y_pred, y_true)           # 类的方式（Week 6 以后用这个）
+#   loss_b = ((y_pred - y_true) ** 2).mean()     # 直接写（Week 1-5 的方式）
+#   import torch.nn.functional as F
+#   loss_c = F.mse_loss(y_pred, y_true)          # 函数式
+# 三种写法等价，本计划从 Week 6 起统一用类的方式。
+
 optimizer = optim.Adam(model.parameters(), lr=0.01) # 用 Adam
 
 losses = []
@@ -1225,6 +1474,7 @@ for epoch in range(2000):
 - 用 Adam 训练 2000 epoch 后 Loss < 0.005
 - 用 SGD 训练 2000 epoch 后通常 Loss 在 0.01-0.1 之间（收敛较慢）
 - 能画两条 Loss 曲线对比
+- 能用自己的话说清楚 Adam 相对 SGD 的优势
 
 ---
 
@@ -1238,7 +1488,7 @@ for epoch in range(2000):
 
 DataLoader 就是自动做这件事的工具。
 
-**实践任务**（约 1.5 小时）：创建 `week06/day02_dataloader.py`
+✅ **实践任务**（约 1.5 小时）：创建 `week06/day02_dataloader.py`
 
 ```python
 import torch
@@ -1270,9 +1520,152 @@ for batch_idx, (batch_x, batch_y) in enumerate(loader):
 
 ---
 
+#### 概念澄清：epoch / batch / iteration（约 5 分钟）
+
+引入 DataLoader 后这三个词频繁出现，容易混：
+
+- **epoch**（周期）：**整个数据集**完整过一遍叫 1 epoch
+- **batch**（批次）：数据集被切成的小块，每块叫 1 batch
+- **iteration**（迭代）：一次参数更新叫 1 iteration，通常 = 过完 1 个 batch
+
+**举例**：
+- 1000 个样本，batch_size=32
+- 1 epoch 里有 `1000 / 32 ≈ 32` 个 batch
+- 1 epoch = 32 个 iteration
+- 训练 100 epoch = 3200 个 iteration = 3200 次参数更新
+
+**Week 2 你之前的 full batch 情况**：
+- batch_size = N（整个数据集）
+- 1 epoch = 1 batch = 1 iteration
+- 所以那时候你没区分这三个词
+
+**Week 6 以后 mini-batch 情况**：
+- 1 epoch > 1 batch
+- 训练速度**表面看**慢了（每个 epoch 要过 32 个 batch），**但实际收敛快得多**（每个 epoch 更新了 32 次参数而不是 1 次）
+
+---
+
+### Day 2.5（新增，约 45 分钟）| 为什么要把数据分成训练集和验证集
+
+**这是进入 Day 3-4 之前必须理解的概念**。Day 3-4 的代码会把数据切成"train"和"val"两部分——这个做法有非常具体的工程意义。
+
+---
+
+**一个核心问题**：你怎么知道你训练的模型"真的学到了规律"？
+
+**反面例子**：假设你让学生做 100 道练习题，他把每道题的答案都背下来了。考试时如果你**原题再考一遍**，他全对——但这不代表他学会了数学，只能说明他记性好。
+
+**神经网络也一样**：如果你用全部数据训练，然后用同样的数据评估 Loss，Loss 很低也不能说明模型泛化能力好——它可能只是"背"下了训练数据的每个点（这种现象叫**过拟合**，Week 7 会详细讲）。
+
+**正确做法**：把数据分成两部分
+- **训练集（training set）**：约 80%，用来训练模型（参数更新用）
+- **验证集（validation set）**：约 20%，训练中不用来更新参数，只用来评估
+  - 如果训练集 Loss 很低但验证集 Loss 很高 → 模型只是"背"了训练数据，没学到泛化规律
+  - 如果两个 Loss 都下降 → 模型真的学到了规律
+
+---
+
+✅ **实践任务**（约 45 分钟）：创建 `week06/day25_train_val_split.py`
+
+```python
+import torch
+from torch.utils.data import TensorDataset, DataLoader
+
+# 生成数据（和 Day 2 一样）
+torch.manual_seed(42)
+N = 1000
+X = torch.randn(N, 5)
+y = (X[:,0]*2 + X[:,1]*3 - X[:,2] + 0.5).reshape(-1, 1)
+y = y + torch.randn(N, 1) * 0.1
+
+# ===== 核心操作：train/val 切分 =====
+# 方法 1：按顺序切（简单直接）
+n_train = int(0.8 * N)      # 80% 训练
+X_train, X_val = X[:n_train], X[n_train:]
+y_train, y_val = y[:n_train], y[n_train:]
+
+print(f"训练集样本数: {len(X_train)}")    # 800
+print(f"验证集样本数: {len(X_val)}")      # 200
+
+# 方法 2：随机切（更严谨，避免数据有顺序偏差）
+perm = torch.randperm(N)                   # 随机打乱索引
+train_indices = perm[:n_train]
+val_indices = perm[n_train:]
+X_train2 = X[train_indices]
+X_val2 = X[val_indices]
+
+# 把训练集和验证集分别包装成 DataLoader
+train_loader = DataLoader(TensorDataset(X_train, y_train), 
+                          batch_size=32, shuffle=True)   # 训练集 shuffle
+val_loader = DataLoader(TensorDataset(X_val, y_val),
+                        batch_size=32, shuffle=False)     # 验证集不 shuffle
+
+# 验证两个 loader 都能用
+for batch_x, batch_y in train_loader:
+    print(f"Train batch: {batch_x.shape}")
+    break
+for batch_x, batch_y in val_loader:
+    print(f"Val batch: {batch_x.shape}")
+    break
+```
+
+**要回答的三个问题**（口头即可）：
+1. 为什么训练集要 `shuffle=True`，验证集要 `shuffle=False`？
+   > 参考：训练集打乱让每个 epoch 的 batch 组合不同，减少模型记住样本顺序；验证集只是评估，顺序不影响结果，关掉 shuffle 更快更好复现
+
+2. 如果只用训练集评估 Loss，会有什么问题？
+   > 参考：Loss 低不能证明模型学到了泛化规律，只能证明它"记住"了训练数据
+
+3. 为什么切分比例常选 80/20 而不是 50/50？
+   > 参考：训练集越多模型学得越好；验证集只需要"够代表性"即可，不需要太多。50/50 会浪费一半数据没用来学习
+
+**验收标准**：
+- 能跑通切分代码
+- 能回答上面 3 个问题
+- **理解一个核心观点**：训练 Loss 不是模型真正好坏的标准，验证 Loss 才是
+
+---
+
 ### Day 3–4 | 完整训练流程（多特征回归）
 
-**衔接**：前两天有了 Optimizer 和 DataLoader，现在把它们整合成"完整的标准训练流程"。这个流程会是你之后所有项目的模板。
+**衔接**：前两天有了 Optimizer、DataLoader 和 train/val 切分概念，现在把它们整合成"完整的标准训练流程"。这个流程会是你之后所有项目的模板。
+
+---
+
+**关于 nn.Sequential**（10 分钟延伸）：
+
+本节代码首次使用 `nn.Sequential`。回顾 Week 5 Day 3 你是这么写 MLP 的：
+```python
+class MLP(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.fc1 = nn.Linear(1, 32)
+        self.fc2 = nn.Linear(32, 1)
+    def forward(self, x):
+        return self.fc2(torch.relu(self.fc1(x)))
+```
+
+每层都要单独 `self.fcN = ...`，forward 里也要逐层调用。这种写法**控制更细**，比如要在某一层后加 dropout、或者加残差连接就方便。
+
+`nn.Sequential` 是简化写法：
+```python
+self.net = nn.Sequential(
+    nn.Linear(1, 32),
+    nn.ReLU(),           # 激活函数也作为一层
+    nn.Linear(32, 1)
+)
+# forward 只需要：return self.net(x)
+```
+
+自动把所有子层"串起来"执行。
+
+**什么时候用哪个**：
+- **Sequential**：网络是"直线型"的、逐层堆叠、中间不需要特殊处理——**大多数 MLP 用这个，代码简洁**
+- **分层写 self.fcN**：需要在中间层加分支、残差连接、跳接等——**后面 Part C 的 GNN 会用这种**
+
+注意两种写法**功能完全等价**，只是代码风格不同。**不要纠结选哪个**。
+
+---
 
 **实践任务**：创建 `week06/day34_full_pipeline.py`
 
@@ -1294,7 +1687,7 @@ X = torch.randn(N, 3)
 y = (2*X[:,0] + 3*X[:,1]**2 - X[:,2] + 0.5).reshape(-1, 1)
 y = y + torch.randn(N, 1) * 0.2
 
-# 划分 train / val（80% / 20%）
+# (划分) train / val（80% / 20%）—— 见 Day 2.5
 n_train = int(0.8 * N)
 X_train, X_val = X[:n_train], X[n_train:]
 y_train, y_val = y[:n_train], y[n_train:]
@@ -1308,7 +1701,7 @@ val_loader = DataLoader(val_ds, batch_size=64, shuffle=False)
 class MLP(nn.Module):
     def __init__(self, in_dim, hid_dim, out_dim):
         super().__init__()
-        self.net = nn.Sequential(
+        self.net = nn.Sequential(           # 用 Sequential 写法
             nn.Linear(in_dim, hid_dim),
             nn.ReLU(),
             nn.Linear(hid_dim, hid_dim),
@@ -1361,12 +1754,89 @@ plt.legend(); plt.title('Training Progress')
 plt.savefig('week06_training.png')
 ```
 
+---
+
 **这份代码中的 5 个关键点**（你需要能解释每一个）：
-1. `model.train()` / `model.eval()`：切换模式（影响 Dropout、BatchNorm 等，这里虽然没用到但养成习惯）
-2. `optimizer.zero_grad()` / `loss.backward()` / `optimizer.step()`：三行一组，标准梯度更新流程
-3. `with torch.no_grad():`：验证时不需要算梯度，节省内存
-4. `train/val split`：划分数据集，用验证集监控是否过拟合
-5. 记录 loss 时乘以 `bx.size(0)` 再除以 `len(dataset)`：对不同大小的 batch 正确加权平均
+
+---
+
+**1. `model.train()` / `model.eval()`：切换模型状态**
+
+为什么需要两个状态？因为有些网络层在训练和推理时行为不同：
+
+- **Dropout 层**（Week 7 Day 2 会用到）：训练时随机丢弃一些神经元防止过拟合，推理时不丢（要用完整网络做预测）
+- **BatchNorm 层**（本 Part 不用但很常见）：训练时用当前 batch 的均值方差做归一化，推理时用训练期间累积的全局均值方差
+
+所以：
+- `model.train()`：告诉所有层"现在是训练模式，Dropout 开启、BatchNorm 用 batch 统计"
+- `model.eval()`：告诉所有层"现在是推理模式，Dropout 关闭、BatchNorm 用全局统计"
+
+**本周的 MLP 里没有这些层**，所以两者行为一样——但现在就养成习惯。等 Week 7 开始用 Dropout，或者后面用别的有"train/eval 差异"的层时，这习惯会避免你调试半天找不到 bug。
+
+**面试追问**："`model.eval()` 和 `with torch.no_grad()` 有什么区别？"
+> 参考：前者切换层的行为模式（Dropout/BN），后者关闭梯度追踪。两者是独立的——验证时通常两个都要用
+
+---
+
+**2. `optimizer.zero_grad()` / `loss.backward()` / `optimizer.step()`**：三行一组，标准梯度更新流程
+
+- `zero_grad()`：清空上次的梯度（否则会累加，见 Week 5 Day 2 坑 1）
+- `backward()`：算梯度（autograd，见 Week 5 Day 1）
+- `step()`：根据梯度更新参数（Adam 在内部做自适应学习率调整）
+
+---
+
+**3. `with torch.no_grad():`**：验证时不需要算梯度
+
+为什么用：
+- 节省内存（不存计算图）
+- 提速（不做梯度追踪相关的记账）
+- 避免无意中修改了 `.grad` 属性
+
+---
+
+**4. `train/val split`（见 Day 2.5）**：训练集参与梯度更新，验证集只用来评估
+
+如果验证 Loss 开始反升而训练 Loss 还在降，说明过拟合了（Week 7 详讲）。
+
+---
+
+**5. 记录 loss 时乘以 `bx.size(0)` 再除以 `len(dataset)`：正确做加权平均**
+
+核心问题：`criterion(y_pred, by)` 返回的是**当前 batch 的平均 Loss**。
+
+假设你这个 epoch 有 4 个 batch：
+- Batch 1: 32 样本, loss = 0.5
+- Batch 2: 32 样本, loss = 0.3
+- Batch 3: 32 样本, loss = 0.4
+- Batch 4: 8 样本（最后不足一个完整 batch）, loss = 0.6
+
+**错误做法**（直接平均）：
+```python
+epoch_loss = (0.5 + 0.3 + 0.4 + 0.6) / 4 = 0.45
+```
+这是**错的**——把"只有 8 样本的 batch"和"32 样本的 batch"等权重看待了。
+
+**正确做法**（按样本数加权）：
+```python
+total_loss = 0.5*32 + 0.3*32 + 0.4*32 + 0.6*8 = 16 + 9.6 + 12.8 + 4.8 = 43.2
+total_samples = 32+32+32+8 = 104
+epoch_loss = 43.2 / 104 ≈ 0.4154
+```
+这才是真正的"所有样本的平均 Loss"。
+
+代码里就是这个逻辑：
+```python
+train_loss_sum += loss.item() * bx.size(0)    # 这个 batch 所有样本的 loss 总和
+# 最后：
+train_loss_avg = train_loss_sum / len(train_ds)   # 除以总样本数
+```
+
+**为什么重要**：最后一个 batch 经常不满——如果不加权，评估指标会有偏差。养成习惯永远这么写。
+
+**另一种等效做法**：`criterion(y_pred, by, reduction='sum')` 返回 batch 的 loss 总和（不是平均），这样直接 `+=` 就行，不用乘样本数。两种都可以。
+
+---
 
 **验收标准**：
 - Train loss 和 Val loss 都在下降
@@ -1408,6 +1878,7 @@ ai-cae-learning/
 └── week06/
     ├── day01_optimizer.py
     ├── day02_dataloader.py
+    ├── day25_train_val_split.py
     ├── day34_full_pipeline.py
     └── day5_save_load.py
 ```
@@ -1425,10 +1896,15 @@ def train_model(model, train_loader, val_loader,
 
 ### Week 6 完成标准
 
+- [ ] 能解释 SGD 和 Adam 的核心差异，知道为什么默认用 Adam
+- [ ] 能澄清 epoch / batch / iteration 的关系
+- [ ] 能解释为什么要把数据分成训练集和验证集（不是只是"按模板抄"）
+- [ ] 能说清 `nn.Sequential` 和分层 `self.fcN` 两种写法什么时候用哪个
 - [ ] 能从零写出"定义模型 + 定义 optimizer + DataLoader + 训练循环"的完整模板
 - [ ] 能解释 `optimizer.zero_grad()` / `loss.backward()` / `optimizer.step()` 三步的作用和顺序
+- [ ] 能解释 `model.train()` / `model.eval()` 是做什么的，为什么要调
+- [ ] 能解释为什么要用 `bx.size(0)` 做加权平均，错误平均会怎么样
 - [ ] 能用 `state_dict` 保存和加载模型
-- [ ] 理解 train/val split 的意义
 
 ---
 
@@ -1479,17 +1955,44 @@ def train_model(model, train_loader, val_loader,
 - 看吴恩达 Course 2 Week 1 关于"正则化"的视频
 - 理解：L2 正则 = 在 Loss 里加一个 `λ * Σ w²`，让权重变小，避免模型过度依赖某些特征
 
+**关于 Dropout**（回应 Week 6 的铺垫）：
+- Dropout 是另一种正则化方法——训练时随机"丢掉"一部分神经元的输出（设为 0）
+- 相当于每次训练都用"不同的子网络"，模型被迫学到冗余的特征
+- 推理时不丢（这就是为什么需要 `model.train()` / `model.eval()` 区分模式）
+- 在 PyTorch 里用 `nn.Dropout(p=0.5)` 即可
+
 **实践任务**：创建 `week07/day02_regularization.py`
 
-用 Day 1 的"过拟合"情景（N=20，hidden=256），加入 L2 正则：
+用 Day 1 的"过拟合"情景（N=20，hidden=256），加入 L2 正则和 Dropout：
+
 ```python
+# 方法 1：L2 正则（weight_decay）
 optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-3)
 # weight_decay 就是 L2 正则化的 λ
+
+# 方法 2：Dropout（在模型定义里加）
+class MLP_Dropout(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(1, 256),
+            nn.ReLU(),
+            nn.Dropout(p=0.3),      # ← 30% 神经元被丢
+            nn.Linear(256, 1)
+        )
+    def forward(self, x):
+        return self.net(x)
 ```
 
-对比有/无 weight_decay 的 val loss 曲线。
+对比：
+- 无正则
+- +weight_decay
+- +Dropout
+- +weight_decay +Dropout
 
-**验收标准**：带 weight_decay 的 val loss 应该比不带的低（或至少不那么快反升）。
+的 val loss 曲线。
+
+**验收标准**：带正则化的 val loss 应该比不带的低（或至少不那么快反升）。能观察到 Dropout 和 L2 的效果区别。
 
 ---
 
@@ -1591,14 +2094,18 @@ for epoch in range(100):
 **Day 5**：Part A 完整自测（限时 3 小时）
 
 **理论题**（口头或笔记回答，每题 2-3 句）：
-1. 为什么神经网络需要激活函数？
-2. 梯度下降的核心思想是什么（不用公式）？
+1. 为什么神经网络需要激活函数？ReLU 和 Tanh 各有什么特点？ReLU 的坑是什么？
+2. 梯度下降的核心思想是什么（不用公式）？SGD 和 Adam 的区别？
 3. 反向传播和链式法则的关系？
-4. 为什么 Adam 通常比 SGD 好？
-5. 为什么 FEM 数据要归一化？
+4. 为什么权重不能初始化为 0？He 初始化做了什么？
+5. autograd 的 4 个坑是什么？
+6. `model.train()` / `model.eval()` 为什么要区分？
+7. 为什么要把数据分成训练集和验证集？只用训练集评估会怎样？
+8. epoch / batch / iteration 的关系？
+9. 为什么 FEM 数据要归一化？L2 正则化和 Dropout 的区别？
 
 **代码题**（限时完成，不看参考）：
-1. （40 分钟）从零写一个完整的 PyTorch 训练流程：模型 + 数据 + 训练循环 + Loss 曲线可视化。具体任务：给定 3 维输入、1 维输出的随机数据，训练一个 2 层 MLP。
+1. （40 分钟）从零写一个完整的 PyTorch 训练流程：模型 + 数据 + train/val split + 训练循环 + Loss 曲线可视化。具体任务：给定 3 维输入、1 维输出的随机数据，训练一个 2 层 MLP。
 2. （15 分钟）写 `ZScoreNormalizer` 类（fit / transform / inverse_transform）。
 
 **Day 6**：整理项目仓库
@@ -1630,20 +2137,25 @@ ai-cae-learning/
 **Week 7**：
 - [ ] 能从 Loss 曲线形态判断训练问题（4 种情况）
 - [ ] 理解并能用 weight_decay 做 L2 正则化
+- [ ] 理解 Dropout 是什么、为什么训练/推理行为不同
 - [ ] 能从零实现 Z-Score 归一化类
 - [ ] 能调试带多个 bug 的训练代码
 
 **Part A 总完成标准**（进入 Part B 前必须全部达到）：
 
-理论
-- [ ] 能用自己的话解释：神经元 / 激活函数 / 前向传播 / 反向传播 / 梯度下降 / 学习率 / 过拟合 / 正则化 / 归一化
+**理论**：
+- [ ] 能用自己的话解释：神经元 / 激活函数 / 前向传播 / 反向传播 / 梯度下降 / 学习率 / 过拟合 / 正则化 / 归一化 / 训练集验证集
+- [ ] 能解释 ReLU 死神经元问题、为什么 PINN 用 Tanh 不用 ReLU（为 Part B 铺路）
+- [ ] 能解释 He 初始化、SGD vs Adam 的差异
+- [ ] 能解释 autograd 的 4 个坑、nn.Parameter 是什么
 - [ ] 理解为什么 FEM 数据训练必须归一化
 
-代码（每项限时完成，不看参考）：
+**代码**（每项限时完成，不看参考）：
 - [ ] 能用 NumPy 手写 2 层 MLP 的前向传播（30 分钟内）
 - [ ] 能用 PyTorch + autograd + nn.Module + Adam 写完整训练流程（45 分钟内）
-- [ ] 能用 DataLoader 分 batch 训练
+- [ ] 能用 DataLoader 分 batch 训练，做 train/val split
 - [ ] 能判断 Loss 曲线是否健康
+- [ ] 能调试训练代码（会看错误、会修 bug）
 
 如果上述任何一项未达到，在进入 Part B 之前回头补强对应周。**不要为了赶进度带着不扎实的基础进入 Part B**——Part B 的 autograd 高阶用法和 Part C 的 GNN 会把你 Part A 的短板完全放大。
 

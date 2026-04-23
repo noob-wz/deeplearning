@@ -57,7 +57,7 @@ y (任意张量) → 对指定的输入求偏导 → 结果作为新张量返回
 
 ### Day 1 | `.backward()` vs `autograd.grad()`：两者到底有什么区别
 
-**理论任务**（约 1 小时）：在笔记上对比表格
+✅ **理论任务**（约 1 小时）：在笔记上对比表格
 
 | 对比项 | `.backward()` | `autograd.grad()` |
 |-------|--------------|-------------------|
@@ -67,7 +67,7 @@ y (任意张量) → 对指定的输入求偏导 → 结果作为新张量返回
 | 对输入张量的要求 | 输入需要 `requires_grad=True` | 同样需要 |
 | 是否支持二阶导 | 不直接支持 | 支持（加 `create_graph=True`） |
 
-**实践任务**（约 1.5 小时）：创建文件 `week08/day01_backward_vs_grad.py`
+✅ **实践任务**（约 1.5 小时）：创建文件 `week08/day01_backward_vs_grad.py`
 
 **例子 1**：同一个计算，用两种方式求梯度
 ```python
@@ -108,7 +108,7 @@ print("w.grad =", w.grad)           # 应为 None，autograd.grad 不写 .grad
 
 **实践任务**（约 2 小时）：创建文件 `week08/day02_first_derivatives.py`
 
-**例子 1**：验证 d(x²)/dx = 2x
+✅ **例子 1**：验证 d(x²)/dx = 2x
 ```python
 import torch
 
@@ -119,7 +119,7 @@ dy_dx = torch.autograd.grad(y, x)[0]
 print(f"dy/dx at x=3: {dy_dx}")   # 应为 6.0（因为 2*3=6）
 ```
 
-**例子 2**：对多个点同时求导
+✅ **例子 2**：对多个点同时求导
 ```python
 x = torch.linspace(0, 2, 5, requires_grad=True)   # [0, 0.5, 1, 1.5, 2]
 y = x ** 2                                          # [0, 0.25, 1, 2.25, 4]
@@ -138,7 +138,7 @@ print(f"dy/dx: {dy_dx}")         # [0.0, 1.0, 2.0, 3.0, 4.0]（因为 2x）
 
 **为什么需要 `grad_outputs`**：PyTorch 只能对标量输出求梯度。当输出是向量（shape=(5,)），你要告诉它"我对每个分量各要一个梯度"，数学上等价于把向量按权重求和变成标量。`grad_outputs=torch.ones_like(y)` 等价于"把 y 求和变成标量，再求梯度"——结果就是每个 y_i 对应的 x_i 的导数。
 
-**例子 3**：更复杂的函数 y = sin(x) * exp(x)
+✅ **例子 3**：更复杂的函数 y = sin(x) * exp(x)
 ```python
 x = torch.tensor(1.0, requires_grad=True)
 y = torch.sin(x) * torch.exp(x)

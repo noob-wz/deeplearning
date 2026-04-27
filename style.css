@@ -1,67 +1,70 @@
 /* ================================================================
    Style: Clean Air Ultra Pro Max
-   版本: v3.0 High Contrast Edition (最终极致版)
-   特性: 高对比度层级 / 胶囊引用 / 视觉隔离 / 强制字体约束
+   版本: v3.1 Refined Reading Edition
+   特性: 更耐读 / 更克制 / 更统一 / 适合技术教程与知识文档
+   基于 v3.0 High Contrast Edition 精修
    ================================================================ */
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   § 1. CSS 变量系统 - 高对比度配置
+   § 1. CSS 变量系统 - 精修版配色与节奏
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 :root {
-    /* ===== 颜色系统 (高对比度) ===== */
-    --text-primary: #000000;        /* 纯黑，极致对比 */
-    --text-secondary: #404040;      /* 深灰，拉开层级 */
-    --text-tertiary: #737373;
+    /* ===== 颜色系统 ===== */
+    --text-primary: #0f172a;        /* 更深的正文色，阅读更稳 */
+    --text-secondary: #1f2937;
+    --text-tertiary: #475569;
+    --text-emphasis: #1e40af; /*   强调文本：保留区别，但避免过艳 */
+    /* --text-emphasis: #b91c1c; */
     --text-inverse: #ffffff;
 
     /* 背景颜色 */
     --bg-primary: #ffffff;
-    --bg-secondary: #fafafa;
+    --bg-secondary: #f8fafc;
     --bg-tertiary: #f3f4f6;
-    --bg-capsule: #f8f9fa;          /* 胶囊引用专用背景 */
-    --bg-elevated: #ffffff;         /* 悬浮卡片背景 */
+    --bg-capsule: #f8fafc;
+    --bg-elevated: #ffffff;
 
     /* 品牌色 */
-    --brand-primary: #0052cc;       /* 深蓝，更稳重 */
-    --brand-primary-dark: #0747a6;
-    --brand-primary-light: #deebff;
-    --brand-primary-alpha: rgba(0, 82, 204, 0.1);
+    --brand-primary: #1d4ed8;
+    --brand-primary-dark: #1e40af;
+    --brand-primary-light: #dbeafe;
+    --brand-primary-alpha: rgba(29, 78, 216, 0.10);
 
     /* 语义颜色 */
-    --color-success: #00875a;
-    --color-success-bg: #e3fcef;
-    --color-warning: #ff991f;
-    --color-warning-bg: #fff0b3;
-    --color-danger: #de350b;
-    --color-danger-bg: #ffebe6;
-    --color-info: #00b8d9;
-    --color-info-bg: #e6fcff;
+    --color-success: #047857;
+    --color-success-bg: #ecfdf5;
+    --color-warning: #b45309;
+    --color-warning-bg: #fffbeb;
+    --color-danger: #b91c1c;
+    --color-danger-bg: #fef2f2;
+    --color-info: #0369a1;
+    --color-info-bg: #f0f9ff;
 
     /* 代码配色 */
-    --code-bg: #f4f5f7;
-    --code-text: #172b4d;
-    --code-border: #dfe1e6;
+    --code-bg: #f8fafc;
+    --code-text: #0b1220;
+    --code-border: #e5e7eb;
 
     /* 边框与线条 */
-    --border-subtle: #ebecf0;
-    --border-light: #dfe1e6;
-    --border-medium: #c1c7d0;
-    --border-strong: #000000;       /* 强边框 */
+    --border-subtle: #e2e8f0;
+    --border-light: #dbe3ee;
+    --border-medium: #c7d2e0;
+    --border-strong: #1f2937;
 
-    /* 阴影系统 (增强深度) */
-    --shadow-sm: 0 1px 2px rgba(9, 30, 66, 0.25);
-    --shadow-md: 0 4px 8px -2px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
-    --shadow-lg: 0 8px 16px -4px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
-    --shadow-float: 0 12px 24px -6px rgba(9, 30, 66, 0.35); /* 悬浮专用 */
+    /* 阴影系统 - 整体弱化 */
+    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+    --shadow-md: 0 4px 10px rgba(15, 23, 42, 0.06);
+    --shadow-lg: 0 8px 18px rgba(15, 23, 42, 0.08);
+    --shadow-float: 0 10px 22px rgba(15, 23, 42, 0.08);
 
     /* 排版参数 */
-    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Inter", "Roboto", "Helvetica Neue", Arial, sans-serif;
     --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", "Consolas", "Roboto Mono", monospace;
 
     --radius-sm: 4px;
     --radius-md: 8px;
     --radius-lg: 12px;
-    --radius-xl: 16px;              /* 胶囊圆角 */
+    --radius-xl: 16px;
     --radius-full: 9999px;
 
     --space-1: 0.25rem;
@@ -75,37 +78,50 @@
     --space-12: 3rem;
     --space-16: 4rem;
 
-    --content-width: 760px;
+    --content-width: 720px;
 }
 
 /* 暗色模式适配 */
 @media (prefers-color-scheme: dark) {
     :root {
-        --text-primary: #ffffff;
-        --text-secondary: #dcdcdc;
-        --text-tertiary: #a0a0a0;
+        --text-primary: #f3f4f6;
+        --text-secondary: #e5e7eb;
+        --text-tertiary: #cbd5e1;
+        --text-emphasis: #93c5fd;
 
-        --bg-primary: #121212;
-        --bg-secondary: #1e1e1e;
-        --bg-tertiary: #2c2c2c;
-        --bg-capsule: #252525;
-        --bg-elevated: #232323;
+        --bg-primary: #111827;
+        --bg-secondary: #172033;
+        --bg-tertiary: #1f2937;
+        --bg-capsule: #182233;
+        --bg-elevated: #162033;
 
-        --brand-primary: #4c9aff;
+        --brand-primary: #60a5fa;
+        --brand-primary-dark: #93c5fd;
+        --brand-primary-light: rgba(96, 165, 250, 0.14);
+        --brand-primary-alpha: rgba(96, 165, 250, 0.14);
 
-        --border-subtle: #2c2c2c;
-        --border-light: #424242;
-        --border-medium: #6b6b6b;
-        --border-strong: #ffffff;
+        --color-success: #34d399;
+        --color-success-bg: rgba(16, 185, 129, 0.12);
+        --color-warning: #fbbf24;
+        --color-warning-bg: rgba(251, 191, 36, 0.12);
+        --color-danger: #f87171;
+        --color-danger-bg: rgba(248, 113, 113, 0.12);
+        --color-info: #38bdf8;
+        --color-info-bg: rgba(56, 189, 248, 0.12);
 
-        --code-bg: #1e1e1e;
-        --code-text: #e0e0e0;
-        --code-border: #333333;
+        --border-subtle: #223046;
+        --border-light: #314156;
+        --border-medium: #4b5563;
+        --border-strong: #e5e7eb;
 
-        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
-        --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.6);
-        --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.7);
-        --shadow-float: 0 12px 24px rgba(0, 0, 0, 0.8);
+        --code-bg: #0f172a;
+        --code-text: #e5e7eb;
+        --code-border: #334155;
+
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
+        --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.32);
+        --shadow-lg: 0 8px 18px rgba(0, 0, 0, 0.38);
+        --shadow-float: 0 10px 22px rgba(0, 0, 0, 0.36);
     }
 }
 
@@ -118,87 +134,110 @@
     padding: 0;
 }
 
+html {
+    scroll-behavior: smooth;
+}
+
 body {
-    /* 强制无衬线字体 */
     font-family: var(--font-sans) !important;
     font-size: 16px;
-    line-height: 1.6;
+    font-weight: 400;
+    line-height: 1.68;
     color: var(--text-primary);
     background-color: var(--bg-primary);
     max-width: var(--content-width);
     margin: 0 auto;
     padding: var(--space-8) var(--space-4) var(--space-16);
 
-    /* 字体渲染优化 */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   § 3. 标题系统 - 高对比度层级
+   § 3. 标题系统 - 更克制的层级
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 h1, h2, h3, h4, h5, h6 {
     color: var(--text-primary);
     font-family: var(--font-sans) !important;
-    line-height: 1.25;
+    line-height: 1.28;
     margin-top: var(--space-10);
     margin-bottom: var(--space-4);
 }
 
-/* H1: 页面主标题 - 强制粗边框 */
+/* H1: 页面主标题 */
+
 h1 {
-    font-size: 2.5rem;
-    font-weight: 900 !important;
-    letter-spacing: -0.02em;
+    font-size: 2.35rem;
+    font-weight: 850 !important;
+    letter-spacing: -0.025em;
     padding-bottom: var(--space-4);
-    border-bottom: 4px solid var(--border-strong) !important; /* 核心修改 */
+    border-bottom: 3px solid var(--border-strong) !important;
     margin-top: 0;
     margin-bottom: var(--space-8);
 }
 
-/* H2: 区块标题 - 底部分隔 */
+/* H2: 区块标题 */
 h2 {
-    font-size: 1.875rem;
+    font-size: 1.75rem;
     font-weight: 800 !important;
-    letter-spacing: -0.01em;
-    padding-bottom: var(--space-2);
-    border-bottom: 2px solid var(--border-medium);
+    letter-spacing: -0.015em;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border-light);
     margin-top: var(--space-12);
 }
 
-/* H3: 小节标题 - 方块装饰 */
+/* H3: 小节标题 */
 h3 {
-    font-size: 1.5rem;
-    font-weight: 700 !important;
+    font-size: 1.35rem;
+    font-weight: 740 !important;
     display: flex;
     align-items: center;
+    gap: var(--space-3);
 }
 
 h3::before {
     content: '';
     display: inline-block;
-    width: 0.6em;
-    height: 0.6em;
+    width: 0.55em;
+    height: 0.55em;
     background-color: var(--brand-primary);
-    margin-right: var(--space-3);
     border-radius: 2px;
+    flex: 0 0 auto;
+    opacity: 0.9;
 }
 
-h4 { font-size: 1.25rem; font-weight: 600; color: var(--text-secondary); }
-h5 { font-size: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+h4 {
+    font-size: 1.15rem;
+    font-weight: 680;
+    color: var(--text-secondary);
+}
+
+h5 {
+    font-size: 0.95rem;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+}
+
+h6 {
+    font-size: 0.9rem;
+    font-weight: 650;
+    color: var(--text-tertiary);
+}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    § 4. 文本与排版
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 p {
-    margin-bottom: var(--space-5);
-    max-width: 70ch;
+    margin-bottom: 1rem;
+    max-width: 68ch;
 }
 
 strong, b {
-    font-weight: 700;
-    color: var(--text-primary);
+    font-weight: 760;
+    color: var(--text-emphasis);
 }
 
 em, i {
@@ -206,53 +245,68 @@ em, i {
     color: var(--text-secondary);
 }
 
+small {
+    color: var(--text-tertiary);
+}
+
 a {
     color: var(--brand-primary);
     text-decoration: none;
     font-weight: 500;
     border-bottom: 1px solid transparent;
-    transition: border-color 0.2s ease;
+    transition: color 0.2s ease, border-color 0.2s ease;
 }
 
 a:hover {
-    border-bottom-color: var(--brand-primary);
+    color: var(--brand-primary-dark);
+    border-bottom-color: currentColor;
+}
+
+a:focus-visible {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid var(--border-light);
+    margin: var(--space-8) 0;
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   § 5. 引用块 - 胶囊设计 (Capsule Style)
+   § 5. 引用块 - 更安静的胶囊设计
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 blockquote {
-    /* 核心修改：胶囊形状 */
     background-color: var(--bg-capsule) !important;
     border: 1px solid var(--border-light);
-    border-radius: var(--radius-xl);
-    padding: var(--space-6) var(--space-8) !important;
+    border-radius: var(--radius-lg);
+    padding: var(--space-5) var(--space-6) !important;
     margin: var(--space-8) 0 !important;
     color: var(--text-secondary);
     position: relative;
-    box-shadow: var(--shadow-sm);
+    box-shadow: none;
 }
 
-/* 移除旧版左侧线条 */
-blockquote::before, blockquote::after {
+blockquote::before,
+blockquote::after {
     border: none;
 }
 
-/* 顶部装饰引号 */
 blockquote::before {
-    content: """;
+    content: '“';
     position: absolute;
-    top: -14px;
-    left: 32px; /* 或 left: 50% transform: translateX(-50%) 居中 */
+    top: -0.72rem;
+    left: 1rem;
     background-color: var(--bg-primary);
-    padding: 0 10px;
-    font-size: 2rem;
+    padding: 0 0.35rem;
+    font-size: 1.45rem;
     line-height: 1;
-    color: var(--brand-primary);
-    font-family: var(--font-mono); /* 符号强制等宽 */
+    color: var(--text-tertiary);
+    font-family: var(--font-sans);
 }
 
-blockquote p {
+blockquote p:last-child {
     margin-bottom: 0;
 }
 
@@ -265,25 +319,25 @@ blockquote footer {
 }
 
 blockquote footer::before {
-    content: "— ";
+    content: '— ';
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   § 6. 代码系统 - 强制等宽
+   § 6. 代码系统 - 更专业、更耐读
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 code, pre, kbd, samp {
-    /* 核心修改：强制等宽字体栈 */
     font-family: var(--font-mono) !important;
     font-variant-ligatures: none;
-    font-variant-numeric: tabular-nums; /* 数字强制等宽 */
+    font-variant-numeric: tabular-nums;
 }
 
 /* 行内代码 */
 code {
     font-size: 0.9em;
+    font-weight: 500;
     background-color: var(--code-bg);
     color: var(--code-text);
-    padding: 0.2em 0.4em;
+    padding: 0.16em 0.38em;
     border-radius: var(--radius-sm);
     border: 1px solid var(--border-subtle);
 }
@@ -292,12 +346,12 @@ code {
 pre {
     background-color: var(--code-bg);
     border: 1px solid var(--code-border);
-    border-radius: var(--radius-lg);
-    padding: 3rem 1.5rem 1.5rem; /* 顶部留空给macOS点 */
+    border-radius: 10px;
+    padding: 2.5rem 1.25rem 1.25rem;
     margin: var(--space-8) 0;
     overflow-x: auto;
     position: relative;
-    box-shadow: var(--shadow-sm);
+    box-shadow: none;
 }
 
 pre code {
@@ -306,84 +360,98 @@ pre code {
     border: none;
     color: inherit;
     font-size: 0.875rem;
-    line-height: 1.7;
+    line-height: 1.75;
 }
 
-/* macOS 窗口控制点装饰 */
+/* 更轻的 macOS 窗口控制点装饰 */
 pre::before {
-    content: "";
+    content: '';
     position: absolute;
-    top: 1rem;
-    left: 1rem;
-    width: 12px;
-    height: 12px;
+    top: 0.9rem;
+    left: 0.95rem;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
     background: #ff5f57;
-    box-shadow: 20px 0 0 #ffbd2e, 40px 0 0 #28c940;
+    box-shadow: 18px 0 0 #ffbd2e, 36px 0 0 #28c940;
+    opacity: 0.92;
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   § 7. 提示信息 - 视觉隔离 (Visual Isolation)
+   § 7. 提示信息 - 从产品卡片改为知识提示
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .alert {
     position: relative;
-    /* 核心修改：悬浮卡片样式 */
-    background-color: var(--bg-elevated);
-    border: none;
-    border-left: 6px solid; /* 仅保留左侧色条 */
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    border-left: 4px solid;
     border-radius: var(--radius-lg);
-    padding: var(--space-5) var(--space-6) var(--space-5) var(--space-16); /* 左侧留宽给图标 */
+    padding: var(--space-4) var(--space-5) var(--space-4) 3rem;
     margin: var(--space-8) 0;
-    box-shadow: var(--shadow-float); /* 强阴影 */
-    transform: scale(0.98);
-    transition: transform 0.2s ease;
+    box-shadow: none;
+    transform: none;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .alert:hover {
-    transform: scale(1);
+    transform: none;
 }
 
 /* 图标容器 */
 .alert::before {
     position: absolute;
-    left: var(--space-4);
-    top: 50%;
-    transform: translateY(-50%);
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
+    left: 0.95rem;
+    top: 1rem;
+    width: 1rem;
+    height: 1rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem;
-    background-color: rgba(0,0,0,0.04); /* 图标底座 */
+    font-size: 1rem;
+    line-height: 1;
+    background: transparent;
 }
 
-/* 类型定义 */
-.alert-info { border-color: var(--color-info); }
-.alert-info::before { content: "ℹ️"; }
+.alert > *:last-child {
+    margin-bottom: 0;
+}
 
-.alert-warning { border-color: var(--color-warning); }
-.alert-warning::before { content: "⚠️"; }
+.alert-info {
+    border-left-color: var(--color-info);
+    background-color: var(--color-info-bg);
+}
+.alert-info::before { content: 'ℹ️'; }
 
-.alert-danger { border-color: var(--color-danger); }
-.alert-danger::before { content: "❌"; }
+.alert-warning {
+    border-left-color: var(--color-warning);
+    background-color: var(--color-warning-bg);
+}
+.alert-warning::before { content: '⚠️'; }
 
-.alert-success { border-color: var(--color-success); }
-.alert-success::before { content: "✅"; }
+.alert-danger {
+    border-left-color: var(--color-danger);
+    background-color: var(--color-danger-bg);
+}
+.alert-danger::before { content: '❌'; }
+
+.alert-success {
+    border-left-color: var(--color-success);
+    background-color: var(--color-success-bg);
+}
+.alert-success::before { content: '✅'; }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    § 8. 列表、表格与图片
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 /* 列表 */
 ul, ol {
-    padding-left: var(--space-6);
-    margin-bottom: var(--space-6);
+    padding-left: 1.4rem;
+    margin-bottom: 1.25rem;
 }
 
 li {
-    margin-bottom: var(--space-2);
-    padding-left: var(--space-1);
+    margin-bottom: 0.45rem;
+    padding-left: 0.1rem;
 }
 
 li::marker {
@@ -401,23 +469,26 @@ table {
     border-radius: var(--radius-lg);
     overflow: hidden;
     font-variant-numeric: tabular-nums;
+    box-shadow: none;
 }
 
 th {
     background-color: var(--bg-tertiary);
     text-align: left;
-    padding: var(--space-3) var(--space-4);
+    padding: 0.8rem 1rem;
     font-weight: 700;
-    border-bottom: 2px solid var(--border-medium);
+    border-bottom: 1px solid var(--border-medium);
+    color: var(--text-primary);
 }
 
 td {
-    padding: var(--space-3) var(--space-4);
+    padding: 0.8rem 1rem;
     border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
 }
 
 tr:last-child td { border-bottom: none; }
-tr:nth-child(even) { background-color: var(--bg-secondary); }
+tr:nth-child(even) { background-color: rgba(148, 163, 184, 0.05); }
 
 /* 图片 */
 img {
@@ -435,40 +506,139 @@ img {
 kbd {
     font-family: var(--font-mono);
     display: inline-block;
-    padding: 0.15em 0.4em;
+    padding: 0.15em 0.45em;
     font-size: 0.85em;
     line-height: 1;
     color: var(--text-secondary);
     vertical-align: middle;
     background-color: var(--bg-primary);
     border: 1px solid var(--border-medium);
-    border-bottom-width: 3px;
+    border-bottom-width: 2px;
     border-radius: var(--radius-sm);
-    box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04);
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   § 10. 打印优化
+   § 10. 选择器补强 - 更适合 Markdown / 技术文档
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+mark {
+    background: linear-gradient(transparent 40%, rgba(250, 204, 21, 0.28) 40%);
+    color: inherit;
+    padding: 0 0.12em;
+}
+
+sup, sub {
+    font-size: 0.75em;
+}
+
+/* 紧跟标题后的第一段，阅读更顺 */
+h1 + p,
+h2 + p,
+h3 + p,
+h4 + p {
+    color: var(--text-secondary);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   § 11. 移动端优化
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@media (max-width: 640px) {
+    body {
+        font-size: 15px;
+        line-height: 1.75;
+        padding: 1.25rem 1rem 3rem;
+    }
+
+    h1 {
+        font-size: 2rem;
+        margin-bottom: 1.5rem;
+    }
+
+    h2 {
+        font-size: 1.45rem;
+        margin-top: 2.25rem;
+    }
+
+    h3 {
+        font-size: 1.15rem;
+    }
+
+    p {
+        max-width: none;
+    }
+
+    blockquote,
+    pre,
+    .alert,
+    table,
+    img {
+        margin: 1.25rem 0;
+    }
+
+    blockquote {
+        padding: 1rem 1rem !important;
+    }
+
+    pre {
+        padding: 1rem;
+    }
+
+    pre::before {
+        display: none;
+    }
+
+    .alert {
+        padding: 0.95rem 1rem 0.95rem 2.5rem;
+    }
+
+    .alert::before {
+        left: 0.8rem;
+        top: 0.95rem;
+    }
+
+    th, td {
+        padding: 0.7rem 0.8rem;
+    }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   § 12. 打印优化
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 @media print {
     body {
         background: white;
         color: black;
         font-size: 12pt;
+        line-height: 1.55;
         max-width: 100%;
         padding: 0;
     }
 
-    h1 { border-bottom: 2px solid black !important; }
+    h1 {
+        border-bottom: 2px solid black !important;
+    }
 
-    a { text-decoration: underline; color: black; }
+    a {
+        text-decoration: underline;
+        color: black;
+    }
 
-    pre, blockquote, .alert {
-        border: 1px solid #ccc;
+    pre,
+    blockquote,
+    .alert,
+    table {
+        border: 1px solid #d1d5db;
         box-shadow: none;
         page-break-inside: avoid;
     }
 
-    .alert { transform: none; padding-left: var(--space-4); }
-    .alert::before { display: none; }
+    .alert,
+    pre {
+        padding-left: 1rem;
+    }
+
+    .alert::before,
+    pre::before {
+        display: none;
+    }
 }
